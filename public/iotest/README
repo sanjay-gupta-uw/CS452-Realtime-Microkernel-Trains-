@@ -1,5 +1,4 @@
-Building (linux.student.cs.uwaterloo.ca)
-========================================
+# Building (linux.student.cs.uwaterloo.ca)
 
 cp -a /u/cs452/public/iotest <dest>
 cd <dest>

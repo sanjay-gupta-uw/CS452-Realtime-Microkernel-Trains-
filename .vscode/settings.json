@@ -1,0 +1,6 @@
+{
+  "files.associations": {
+    "*.tex": "markdown_latex_combined",
+    "rpi.h": "c"
+  }
+}
