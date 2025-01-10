@@ -8,6 +8,9 @@ int kmain()
 	gpio_init();
 	// not strictly necessary, since console is configured during boot
 	uart_config_and_enable(CONSOLE);
+
+	uart_puts(CONSOLE, "\033[2J"); // Clear screen
+	uart_puts(CONSOLE, "\033[H");	 // Move cursor to top-left
 	// welcome message
 	uart_puts(CONSOLE, "\r\nHello world, this is version: " __DATE__ " / " __TIME__ "\r\n\r\nPress 'q' to reboot\r\n");
 
@@ -18,8 +21,14 @@ int kmain()
 	for (;;)
 	{
 		update_clock(&last_time, &minutes, &seconds, &tenths);
-		uart_printf(CONSOLE, "Clock: %02u:%02u.%u\r\n", minutes, seconds, tenths);
+
+		uart_puts(CONSOLE, "\033[3;0H");
+		uart_printf(CONSOLE, "Clock: %02u:%02u.%u", minutes, seconds, tenths);
+
+		// Move cursor to a fixed position for the prompt (row 4, column 0)
+		uart_puts(CONSOLE, "\033[4;0H");
 		uart_printf(CONSOLE, "PI[%u]> ", counter++);
+
 		for (;;)
 		{
 			char c = uart_getc(CONSOLE);
