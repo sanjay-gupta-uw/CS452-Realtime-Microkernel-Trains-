@@ -25,7 +25,7 @@ static const uint32_t SYSTIMER_CS_M3 = 0x04; // Match 3
 
 /*********** ************************************************ ************/
 
-void update_clock(uint32_t *last_time, uint32_t *minutes, uint32_t *seconds, uint32_t *elapsed_tenths)
+void update_clock(uint32_t *last_time, uint32_t *minutes, uint32_t *seconds, uint32_t *tenths)
 {
    // Get current time from system timer
    uint32_t current_time = SYSTIMER_REG(SYSTIMER_CLO);
@@ -35,11 +35,11 @@ void update_clock(uint32_t *last_time, uint32_t *minutes, uint32_t *seconds, uin
    *last_time = current_time;
 
    // Convert elapsed time to tenths of a second and accumulate
-   *elapsed_tenths += elapsed / TENTH_OF_SECOND_MICRO_SECONDS;
+   *tenths += elapsed / TENTH_OF_SECOND_MICRO_SECONDS;
 
    // Update seconds if tenths exceed 10
-   (*seconds) += (*elapsed_tenths) / 10;
-   (*elapsed_tenths) %= 10;
+   (*seconds) += (*tenths) / 10;
+   (*tenths) %= 10;
 
    // Update minutes if seconds exceed 60
    (*minutes) += (*seconds) / 60;
