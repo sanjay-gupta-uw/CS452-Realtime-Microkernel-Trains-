@@ -1,5 +1,4 @@
 #include "clock.h"
-#include <stdint.h>
 
 #define TENTH_OF_SECOND_MICRO_SECONDS 100000
 
