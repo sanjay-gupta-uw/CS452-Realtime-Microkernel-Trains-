@@ -11,4 +11,4 @@ which can be deployed to the RPi and run. See the course web page for
 deployment instructions.
 
 <!-- upload intructions -->
-<!-- ./upload.sh public/iotest/iotest.img d8:3a:dd:1b:36:7d -->
+<!-- ./upload.sh assignments/a0/iotest.img d8:3a:dd:1b:37:13 -->
