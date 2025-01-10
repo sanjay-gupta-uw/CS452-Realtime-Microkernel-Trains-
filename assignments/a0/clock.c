@@ -25,7 +25,7 @@ static const uint32_t SYSTIMER_CS_M3 = 0x04; // Match 3
 
 /*********** ************************************************ ************/
 
-void update_clock(uint32_t *last_time, uint32_t *elapsed_tenths, uint32_t *minutes, uint32_t *seconds, uint32_t *tenths)
+void update_clock(uint32_t *last_time, uint32_t *minutes, uint32_t *seconds, uint32_t *elapsed_tenths)
 {
    // Get current time from system timer
    uint32_t current_time = SYSTIMER_REG(SYSTIMER_CLO);

@@ -12,12 +12,12 @@ int kmain()
 	uart_puts(CONSOLE, "\r\nHello world, this is version: " __DATE__ " / " __TIME__ "\r\n\r\nPress 'q' to reboot\r\n");
 
 	// clock init
-	uint32_t last_time, elapsed_tenths, minutes, seconds, tenths = 0;
+	uint32_t last_time, minutes, seconds, tenths = 0;
 
 	unsigned int counter = 1;
 	for (;;)
 	{
-		update_clock(&last_time, &elapsed_tenths, &minutes, &seconds, &tenths);
+		update_clock(&last_time, &minutes, &seconds, &tenths);
 		uart_printf(CONSOLE, "Clock: %02u:%02u.%u\r\n", minutes, seconds, tenths);
 		uart_printf(CONSOLE, "PI[%u]> ", counter++);
 		for (;;)
