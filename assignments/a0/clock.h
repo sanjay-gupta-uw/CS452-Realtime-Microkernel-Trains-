@@ -3,6 +3,15 @@
 
 #include <stdint.h>
 
-void update_clock(uint32_t *last_time, uint32_t *minutes, uint32_t *seconds, uint32_t *elapsed_tenths);
+typedef struct
+{
+   uint32_t last_time; // Last time the clock was updated
+   uint32_t minutes;   // Minutes part of the clock
+   uint32_t seconds;   // Seconds part of the clock
+   uint32_t tenths;    // Tenths of a second
+} Clock;
 
+void clock_init(Clock *clock);
+void clock_update(Clock *clock);
+void clock_display(const Clock *clock);
 #endif

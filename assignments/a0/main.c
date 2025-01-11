@@ -4,41 +4,39 @@
 
 int kmain()
 {
-	// set up GPIO pins for both console and marklin uarts
+	// Set up GPIO pins for both console and Marklin UARTs
 	gpio_init();
-	// not strictly necessary, since console is configured during boot
+	// Not strictly necessary, since console is configured during boot
 	uart_config_and_enable(CONSOLE);
 
-	// welcome message
-	uart_puts(CONSOLE, "\r\nHello world, this is version: " __DATE__ " / " __TIME__ "\r\n\r\nPress 'q' to reboot\r\n");
+	// Welcome message (displayed below the existing boot log)
+	uart_puts(CONSOLE, "\r\nHello world, this is version: " __DATE__ " / " __TIME__ "\r\n");
+	uart_puts(CONSOLE, "Press 'q' to reboot\r\n");
 
-	// clock init
-	uint32_t last_time, minutes, seconds, tenths = 0;
+   uart_puts(CONSOLE, "\033[s"); // Save the current cursor position for the clock
 
-	unsigned int counter = 1;
+	// Clock init
+	Clock clock;
+	clock_init(&clock);
+
+	// main polling loop
 	for (;;)
 	{
-		update_clock(&last_time, &minutes, &seconds, &tenths);
+		// Update the clock
+		clock_update(&clock);
+		
+		uart_puts(CONSOLE, "\033[u");
+		uart_puts(CONSOLE, "\033[K"); // clear the line
+		clock_display(&clock);
+	}
 
-		uart_printf(CONSOLE, "Clock: %02u:%02u.%u", minutes, seconds, tenths);
-
-		// Move cursor to a fixed position for the prompt (row 4, column 0)
-		uart_printf(CONSOLE, "PI[%u]> ", counter++);
-
-		for (;;)
+	// from IOtest
+	for (;;)
+	{
+		if (uart_getc(CONSOLE) == 'q')
 		{
-			char c = uart_getc(CONSOLE);
-			uart_putc(CONSOLE, c);
-			if (c == '\r')
-			{
-				uart_putc(CONSOLE, '\n');
-				break;
-			}
-			else if (c == 'q' || c == 'Q')
-			{
-				uart_puts(CONSOLE, "\r\n");
-				return 0;
-			}
+			uart_puts(CONSOLE, "\r\nExiting...\r\n");
+			return 0;
 		}
 	}
 }
