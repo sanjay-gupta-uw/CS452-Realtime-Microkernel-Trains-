@@ -1,0 +1,70 @@
+<!-- CS 452
+
+
+Lecture 2:
+
+
+- device registers at 
+   - 0xFE000000  (Use this one for device accesses (check iotest))
+   - 0x7E000000
+- Timer
+   - use relative time (0 on init)
+   - System timer (CH10) -- (use this one)
+      - Runs at 1Mhz
+      - 7 registers
+         - 4 compare
+         - 1 status
+         - 2 counter: CLO, CHI (Combine to get 64 bit counter representing the current time for A0)
+      - 0x2030000 (address)
+   - ARM timer (CH12)
+
+- GPIO (General Purpose Input/Output)
+- UART (Universal Asynchronous Receiver/Transmitter)
+   - Standards: RS232 (communication), DB9 (connector)
+   - UART is essentially the API
+   - Serial device: 1 byte at a time
+   - We are using: 
+      - UART0 (0x201000): Baud: 115200, 8 bits, no parity, 1 stop bit
+      - UART3 (0x201600): Baud: 2400,   8 bits, no parity, 2 stop bit -- 240 bytes per second -> 4.16ms delay to send a byte
+      - Marklin is half duplex (can only send or receive at a time)
+
+- Input/Output:
+   - Assume 1 byte buffer?
+   - Output (transmit, TX)
+      - DR (Data Register)
+      - FR - TX  (flag register, is TX full/empty)
+
+   - Input (recieve, RX)
+      - DR
+      - FR - RX (flag register, is RX full/empty)
+
+- Trains/Track
+      - train speed: (0-31), train # (send two bytes)
+         - 0: stop (rolling stop) (use this) 
+         - 1-14: speed
+         - 15: stop and reverse (only use this if 0 is used first) (unless used in failure catch)
+         - 16-31: headlights (set 16 for headlight)
+
+- Switch
+   - 0x21, turnout# (straight)
+   - 0x22, turnout# (curved)
+   - 0x20 (deactivate solenoid)
+
+   - On init set all trains to 0, lights on, turnouts to captive loop
+   - Double Switches -> DO NOT SET BOTH TO CURVED (or allow for C/C when switching)
+
+- Sensors
+   - Reset sensor when train activates it (readout)
+   - Won't know which train activated sensor (just that it was activated) 
+   - Commands:
+      - 0x80: disable reset mode (no)
+      - 0xC0: enable reset mode (yes)
+      - 0x80 + N -> read bank N
+      - 0xC0 + N -> read all banks from 1-N
+
+      - 0xC5 (most likely this one) -> read all sensors
+
+
+- IO test: q on reboot -> reboots before q appears
+- while waiting for character, wait (bad) (may miss events)
+-->   

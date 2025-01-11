@@ -13,7 +13,7 @@ int kmain()
 	uart_puts(CONSOLE, "\r\nHello world, this is version: " __DATE__ " / " __TIME__ "\r\n");
 	uart_puts(CONSOLE, "Press 'q' to reboot\r\n");
 
-   uart_puts(CONSOLE, "\033[s"); // Save the current cursor position for the clock
+	uart_puts(CONSOLE, "\033[s"); // Save the current cursor position for the clock
 
 	// Clock init
 	Clock clock;
@@ -24,10 +24,11 @@ int kmain()
 	{
 		// Update the clock
 		clock_update(&clock);
-		
+
 		uart_puts(CONSOLE, "\033[u");
 		uart_puts(CONSOLE, "\033[K"); // clear the line
 		clock_display(&clock);
+		uart_puts(CONSOLE, "\r");
 	}
 
 	// from IOtest

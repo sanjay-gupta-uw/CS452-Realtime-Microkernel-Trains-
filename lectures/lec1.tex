@@ -1,0 +1,25 @@
+<!-- CS 452
+
+DC-3506 — Martin Office
+Lab Code: (5), (1+3), (2), (4)
+
+Lecture 1:
+- Freestanding vs hosted
+    - No OS (no syscalls/memory management), only hardware
+    - Understand linking 
+    - No LibC
+- ELF files
+    - BSS (all data that is initialized to 0) — (may need to clear out on init)
+    - data
+    - rodata (read only data)
+    - text (code)
+- MMU disabled 
+    - Floating Point/SIMD -> restricted
+    - Unaligned Memory Access
+        - mstrict-align (makes sure code doesnt use any unaligned accesses)
+        - mgeneral-flags-only
+            - there is a test in makefile 
+- Take care with precompiled binaries (libC for example since they were compiled differently)
+
+A0:
+- Bug in iotest (meant to fix for A0) -->
