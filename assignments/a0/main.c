@@ -5,6 +5,7 @@
 #include "clock.h"
 #include "train.h"
 #include "switch.h"
+#include "ui.h"
 
 int kmain()
 {
@@ -19,42 +20,14 @@ int kmain()
 	uart_config_and_enable(MARKLIN);
 
 	// Welcome message (displayed below the existing boot log)
-	uart_puts(CONSOLE, "\r\nHello world, this is version: " __DATE__ " / " __TIME__ "\r\n");
-	uart_puts(CONSOLE, "Press 'q' to reboot\r\n");
-
-	uart_puts(CONSOLE, "\033[s"); // Save the current cursor position for the sys_clock
-
-	bool enableClock = true;
-	bool trainEnabled = false;
-	bool switchTestEnabled = true;
 
 	// main polling loop
 	for (;;)
 	{
-		// Update the sys_clock
-		if (enableClock)
-		{
-			clock_update(&sys_clock);
-			uart_puts(CONSOLE, "\033[u");
-			uart_puts(CONSOLE, "\033[K"); // clear the line
-			clock_display(&sys_clock);
-			uart_puts(CONSOLE, "\r");
-		}
+		// update the clock
+		clock_update(&sys_clock);
 
-		if (!trainEnabled)
-		{
-			accelerate_train(55, 10, true);
-			// clock_delay(&sys_clock, 30);
-			trainEnabled = true;
-		}
-
-		if (switchTestEnabled)
-		{
-			// switch_straight(4);
-			bool isStraight = false;
-			set_all_switches(isStraight);
-			switchTestEnabled = false;
-		}
+		draw_ui();
 	}
 
 	// from IOtest

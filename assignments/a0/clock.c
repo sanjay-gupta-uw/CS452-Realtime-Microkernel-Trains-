@@ -66,7 +66,17 @@ void clock_update()
 
 void clock_display()
 {
-   uart_printf(CONSOLE, "%u:%u.%u", sys_clock.minutes, sys_clock.seconds, sys_clock.tenths);
+   // uart_printf(CONSOLE, "%02u:%02u.%u", sys_clock.minutes, sys_clock.seconds, sys_clock.tenths);
+   // Format the clock display manually with zero-padding
+   if (sys_clock.minutes < 10)
+      uart_putc(CONSOLE, '0'); // Add leading zero for minutes
+   uart_printf(CONSOLE, "%u:", sys_clock.minutes);
+
+   if (sys_clock.seconds < 10)
+      uart_putc(CONSOLE, '0'); // Add leading zero for seconds
+   uart_printf(CONSOLE, "%u.", sys_clock.seconds);
+
+   uart_printf(CONSOLE, "%u", sys_clock.tenths); // Tenths don't need padding
 }
 
 void clock_delay(uint32_t delay_ms)

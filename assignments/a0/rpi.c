@@ -141,6 +141,8 @@ void uart_config_and_enable(size_t line)
 	UART_REG(line, UART_CR) = cr_state | UART_CR_UARTEN | UART_CR_TXE | UART_CR_RXE;
 }
 
+// create non-blocking read function!
+
 unsigned char uart_getc(size_t line)
 {
 	unsigned char ch;
