@@ -1,0 +1,10 @@
+{
+   "files.associations": {
+      "*.tex": "markdown_latex_combined",
+      "stdint.h": "c",
+      "clock.h": "c",
+      "stdbool.h": "c",
+      "rpi.h": "c",
+      "chrono": "c"
+   }
+}

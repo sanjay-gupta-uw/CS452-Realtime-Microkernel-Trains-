@@ -1,21 +1,20 @@
-#ifndef _switch_h
-#define _switch_h
+#ifndef _switch_h_
+#define _switch_h_
 
-// switch state enum
-typedef enum
-{
-   STRAIGHT,
-   CURVED
-} SwitchState;
+#include <stdbool.h>
+
+#include "rpi.h"
+#include "clock.h"
 
 typedef struct
 {
-   // switch state
-   SwitchState state;
+   int address;
+   bool straight;
 } Switch;
 
-void switch_init(Switch *sw);
-void switch_toggle(Switch *sw);
-void switch_display(const Switch *sw);
+
+void switch_straight(int switch_number);
+void switch_branch(int switch_number);
+void set_all_switches(bool isStraight);
 
 #endif

@@ -11,7 +11,10 @@ typedef struct
    uint32_t tenths;    // Tenths of a second
 } Clock;
 
-void clock_init(Clock *clock);
-void clock_update(Clock *clock);
-void clock_display(const Clock *clock);
+extern Clock sys_clock;
+
+void clock_init();
+void clock_update();
+void clock_delay(uint32_t delay_ms);
+void clock_display();
 #endif

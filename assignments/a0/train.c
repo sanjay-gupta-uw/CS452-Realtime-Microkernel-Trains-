@@ -1,18 +1,30 @@
 #include "train.h"
-#include "rpi.h"
 
-static void send_command(uint8_t data, uint8_t address)
+static void send_command(int data, int address)
 {
-   uint8_t cmd[2];
-   cmd[0] = data;
-   cmd[1] = address;
-
-   uart_putl(MARKLIN, (char *)cmd, 2);
-   uart_putc(MARKLIN, '\r');
+   uart_putc(MARKLIN, (uint8_t)data);
+   uart_putc(MARKLIN, (uint8_t)address);
+   clock_delay(30);
 }
 
-void turn_on_headlight(uint8_t train_num)
+void turn_on_headlight(int train_num)
 {
-   uint8_t data = 16;
+   int data = 16;
    send_command(data, train_num);
+}
+
+void accelerate_train(int train_num, int speed, bool headlightOn)
+{
+   int data = speed + (headlightOn ? 16 : 0);
+   send_command(data, train_num);
+}
+
+void reverse_train(int train_num)
+{
+   send_command(15, train_num);
+}
+
+void stop_train(int train_num)
+{
+   send_command(0, train_num);
 }

@@ -1,12 +1,15 @@
 #ifndef _train_h
 #define _train_h
+
 #include <stdbool.h>
-#include <stdint.h>
+
+#include "rpi.h"
+#include "clock.h"
 
 // toggle train direction
-void accelerate_train(uint8_t train_num, uint8_t speed, bool headlightOn);
-void reverse_train(uint8_t train_num, bool headlightOn);
-void stop_train(uint8_t train_num);
-void turn_on_headlight(uint8_t train_num);
+void accelerate_train(int train_num, int speed, bool headlightOn);
+void reverse_train(int train_num);
+void stop_train(int train_num);
+void turn_on_headlight(int train_num);
 
 #endif

@@ -118,7 +118,7 @@ void uart_config_and_enable(size_t line)
 		break;
 	// setting baudrate to 2400; 2 stop bits
 	case MARKLIN:
-		baud_ival = 125;
+		baud_ival = 1250;
 		baud_fval = 0;
 		stop2 = UART_LCRH_STP2;
 		break;
