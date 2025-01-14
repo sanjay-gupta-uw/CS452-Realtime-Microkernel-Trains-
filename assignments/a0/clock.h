@@ -1,7 +1,9 @@
 #ifndef _clock_h_
 #define _clock_h_
 
+#include "util.h"
 #include <stdint.h>
+#include <stdbool.h>
 
 typedef struct
 {
@@ -9,12 +11,15 @@ typedef struct
    uint32_t minutes;   // Minutes part of the clock
    uint32_t seconds;   // Seconds part of the clock
    uint32_t tenths;    // Tenths of a second
+
 } Clock;
 
 extern Clock sys_clock;
 
+uint32_t get_current_time();
+
 void clock_init();
 void clock_update();
 void clock_delay(uint32_t delay_ms);
-void clock_display();
+void clock_display(int LOCATION);
 #endif

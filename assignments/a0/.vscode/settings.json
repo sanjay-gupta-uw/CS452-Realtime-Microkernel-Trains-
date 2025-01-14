@@ -5,6 +5,16 @@
       "clock.h": "c",
       "stdbool.h": "c",
       "rpi.h": "c",
-      "chrono": "c"
-   }
+      "chrono": "c",
+      "train.h": "c",
+      "stddef.h": "c",
+      "switch.h": "c",
+      "sensor.h": "c",
+      "circbuff.h": "c",
+      "command.h": "c",
+      "random": "c",
+      "ui.h": "c",
+      "stdlib.h": "c"
+   },
+   "C_Cpp.errorSquiggles": "enabled"
 }

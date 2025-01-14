@@ -12,10 +12,13 @@ deployment instructions.
 
 <!-- upload intructions -->
 <!-- ./upload.sh assignments/a0/iotest.img d8:3a:dd:1b:37:13 -->
+<!-- ./upload.sh assignments/a0/iotest.img d8:3a:dd:1b:37:D9 -->
+<!-- ./upload.sh assignments/a0/iotest.img d8:3a:dd:1b:36:7D -->
+<!-- ./upload.sh assignments/a0/iotest.img d8:3a:dd:1b:39:65 -->
 
 
  <!-- # track A -->
 <!-- ./upload.sh assignments/a0/iotest.img d8:3a:dd:1b:36:9e -->
-<!-- track B -->
+<!-- # track B -->
 <!-- ./upload.sh assignments/a0/iotest.img d8:3a:dd:1b:38:6c -->
 

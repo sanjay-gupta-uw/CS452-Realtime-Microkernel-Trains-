@@ -141,7 +141,12 @@ void uart_config_and_enable(size_t line)
 	UART_REG(line, UART_CR) = cr_state | UART_CR_UARTEN | UART_CR_TXE | UART_CR_RXE;
 }
 
-// create non-blocking read function!
+// non-blocking version to check if buffer is filled with data
+int uart_available(size_t line)
+{
+	// Check the Receiver FIFO Empty (RXFE) bit in the UART Flag Register
+	return !(UART_REG(line, UART_FR) & UART_FR_RXFE);
+}
 
 unsigned char uart_getc(size_t line)
 {
@@ -178,41 +183,100 @@ void uart_puts(size_t line, const char *buf)
 	}
 }
 
+// Helper function to handle padding
+static void pad_and_print(size_t line, const char *str, int width)
+{
+	int len = 0;
+	const char *temp = str;
+
+	// Calculate string length
+	while (*temp++)
+		len++;
+
+	// Add padding spaces if necessary
+	while (len < width)
+	{
+		uart_putc(line, ' ');
+		width--;
+	}
+
+	// Print the actual string
+	uart_puts(line, str);
+}
+
 void uart_printf(size_t line, const char *fmt, ...)
 {
 	va_list va;
 	char ch, buf[12];
+	int width = 0; // Width for padding
 
 	va_start(va, fmt);
 	while ((ch = *(fmt++)))
 	{
 		if (ch != '%')
-			uart_putc(line, ch);
+		{
+			uart_putc(line, ch); // Print regular characters
+		}
 		else
 		{
+			// Parse padding width if present
+			width = 0;
 			ch = *(fmt++);
+			if (ch >= '0' && ch <= '9')
+			{
+				while (ch >= '0' && ch <= '9') // Extract width
+				{
+					width = width * 10 + (ch - '0');
+					ch = *(fmt++);
+				}
+			}
+
 			switch (ch)
 			{
-			case 'u':
+			case 'u': // Unsigned integer
 				ui2a(va_arg(va, unsigned int), 10, buf);
-				uart_puts(line, buf);
+				pad_and_print(line, buf, width);
 				break;
-			case 'd':
+
+			case 'd': // Signed integer
 				i2a(va_arg(va, int), buf);
-				uart_puts(line, buf);
+				pad_and_print(line, buf, width);
 				break;
-			case 'x':
+
+			case 'x': // Hexadecimal
 				ui2a(va_arg(va, unsigned int), 16, buf);
-				uart_puts(line, buf);
+				pad_and_print(line, buf, width);
 				break;
-			case 's':
-				uart_puts(line, va_arg(va, char *));
+
+			case 's': // String
+			{
+				char *str = va_arg(va, char *);
+				pad_and_print(line, str, width);
 				break;
-			case '%':
+			}
+
+			case 'c':							 // Character
+				ch = (char)va_arg(va, int); // Characters are promoted to int in varargs
+				if (width > 1)
+				{
+					for (int i = 1; i < width; ++i) // Add padding spaces
+						uart_putc(line, ' ');
+				}
+				uart_putc(line, ch); // Print the character
+				break;
+
+			case '%': // Literal '%'
+				uart_putc(line, '%');
+				break;
+
+			case '\0': // End of format string
+				return;
+
+			default:
+				// Handle unknown specifier by printing it
+				uart_putc(line, '%');
 				uart_putc(line, ch);
 				break;
-			case '\0':
-				return;
 			}
 		}
 	}

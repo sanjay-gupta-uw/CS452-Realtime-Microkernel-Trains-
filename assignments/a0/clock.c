@@ -3,6 +3,8 @@
 
 #define TENTH_OF_SECOND_MICRO_SECONDS 100000
 
+static bool UPDATE_DISPLAY = true;
+
 /*********** SYSTEM TIMER CONTROL ************************ ************/
 static char *const SYSTIMER_BASE = (char *)(0xFE003000);
 #define SYSTIMER_REG(offset) (*(volatile uint32_t *)(SYSTIMER_BASE + offset))
@@ -35,6 +37,11 @@ void clock_init()
    sys_clock.tenths = 0;
 }
 
+uint32_t get_current_time()
+{
+   return SYSTIMER_REG(SYSTIMER_CLO);
+}
+
 void clock_update()
 {
 
@@ -60,23 +67,10 @@ void clock_update()
 
       // uart_printf(CONSOLE, "FILLD: minutes: %u, seconds: %u, tenths: %u\r\n", *minutes, *seconds, *tenths);
       sys_clock.last_time = current_time;
+
+      UPDATE_DISPLAY = true;
    }
    // wraparound after 71 minutes?
-}
-
-void clock_display()
-{
-   // uart_printf(CONSOLE, "%02u:%02u.%u", sys_clock.minutes, sys_clock.seconds, sys_clock.tenths);
-   // Format the clock display manually with zero-padding
-   if (sys_clock.minutes < 10)
-      uart_putc(CONSOLE, '0'); // Add leading zero for minutes
-   uart_printf(CONSOLE, "%u:", sys_clock.minutes);
-
-   if (sys_clock.seconds < 10)
-      uart_putc(CONSOLE, '0'); // Add leading zero for seconds
-   uart_printf(CONSOLE, "%u.", sys_clock.seconds);
-
-   uart_printf(CONSOLE, "%u", sys_clock.tenths); // Tenths don't need padding
 }
 
 void clock_delay(uint32_t delay_ms)
@@ -94,4 +88,28 @@ void clock_delay(uint32_t delay_ms)
       // Update the sys_clock to ensure it doesn't lose ticks during the delay
       clock_update();
    }
+}
+
+void clock_display(int LOCATION)
+{
+   if (!UPDATE_DISPLAY)
+      return;
+
+   move_cursor(CONSOLE, 1, LOCATION);
+   clear_to_end_line(CONSOLE);
+
+   uart_puts(CONSOLE, "\033[36m"); // set colour to magenta
+   // uart_printf(CONSOLE, "%02u:%02u.%u", sys_clock.minutes, sys_clock.seconds, sys_clock.tenths);
+   // Format the clock display manually with zero-padding
+   if (sys_clock.minutes < 10)
+      uart_putc(CONSOLE, '0'); // Add leading zero for minutes
+   uart_printf(CONSOLE, "%u:", sys_clock.minutes);
+
+   if (sys_clock.seconds < 10)
+      uart_putc(CONSOLE, '0'); // Add leading zero for seconds
+   uart_printf(CONSOLE, "%u.", sys_clock.seconds);
+
+   uart_printf(CONSOLE, "%u", sys_clock.tenths); // Tenths don't need padding
+
+   UPDATE_DISPLAY = false;
 }
