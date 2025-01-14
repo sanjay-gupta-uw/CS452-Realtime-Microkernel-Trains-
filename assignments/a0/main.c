@@ -78,11 +78,15 @@ int kmain()
 		else
 		{
 			// uint32_t time_start = get_current_time();
-			sensor_read_all(NUM_BANKS, &sensor_buffer);
-			// uint32_t end_time = get_current_time();
-			// move_cursor(CONSOLE, 70, 1);
-			// clear_to_end_line(CONSOLE);
-			// uart_printf(CONSOLE, "Latency: {%d} ", (end_time - time_start) / );
+
+			sensor_read_all(NUM_BANKS, &sensor_buffer); // keep this
+
+			/*
+			uint32_t end_time = get_current_time();
+			move_cursor(CONSOLE, 70, 1);
+			clear_to_end_line(CONSOLE);
+			uart_printf(CONSOLE, "Latency: {%d} ", (end_time - time_start));
+			*/
 		}
 	}
 }
