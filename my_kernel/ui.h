@@ -1,13 +1,14 @@
 #ifndef _ui_h_
 #define _ui_h_
 
-#include "command.h"
-#include "sensor.h"
-#include "rpi.h"
+// #include "command.h"
+// #include "sensor.h"
+// #include "rpi.h"
 #include "clock.h"
-#include "switch.h"
 #include "util.h"
-#include "ringbuffer.h"
+// #include "switch.h"
+// #include "util.h"
+// #include "ringbuffer.h"
 
 // assume terminal is 80x24
 #define NUM_ROWS 24
@@ -19,7 +20,13 @@
 #define SENSOR_LOCATION 35
 #define CMD_LOCATION 60
 
-void create_ui();
-void update_ui(RingBuffer *rb);
+extern Clock clock;
+
+class UI
+{
+public:
+   UI();
+   void Update();
+};
 
 #endif

@@ -5,21 +5,24 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-typedef struct
+class Clock
 {
-   uint32_t last_time; // Last time the clock was updated
-   uint32_t minutes;   // Minutes part of the clock
-   uint32_t seconds;   // Seconds part of the clock
-   uint32_t tenths;    // Tenths of a second
+public:
+   // reintegrate with Tid: https://student.cs.uwaterloo.ca/~cs452/W25/assignments/kernel.html
+   Clock();
+   ~Clock();
 
-} Clock;
+   uint32_t Time();
+   void Update();
+   void Delay(uint32_t delay_ms);
+   void Display(int LOCATION);
 
-extern Clock sys_clock;
+private:
+   uint32_t last_time;
+   uint32_t minutes;
+   uint32_t seconds;
+   uint32_t tenths;
+   bool UPDATE_DISPLAY;
+};
 
-uint32_t get_current_time();
-
-void clock_init();
-void clock_update();
-void clock_delay(uint32_t delay_ms);
-void clock_display(int LOCATION);
 #endif

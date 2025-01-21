@@ -2,8 +2,8 @@
 #define _command_h_
 
 #include "ui.h"
-#include "train.h"
-#include "switch.h"
+// #include "train.h"
+// #include "switch.h"
 
 #define CMD_PREFIX_LENGTH 4
 #define INPUT_BUFFER_SIZE 32
