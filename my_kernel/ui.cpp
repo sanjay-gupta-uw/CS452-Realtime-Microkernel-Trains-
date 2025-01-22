@@ -1,19 +1,21 @@
 #include "ui.h"
 
+#include "clock.h"
+#include "command.h"
+#include "switch.h"
+// #include "sensor.h"
+// #include "util.h"
+
 UI::UI()
 {
-   // init_commands(); // sets buffer index to 0
    clear_screen(CONSOLE);
    clock.Display((NUM_COLS - CLOCK_LENGTH) / 2);
 
    // Switches
-   // init_switch_display(SWITCH_LOCATION);
+   switches.InitDisplay(SWITCH_LOCATION);
 
    // Sensors
    // init_sensor_display(SENSOR_LOCATION);
-
-   // command prompt for user input
-   // command_display(CMD_LOCATION);
 
    // uart_puts(CONSOLE, "Press 'q' to reboot\r\n");
 }
@@ -25,8 +27,8 @@ void UI::Update()
    clock.Display((NUM_COLS - CLOCK_LENGTH) / 2);
 
    //    sensor_display(SENSOR_LOCATION + 3, rb);
-   //    switch_display(SWITCH_LOCATION + 5);
-   //    command_display(CMD_LOCATION);
+   switches.Display(SWITCH_LOCATION + 5);
+   cmd_prompt.Display(CMD_LOCATION);
 
    reset_formatting(CONSOLE);
    // move_cursor(CM)

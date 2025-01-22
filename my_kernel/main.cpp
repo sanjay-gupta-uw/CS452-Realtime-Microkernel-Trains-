@@ -1,22 +1,18 @@
 #include <stdbool.h>
 
-#include "TestClass.h"
 #include "rpi.h"
 #include "ui.h"
 #include "clock.h"
-// #include "train.h"
-// #include "switch.h"
+
+#include "train.h"
+#include "switch.h"
 // #include "sensor.h"
-// #include "command_buffer.h"
-// #include "command.h"
+#include "command.h"
+#include "ringbuffer.h"
 
 #define DEBUG 2
 #define ENABLE_RESET_MODE true
 #define DISABLE_RESET_MODE false
-#define BRANCH false
-#define STRAIGHT true
-
-Clock clock;
 
 typedef void (*funcvoid_t)();
 extern funcvoid_t __init_array_start;
@@ -37,20 +33,17 @@ extern "C" int __cxa_atexit(void (*)(void *), void *, void *)
 
 void *__dso_handle = 0;
 
+Clock clock;
+Switches switches;
+Trains trains;
+CommandPrompt cmd_prompt;
+
 extern "C" int kmain()
 {
    call_global_constructors();
 
-   // TestClass test1;
-   // TestClass test2;
-   // test1.printMessage(); // this is throwing the error
-   // test2.printMessage(); // this is throwing the error
-
-   // CommandRingBuffer command_buffer;
+   RingBuffer<Command> command_buffer;
    // RingBuffer sensor_buffer;
-
-   // init_command_ring_buffer(&command_buffer);
-   // init_ring_buffer(&sensor_buffer);
 
    // Set up GPIO pins for both console and Marklin UARTs
    gpio_init();
@@ -58,13 +51,10 @@ extern "C" int kmain()
    uart_config_and_enable(CONSOLE);
    uart_config_and_enable(MARKLIN);
 
-   // CommandType tmp_cmd = {INVALID_CMD, -1, -1};
+   Command tmp_cmd = {INVALID_CMD, -1, -1};
 
    // sensor_init(ENABLE_RESET_MODE); // enables reset mode
-   // set_all_switches(BRANCH);
-   // // Clock init
-   // clock_init();
-   // create_ui();
+   switches.SetAll(CURVED);
    UI ui;
 
    // main polling loop
@@ -74,43 +64,40 @@ extern "C" int kmain()
       clock.Update();
       ui.Update(); // update_ui(&sensor_buffer);
 
-      /*
+      int status = cmd_prompt.ExtractCommand(&tmp_cmd);
 
-      int status = handle_command(&tmp_cmd);
       if (status == SUCCESS_CMD)
       {
          // create function for this!
-         if (!is_command_buffer_full(&command_buffer))
+         if (!command_buffer.IsFull())
          {
-            add_command_to_buffer(&command_buffer, &tmp_cmd);
+            command_buffer.Push(&tmp_cmd);
          }
       }
 
-      if (!is_command_buffer_empty(&command_buffer)) // THIS LINE
+      if (!command_buffer.IsEmpty())
       {
-         CommandType cmd;
-         int val = remove_command_from_buffer(&command_buffer, &cmd);
-         if (cmd.cmd_type == QUIT_CMD)
+         Command cmd;
+         int val = command_buffer.Pop(&cmd);
+         if (val == 0)
          {
-            return 0;
-         }
-
-         if (val)
-         {
-            parse_command(&cmd);
+            cmd_prompt.Execute(&cmd);
+            if (cmd.user_command == QUIT_CMD)
+            {
+               return 0;
+            }
          }
       }
       else
       {
          // uint32_t time_start = get_current_time();
 
-         sensor_read_all(NUM_BANKS, &sensor_buffer); // keep this
+         // sensor_read_all(NUM_BANKS, &sensor_buffer); // keep this
 
          // uint32_t end_time = get_current_time();
          // move_cursor(CONSOLE, 70, 1);
          // clear_to_end_line(CONSOLE);
          // uart_printf(CONSOLE, "Latency: {%d} ", (end_time - time_start));
       }
-      */
    }
 }

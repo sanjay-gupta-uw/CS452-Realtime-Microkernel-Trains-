@@ -1,14 +1,8 @@
 #ifndef _ui_h_
 #define _ui_h_
 
-// #include "command.h"
-// #include "sensor.h"
-// #include "rpi.h"
-#include "clock.h"
 #include "util.h"
-// #include "switch.h"
-// #include "util.h"
-// #include "ringbuffer.h"
+// #include "rpi.h"
 
 // assume terminal is 80x24
 #define NUM_ROWS 24
@@ -19,8 +13,15 @@
 #define SWITCH_LOCATION 3
 #define SENSOR_LOCATION 35
 #define CMD_LOCATION 60
+#define COMMAND_STATUS_LOCATION 61
+
+class Clock;
+class Switches;
+class CommandPrompt;
 
 extern Clock clock;
+extern Switches switches;
+extern CommandPrompt cmd_prompt;
 
 class UI
 {

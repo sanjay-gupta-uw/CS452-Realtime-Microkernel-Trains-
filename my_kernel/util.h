@@ -16,10 +16,13 @@ void move_cursor(size_t line, int row, int col);
 void reset_formatting(size_t line);
 
 // color helper functions
+void color_black();
 void color_red();
 void color_green();
 void color_yellow();
 void color_blue();
 void color_magenta();
+void color_cyan();
+void color_white();
 
 #endif /* util.h */

@@ -108,27 +108,11 @@ void move_cursor(size_t line, int row, int col)
 	uart_putc(line, 'H'); // End of sequence
 }
 
-void color_red()
-{
-	uart_puts(CONSOLE, "\033[31m"); // red
-}
-
-void color_green()
-{
-	uart_puts(CONSOLE, "\033[32m"); // Set color to green
-}
-
-void color_yellow()
-{
-	uart_puts(CONSOLE, "\033[33m"); // Set color to yellow
-}
-
-void color_blue()
-{
-	uart_puts(CONSOLE, "\033[34m"); // Set color to blue
-}
-
-void color_magenta()
-{
-	uart_puts(CONSOLE, "\033[35m"); // Set color to magenta
-}
+void color_black() { uart_puts(CONSOLE, "\033[30m"); }
+void color_red() { uart_puts(CONSOLE, "\033[31m"); }
+void color_green() { uart_puts(CONSOLE, "\033[32m"); }
+void color_yellow() { uart_puts(CONSOLE, "\033[33m"); }
+void color_blue() { uart_puts(CONSOLE, "\033[34m"); }
+void color_magenta() { uart_puts(CONSOLE, "\033[35m"); }
+void color_cyan() { uart_puts(CONSOLE, "\033[36m"); }
+void color_white() { uart_puts(CONSOLE, "\033[37m"); }
