@@ -1,6 +1,19 @@
 #ifndef _task_h_
 #define _task_h_
 
+#define MAX_TASKS 64
+
+#include "memory.h"
+
+// priority levels
+typedef enum
+{
+   HIGH,
+   MEDIUM,
+   LOW,
+   IDLE,
+} Priority;
+
 typedef enum
 {
    ACTIVE,
@@ -14,25 +27,21 @@ typedef enum
 
 class TaskDescriptor
 {
-private:
-   int tid;                    // a pointer to the TD of the task that created it, its parent,
-   TaskDescriptor *parent;     // a pointer to the TD of the next task in the task's ready queue,
-   int priority;               // the task's priority,
-   RunState current_run_state; // the task's current run state
-                               // a pointer to the TD of the next task on the task's send queue,
-                               // the task's current stack pointer.
-                               // the task's return value, and
-                               // the task's SPSR.
-
 public:
+   TaskDescriptor();
+   ~TaskDescriptor();
+   // use wrapper Create to call this
+   int CreateTask(int priority, MemoryBlock *block, void (*function)());
+   bool isReady();
+
+private:
+   int tid;
+   int priority;
+   TaskDescriptor *parent;
+   RunState state;
+   uintptr_t sp;
 };
 
-class Task
-{
-private:
-   TaskDescriptor *td;
-   int *send_queue;
-   int *ready_queue;
-};
+void ContextSwitch();
 
 #endif // _td_h_

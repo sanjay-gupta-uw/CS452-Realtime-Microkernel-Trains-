@@ -10,6 +10,8 @@
 #include "command.h"
 #include "ringbuffer.h"
 
+#include "task.h"
+
 #define DEBUG 2
 #define ENABLE_RESET_MODE true
 #define DISABLE_RESET_MODE false
@@ -38,6 +40,8 @@ Switches switches;
 Trains trains;
 CommandPrompt cmd_prompt;
 
+extern "C" size_t fetch_sp();
+
 extern "C" int kmain()
 {
    call_global_constructors();
@@ -54,8 +58,15 @@ extern "C" int kmain()
    Command tmp_cmd = {INVALID_CMD, -1, -1};
 
    // sensor_init(ENABLE_RESET_MODE); // enables reset mode
-   switches.SetAll(CURVED);
+   // switches.SetAll(CURVED);
    UI ui;
+
+   size_t sp = fetch_sp();
+   uart_printf(CONSOLE, "SP: %x\n", sp);
+
+   for (;;)
+   {
+   }
 
    // main polling loop
    for (;;)
@@ -99,5 +110,12 @@ extern "C" int kmain()
          // clear_to_end_line(CONSOLE);
          // uart_printf(CONSOLE, "Latency: {%d} ", (end_time - time_start));
       }
+      {
+         // SOFTWARE EXCEPTION
+         ContextSwitch();
+      }
    }
 }
+
+// VBAR TABLE:
+//

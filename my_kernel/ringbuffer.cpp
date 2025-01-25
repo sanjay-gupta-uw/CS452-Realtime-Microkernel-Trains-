@@ -1,8 +1,11 @@
 #include "ringbuffer.h"
 
 #include "command.h"
+#include "task.h"
 // instantiate the template class
 template class RingBuffer<Command>;
+template class RingBuffer<TaskDescriptor>;
+template class RingBuffer<int>;
 
 template <typename T>
 RingBuffer<T>::RingBuffer()
@@ -17,6 +20,7 @@ RingBuffer<T>::~RingBuffer()
 {
 }
 
+// Push an item to the buffer: 0 if success, -1 if buffer is full
 template <typename T>
 int RingBuffer<T>::Push(const T *item)
 {
@@ -33,6 +37,8 @@ int RingBuffer<T>::Push(const T *item)
    return 0; // Success
 }
 
+
+// Pop an item from the buffer: 0 if success, -1 if buffer is empty
 template <typename T>
 int RingBuffer<T>::Pop(T *item)
 {
@@ -50,12 +56,14 @@ int RingBuffer<T>::Pop(T *item)
    return 0; // Success
 }
 
+// Check if the buffer is empty
 template <typename T>
 bool RingBuffer<T>::IsEmpty()
 {
    return size == 0;
 }
 
+// Check if the buffer is full
 template <typename T>
 bool RingBuffer<T>::IsFull()
 {

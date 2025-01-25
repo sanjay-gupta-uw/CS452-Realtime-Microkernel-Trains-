@@ -88,5 +88,6 @@ _reboot:
 	// shouldn't be reached
 
 exit:
-	wfe
+	// nop until event
+	wfe 
 	b exit
