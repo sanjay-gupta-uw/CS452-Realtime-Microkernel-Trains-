@@ -74,16 +74,20 @@ void reset_formatting(size_t line)
 	uart_puts(line, "\033[0m"); // Reset special formatting (such as colour).
 }
 
+// DISABLED FOR QEMU
 void clear_screen(size_t line)
 {
+	return;
 	// clear screen
 	uart_puts(line, "\033[2J");
 	// move cursor to top left
 	uart_puts(line, "\033[H");
 }
 
+// DISABLED FOR QEMU
 void clear_to_end_line(size_t line)
 {
+	return;
 	uart_puts(line, "\033[K"); // wipe rest of line
 }
 

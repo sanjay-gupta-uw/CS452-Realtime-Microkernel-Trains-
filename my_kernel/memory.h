@@ -4,15 +4,20 @@
 #include "ringbuffer.h"
 #include <cstdint>
 
-#define MBLOCK_SIZE 1024
-#define MBLOCK_COUNT 64
+#define KILOBYTE 1024
+#define MEGABYTE 1024 * KILOBYTE
+
+// WAY WITHIN 1 GB OF MEMORY
+// 32 MB of memory --> goes from 0x80000 to 0x1F14800
+#define MBLOCK_COUNT 4
+#define STACK_SIZE 512 * KILOBYTE
 
 // verify
-#define TOP_OF_MEMORY 0x83E0C
+#define STACK_START 0x90000
 
 struct MemoryBlock
 {
-   uint32_t addr;
+   uint64_t addr;
    MemoryBlock *next;
    int index;
 };
@@ -32,3 +37,8 @@ public:
 };
 
 #endif // _memory_h_
+
+// 589824
+// 1114112
+// 1638400
+// 2162688

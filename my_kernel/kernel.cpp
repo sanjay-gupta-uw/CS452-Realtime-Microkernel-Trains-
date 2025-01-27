@@ -74,3 +74,21 @@ void Kernel::Yield()
 void Kernel::Exit()
 {
 }
+
+void Kernel::Scheduler()
+{
+   // get the highest priority task
+   TaskDescriptor *td;
+
+   if (ready_queue.Pop(&td) != -1)
+   {
+      Dispatcher(td); // set the active task to the highest priority task
+   }
+}
+
+void Kernel::Dispatcher(TaskDescriptor *td)
+{
+   // save the current task's context
+   ContextSwitch(td);
+   ready_queue.Push(&td, td->getPriority());
+}

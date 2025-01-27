@@ -10,8 +10,8 @@ public:
    PQueue();
    ~PQueue();
 
-   bool Push(T *item, int priority);
-   bool Pop(T *&item);
+   int Push(T *item, int priority);
+   int Pop(T *item);
    bool isEmpty() const;
    bool isFull() const;
 

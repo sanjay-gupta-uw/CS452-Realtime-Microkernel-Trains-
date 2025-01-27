@@ -204,7 +204,7 @@ static void pad_and_print(size_t line, const char *str, int width)
 	uart_puts(line, str);
 }
 
-void uart_printf(size_t line, const char *fmt, ...)
+extern "C" void uart_printf(size_t line, const char *fmt, ...)
 {
 	va_list va;
 	char ch, buf[12];

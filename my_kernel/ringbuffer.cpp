@@ -4,7 +4,7 @@
 #include "task.h"
 // instantiate the template class
 template class RingBuffer<Command>;
-template class RingBuffer<TaskDescriptor>;
+// template class RingBuffer<TaskDescriptor>;
 template class RingBuffer<int>;
 
 template <typename T>
@@ -37,7 +37,6 @@ int RingBuffer<T>::Push(const T *item)
    return 0; // Success
 }
 
-
 // Pop an item from the buffer: 0 if success, -1 if buffer is empty
 template <typename T>
 int RingBuffer<T>::Pop(T *item)
@@ -48,7 +47,7 @@ int RingBuffer<T>::Pop(T *item)
       return -1;
    }
 
-   *item = buffer[tail]; // Copy the command from the buffer
+   *item = buffer[tail];
 
    tail = (tail + 1) % RING_BUFFER_MAX_SIZE; // Advance the tail (circular)
    size--;                                   // Decrease the size

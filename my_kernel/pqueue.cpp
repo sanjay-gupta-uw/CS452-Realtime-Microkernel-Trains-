@@ -16,11 +16,11 @@ PQueue<T>::~PQueue()
 }
 
 template <typename T>
-bool PQueue<T>::Push(T *item, int priority)
+int PQueue<T>::Push(T *item, int priority)
 {
    if (isFull())
    {
-      return false;
+      return -1;
    }
 
    int index = size++;
@@ -29,23 +29,23 @@ bool PQueue<T>::Push(T *item, int priority)
 
    heapifyUp(index);
 
-   return true;
+   return 0;
 }
 
 template <typename T>
-bool PQueue<T>::Pop(T *&item)
+int PQueue<T>::Pop(T *item)
 {
    if (isEmpty())
    {
-      return false;
+      return -1;
    }
 
-   item = heap[0].data;
+   *item = *(heap[0].data);
    heap[0] = heap[--size];
 
    heapifyDown(0);
 
-   return true;
+   return 0;
 }
 
 template <typename T>

@@ -8,12 +8,6 @@
 
 class Kernel
 {
-private:
-   TaskDescriptor task_table[MAX_TASKS];
-   RingBuffer<int> free_tid;
-   PQueue<TaskDescriptor *> ready_queue;
-   MemoryManager mem_manager;
-
 public:
    Kernel();
    ~Kernel();
@@ -22,6 +16,14 @@ public:
    int MyParentTid();
    void Yield();
    void Exit(); // relesase the task's tid and memory block, and push the task to free_tid
+   void Scheduler();
+
+private:
+   TaskDescriptor task_table[MAX_TASKS];
+   RingBuffer<int> free_tid;
+   PQueue<TaskDescriptor *> ready_queue;
+   MemoryManager mem_manager;
+   void Dispatcher(TaskDescriptor *td);
 };
 
 #endif

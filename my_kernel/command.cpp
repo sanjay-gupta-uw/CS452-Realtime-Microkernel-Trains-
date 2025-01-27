@@ -6,6 +6,7 @@
 // ********** CommandPrompt Class **********
 CommandPrompt::CommandPrompt()
 {
+   uart_printf(CONSOLE, "CommandPrompt Constructor\r\n");
    BUFFER_INDEX = 0;
    UPDATE_DISPLAY = true;
    input_buffer[0] = '\0';
@@ -64,7 +65,9 @@ CommandStatus CommandPrompt::ExtractCommand(Command *cmd)
       {
          uart_putc(CONSOLE, '\n');
          clear_to_end_line(CONSOLE);
-         uart_puts(CONSOLE, "Input buffer full. Discarding input.\n");
+         // buffeer index is {}, input buffer is {}
+         uart_printf(CONSOLE, "BUFFER FULL: %d, %s  :", BUFFER_INDEX, input_buffer);
+         uart_puts(CONSOLE, "Discarding input.\n");
          ResetBuffer();
       }
    }

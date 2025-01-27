@@ -1,8 +1,10 @@
 #include "memory.h"
 
+#include "rpi.h"
+
 MemoryManager::MemoryManager()
 {
-   uint32_t current_addr = TOP_OF_MEMORY;
+   uint32_t stack_addr = STACK_START + STACK_SIZE;
    MemoryBlock *last_block = nullptr;
 
    for (int i = 0; i < MBLOCK_COUNT; ++i)
@@ -11,11 +13,13 @@ MemoryManager::MemoryManager()
       free_blocks.Push(&arr[i]);
 
       memory_blocks[i].index = i;
-      memory_blocks[i].addr = current_addr;
+      memory_blocks[i].addr = stack_addr;
       memory_blocks[i].next = last_block;
 
-      current_addr += MBLOCK_SIZE; // verify this
+      stack_addr += STACK_SIZE; // verify this
       last_block = &memory_blocks[i];
+      // print range for memory block
+      uart_printf(CONSOLE, "Memory block %d: [0x%x - 0x%x)\n", i, memory_blocks[i].addr, memory_blocks[i].addr - STACK_SIZE);
    }
 }
 

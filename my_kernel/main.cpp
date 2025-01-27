@@ -11,6 +11,9 @@
 #include "ringbuffer.h"
 
 #include "task.h"
+#include "kernel.h"
+#include "syscall.h"
+// #include "bwio.h"
 
 #define DEBUG 2
 #define ENABLE_RESET_MODE true
@@ -44,37 +47,59 @@ extern "C" size_t fetch_sp();
 
 extern "C" int kmain()
 {
+
    call_global_constructors();
-
-   RingBuffer<Command> command_buffer;
-   // RingBuffer sensor_buffer;
-
    // Set up GPIO pins for both console and Marklin UARTs
    gpio_init();
+
+   int delay = 100;
+   clock.Delay(delay);
    // Not strictly necessary, since console is configured during boot
    uart_config_and_enable(CONSOLE);
    uart_config_and_enable(MARKLIN);
+   Kernel kernel;
 
-   Command tmp_cmd = {INVALID_CMD, -1, -1};
+   // move_cursor(CONSOLE, 1, 1);
 
-   // sensor_init(ENABLE_RESET_MODE); // enables reset mode
-   // switches.SetAll(CURVED);
-   UI ui;
+   // clock.Delay(time);
 
    size_t sp = fetch_sp();
-   uart_printf(CONSOLE, "SP: %x\n", sp);
+   uart_printf(CONSOLE, "Welcome to the Train Controller !\n");
+   uart_printf(CONSOLE, "WELSOME SP: %x\n", sp);
 
+   uart_printf(CONSOLE, "Creating first task!\n");
+   int taskID = kernel.Create(LOW, Task1);
+   uart_printf(CONSOLE, "Task ID: %d\n", taskID);
+
+   int EL = _get_el_debug();
+   uart_printf(CONSOLE, "EL: %d\n", EL);
+   // clock.Delay(delay);
+
+   for (;;)
+   {
+      kernel.Scheduler();
+      break;
+   }
    for (;;)
    {
    }
 
+   // UI ui;
+   // RingBuffer<Command> command_buffer;
+   // RingBuffer sensor_buffer;
+
+   // sensor_init(ENABLE_RESET_MODE); // enables reset mode
+   // switches.SetAll(CURVED);
+
    // main polling loop
+   /*
    for (;;)
    {
       // update the clock
       clock.Update();
       ui.Update(); // update_ui(&sensor_buffer);
 
+      Command tmp_cmd = {INVALID_CMD, -1, -1};
       int status = cmd_prompt.ExtractCommand(&tmp_cmd);
 
       if (status == SUCCESS_CMD)
@@ -115,6 +140,8 @@ extern "C" int kmain()
          ContextSwitch();
       }
    }
+   */
+   return 0;
 }
 
 // VBAR TABLE:

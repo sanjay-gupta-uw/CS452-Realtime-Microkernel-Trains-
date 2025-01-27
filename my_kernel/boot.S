@@ -1,3 +1,55 @@
+.section ".text.vectors"
+.align 11  // Align to 2 KB (minimum alignment for the vector table)
+vectors:
+    // ---------------------
+    // Current EL, SP_EL0
+    // ---------------------
+    b sync_current_el_sp_el0_handler  // VBAR_ELx + 0x000
+    .space 128 - 4                   // Fill remaining space for 128 bytes
+    b irq_current_el_sp_el0_handler  // VBAR_ELx + 0x080
+    .space 128 - 4                   // Fill remaining space for 128 bytes
+    b fiq_current_el_sp_el0_handler  // VBAR_ELx + 0x100
+    .space 128 - 4                   // Fill remaining space for 128 bytes
+    b serr_current_el_sp_el0_handler // VBAR_ELx + 0x180
+    .space 128 - 4                   // Fill remaining space for 128 bytes
+
+    // ---------------------
+    // Current EL, SP_ELx
+    // ---------------------
+    b sync_current_el_sp_elx_handler  // VBAR_ELx + 0x200
+    .space 128 - 4                    // Fill remaining space for 128 bytes
+    b irq_current_el_sp_elx_handler   // VBAR_ELx + 0x280
+    .space 128 - 4                    // Fill remaining space for 128 bytes
+    b fiq_current_el_sp_elx_handler   // VBAR_ELx + 0x300
+    .space 128 - 4                    // Fill remaining space for 128 bytes
+    b serr_current_el_sp_elx_handler  // VBAR_ELx + 0x380
+    .space 128 - 4                    // Fill remaining space for 128 bytes
+
+    // ---------------------
+    // Lower EL, AArch64
+    // ---------------------
+    b sync_lower_el_aarch64_handler  // VBAR_ELx + 0x400
+    .space 128 - 4                   // Fill remaining space for 128 bytes
+    b irq_lower_el_aarch64_handler   // VBAR_ELx + 0x480
+    .space 128 - 4                   // Fill remaining space for 128 bytes
+    b fiq_lower_el_aarch64_handler   // VBAR_ELx + 0x500
+    .space 128 - 4                   // Fill remaining space for 128 bytes
+    b serr_lower_el_aarch64_handler  // VBAR_ELx + 0x580
+    .space 128 - 4                   // Fill remaining space for 128 bytes
+
+    // ---------------------
+    // Lower EL, AArch32
+    // ---------------------
+    b sync_lower_el_aarch32_handler  // VBAR_ELx + 0x600
+    .space 128 - 4                   // Fill remaining space for 128 bytes
+    b irq_lower_el_aarch32_handler   // VBAR_ELx + 0x680
+    .space 128 - 4                   // Fill remaining space for 128 bytes
+    b fiq_lower_el_aarch32_handler   // VBAR_ELx + 0x700
+    .space 128 - 4                   // Fill remaining space for 128 bytes
+    b serr_lower_el_aarch32_handler  // VBAR_ELx + 0x780
+    .space 128 - 4                   // Fill remaining space for 128 bytes
+
+
 // ***************************************
 // SCTLR_EL1, System Control Register (EL1)
 // Architecture Reference Manual Section D17.2.118
@@ -38,7 +90,7 @@ _start:
 
 	// are we already in EL1?
 	mrs	x1, CurrentEL
-	and	x1, x1, #8
+	and	x1, x1, #8 // XXXX AND 1000 (check if bit is set)
 	cbz	x1, el1_entry
 
 	// disable EL1 trap on FP/SIMD/SVE instructions
@@ -57,11 +109,17 @@ _start:
 
 	eret // -> el1_entry
 
+.global el1_entry
 el1_entry:
 	// configure processor
 	ldr x0, =(SCTLR_RESERVED | SCTLR_WFE_WFI)
 	msr sctlr_el1, x0
 
+	// configure vector table
+	ldr x0, =vectors
+	msr vbar_el1, x0
+	isb
+	
 	// disable EL0 trap on FP/SIMD/SVE instructions
 	ldr x1, =(FPEN_TRAP | ZEN_TRAP)
 	msr cpacr_el1, x1
