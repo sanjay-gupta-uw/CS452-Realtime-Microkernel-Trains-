@@ -50,7 +50,9 @@
     "system_error": "cpp",
     "cinttypes": "cpp",
     "typeinfo": "cpp",
-    "deque": "cpp"
+    "deque": "cpp",
+    "__locale": "cpp",
+    "locale": "cpp"
   },
   "makefile.configureOnOpen": false
 }

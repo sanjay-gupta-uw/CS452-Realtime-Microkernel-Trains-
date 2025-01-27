@@ -15,15 +15,20 @@ public:
    int MyTid();
    int MyParentTid();
    void Yield();
-   void Exit(); // relesase the task's tid and memory block, and push the task to free_tid
-   void Scheduler();
+   void Exit();      // relesase the task's tid and memory block, and push the task to free_tid
+   void Scheduler(); // sets the next task
+   void ContextSwitch();
 
 private:
+   void Dispatcher();
+
+   TaskDescriptor *active_task;
+   TaskDescriptor *next_task;
+
    TaskDescriptor task_table[MAX_TASKS];
    RingBuffer<int> free_tid;
    PQueue<TaskDescriptor *> ready_queue;
    MemoryManager mem_manager;
-   void Dispatcher(TaskDescriptor *td);
 };
 
 #endif

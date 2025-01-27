@@ -59,8 +59,8 @@ _context_switch:
     // Argument: x0 = task's SP
 
     // SAVE KERNEL CONTEXT
-    SAVE_PROCESSOR_STATE sp
-    SAVE_FULL_STATE sp
+// SAVE_PROCESSOR_STATE sp
+// SAVE_FULL_STATE sp
 
     // WE ARE CURRENTLT IN EL1
     RESTORE_FULL_STATE x0

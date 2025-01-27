@@ -9,8 +9,7 @@ MemoryManager::MemoryManager()
 
    for (int i = 0; i < MBLOCK_COUNT; ++i)
    {
-      arr[i] = i;
-      free_blocks.Push(&arr[i]);
+      free_blocks.Push(i);
 
       memory_blocks[i].index = i;
       memory_blocks[i].addr = stack_addr;
@@ -40,5 +39,5 @@ MemoryBlock *MemoryManager::Allocate()
 
 void MemoryManager::Free(MemoryBlock *block)
 {
-   free_blocks.Push(&arr[block->index]);
+   free_blocks.Push(block->index);
 }

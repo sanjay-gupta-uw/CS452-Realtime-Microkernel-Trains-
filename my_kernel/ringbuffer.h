@@ -15,7 +15,7 @@ public:
    RingBuffer();
    ~RingBuffer();
 
-   int Push(const T *item);
+   int Push(const T &item);
    int Pop(T *item);
    bool IsEmpty();
    bool IsFull();

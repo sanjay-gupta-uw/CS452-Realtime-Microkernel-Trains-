@@ -13,6 +13,7 @@
 #include "task.h"
 #include "kernel.h"
 #include "syscall.h"
+#include "usertask.h"
 // #include "bwio.h"
 
 #define DEBUG 2
@@ -42,6 +43,7 @@ Clock clock;
 Switches switches;
 Trains trains;
 CommandPrompt cmd_prompt;
+Kernel kernel;
 
 extern "C" size_t fetch_sp();
 
@@ -57,7 +59,6 @@ extern "C" int kmain()
    // Not strictly necessary, since console is configured during boot
    uart_config_and_enable(CONSOLE);
    uart_config_and_enable(MARKLIN);
-   Kernel kernel;
 
    // move_cursor(CONSOLE, 1, 1);
 
@@ -68,18 +69,14 @@ extern "C" int kmain()
    uart_printf(CONSOLE, "WELSOME SP: %x\n", sp);
 
    uart_printf(CONSOLE, "Creating first task!\n");
-   int taskID = kernel.Create(LOW, Task1);
+   int taskID = kernel.Create(MEDIUM, Task1);
    uart_printf(CONSOLE, "Task ID: %d\n", taskID);
 
    int EL = _get_el_debug();
    uart_printf(CONSOLE, "EL: %d\n", EL);
    // clock.Delay(delay);
 
-   for (;;)
-   {
-      kernel.Scheduler();
-      break;
-   }
+   kernel.Scheduler();
    for (;;)
    {
    }

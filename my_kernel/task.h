@@ -4,15 +4,9 @@
 #define MAX_TASKS 64
 
 #include "memory.h"
+#include "shared_constants.h"
+
 extern "C" int _get_el_debug();
-// priority levels
-typedef enum
-{
-   HIGH,
-   MEDIUM,
-   LOW,
-   IDLE,
-} Priority;
 
 typedef enum
 {
@@ -33,21 +27,22 @@ public:
    int CreateTask(int priority, MemoryBlock *block, void (*function)());
    bool isReady();
    int getPriority();
+   int getTid();
+   TaskDescriptor *getParent();
+   void setState(RunState state);
+   RunState getState();
+   MemoryBlock *getBlock();
 
    uintptr_t sp;
    uintptr_t spsr;
    int ret_val;
 
-   int tid;
-
 private:
+   int tid;
    int priority;
    TaskDescriptor *parent;
    RunState state;
+   MemoryBlock *block;
 };
-
-void ContextSwitch(TaskDescriptor *td);
-void Task1();
-void Task2();
 
 #endif // _td_h_

@@ -26,7 +26,6 @@ class MemoryManager
 {
 private:
    MemoryBlock memory_blocks[MBLOCK_COUNT];
-   int arr[MBLOCK_COUNT]; // indices for free_blocks
    RingBuffer<int> free_blocks;
 
 public:
