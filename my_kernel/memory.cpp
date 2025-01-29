@@ -12,13 +12,13 @@ MemoryManager::MemoryManager()
       free_blocks.Push(i);
 
       memory_blocks[i].index = i;
-      memory_blocks[i].addr = stack_addr;
+      memory_blocks[i].addr = stack_addr & ~0xF; // Align the stack pointer to 16 bytes
       memory_blocks[i].next = last_block;
 
       stack_addr += STACK_SIZE; // verify this
       last_block = &memory_blocks[i];
       // print range for memory block
-      uart_printf(CONSOLE, "Memory block %d: [0x%x - 0x%x)\n", i, memory_blocks[i].addr, memory_blocks[i].addr - STACK_SIZE);
+      // uart_printf(CONSOLE, "Memory block %d: [0x%x - 0x%x)\n", i, memory_blocks[i].addr, memory_blocks[i].addr - STACK_SIZE);
    }
 }
 
@@ -37,7 +37,7 @@ MemoryBlock *MemoryManager::Allocate()
    return &memory_blocks[block_id];
 }
 
-void MemoryManager::Free(MemoryBlock *block)
+void MemoryManager::Free(int block_index)
 {
-   free_blocks.Push(block->index);
+   free_blocks.Push(block_index);
 }

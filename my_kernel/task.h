@@ -1,13 +1,14 @@
 #ifndef _task_h_
 #define _task_h_
 
-#define MAX_TASKS 64
-
 #include "memory.h"
 #include "shared_constants.h"
 
+#define MAX_TASKS MBLOCK_COUNT
+
 extern "C" int _get_el_debug();
 
+#define NUM_REGISTERS 31
 typedef enum
 {
    ACTIVE,
@@ -18,6 +19,17 @@ typedef enum
    REPLY_BLOCKED,
    EVENT_BLOCKED,
 } RunState;
+
+struct Context
+{
+   uint64_t x[NUM_REGISTERS]; // general purpose registers
+   uint64_t spsr;
+   uint64_t sp;
+   uint64_t elr;
+};
+
+class Kernel;
+
 class TaskDescriptor
 {
 public:
@@ -31,18 +43,19 @@ public:
    TaskDescriptor *getParent();
    void setState(RunState state);
    RunState getState();
-   MemoryBlock *getBlock();
-
-   uintptr_t sp;
-   uintptr_t spsr;
-   int ret_val;
+   void Print();
 
 private:
+   volatile Context context;
    int tid;
    int priority;
    TaskDescriptor *parent;
    RunState state;
-   MemoryBlock *block;
+   int block_index;
+
+   int ret_val;
+
+   friend class Kernel;
 };
 
 #endif // _td_h_

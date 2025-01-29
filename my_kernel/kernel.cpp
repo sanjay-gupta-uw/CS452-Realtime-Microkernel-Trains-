@@ -10,7 +10,6 @@ Kernel::Kernel()
    }
 
    active_task = nullptr; // initilize active task
-   next_task = nullptr;
 
    // initilize default task
 }
@@ -19,6 +18,18 @@ Kernel::~Kernel()
 {
 }
 
+inline void Kernel::SetRetval(int ret_val)
+{
+   active_task->context.x[0] = ret_val;
+}
+
+inline void Kernel::RepushActiveTask()
+{
+   if (active_task != nullptr)
+   {
+      ready_queue.Push(active_task->tid, active_task->priority);
+   }
+}
 // returns -1 if invalid priority, -2 if no free tid, tid if success
 int Kernel::Create(int priority, void (*function)())
 {
@@ -41,16 +52,15 @@ int Kernel::Create(int priority, void (*function)())
    if (!stackBlock)
    {
       free_tid.Push(tid); // Return TID to the free pool
-      return -2;          // No memory available
+      return -3;          // No memory available
    }
    td->CreateTask(priority, stackBlock, function);
 
    if (td->isReady())
    {
-      uart_printf(CONSOLE, "Task %d is ready and has priority %d\n", tid, priority);
-      ready_queue.Push(&td, priority);
+      ready_queue.Push(tid, priority);
    }
-
+   RepushActiveTask();
    return tid;
 }
 
@@ -62,7 +72,9 @@ int Kernel::MyTid()
    {
       return -1;
    }
-   return active_task->getTid();
+
+   RepushActiveTask();
+   return active_task->tid;
 }
 
 // returns the task id of the task that created the calling task. This will be problematic only if the parent task has exited or been destroyed, in which case the return value is implementation-dependent.
@@ -73,18 +85,15 @@ int Kernel::MyParentTid()
    {
       return -1;
    }
-   return (active_task->getParent())->getTid();
+   RepushActiveTask();
+   return (active_task->parent)->tid;
 }
 
 // causes a task to pause executing. The task is moved to the end of its priority queue, and will resume executing when next scheduled.
 // not implemented yet
 void Kernel::Yield()
 {
-   uart_printf(CONSOLE, "Yielding task %d\n", active_task->getTid());
-   TaskDescriptor *td = active_task;
-   td->setState(READY);
-   ready_queue.Push(&td, td->getPriority());
-   Scheduler();
+   RepushActiveTask();
 }
 
 // causes a task to cease execution permanently. It is removed from all priority queues, send queues, receive queues and event queues. Resources owned by the task, primarily its memory and task descriptor, may be reclaimed.
@@ -94,53 +103,87 @@ void Kernel::Exit()
    TaskDescriptor *td = active_task;
    td->setState(EXITED);
    // release the task's tid and memory block
-   free_tid.Push(td->getTid());
-   mem_manager.Free(td->getBlock());
+   free_tid.Push(td->tid);
+   mem_manager.Free(td->block_index);
    // MAKE SURE EXIT DOEs NOT ERET
 }
 
-void Kernel::Scheduler()
+TaskDescriptor *
+Kernel::Scheduler()
 {
    // get the highest priority task
-   TaskDescriptor *td;
+   int tid;
 
-   if (ready_queue.Pop(&td) == -1)
+   if (ready_queue.Pop(&tid) == -1)
    {
-      uart_printf(CONSOLE, "No tasks to run\n");
-      return;
-   }
-   next_task = td;
-   uart_printf(CONSOLE, "Next task is %d\n", next_task->getTid());
-   Dispatcher();
-}
-
-void Kernel::Dispatcher()
-{
-   if (active_task != nullptr && active_task->getState() == READY)
-   {
-      // save task
-      // SaveContext();
-
-      ready_queue.Push(&active_task, active_task->getPriority());
+      // uart_printf(CONSOLE, "No tasks to run\n");
+      return nullptr;
    }
 
-   // set the active task to the highest priority task
-   active_task = next_task;
-   uart_printf(CONSOLE, "SWITCHING TO %d\n", active_task->getTid());
-   // ContextSwitch();
+   return &task_table[tid];
 }
 
-extern "C" void _context_switch(int sp, int spsr);
+extern "C" int kernel_to_task_asm(volatile Context *kernel, volatile Context *scheduled_task);
 
-// KERNEL DOESNT GET SAVED, ONLY SAVE USER TASKS
-void Kernel::ContextSwitch()
+int Kernel::DispatchTask(volatile Context *kernel, TaskDescriptor *scheduled_task)
 {
-   active_task->setState(ACTIVE);
-   // swap active with next
-   asm volatile(
-       "mov x1, %1\n"       // Load the next task's stack pointer into x0
-       "mov x0, %0\n"       // Load the next task's SPSR into x1
-       "bl _context_switch" // Call the assembly context switch routine
-       :
-       : "r"(active_task->sp), "r"(active_task->spsr));
+   // print kernel context location SUPER HELPFUL
+   // uart_printf(CONSOLE, "DISPATCH KC: 0x%x, SC: 0x%x\n", kernel, &scheduled_task->context);
+
+   scheduled_task->setState(ACTIVE);
+   active_task = scheduled_task;
+
+   // call the task
+   int esr_el1 = kernel_to_task_asm(kernel, &scheduled_task->context);
+   return esr_el1;
+}
+
+void Kernel::Handler(int N)
+{
+   switch (N)
+   {
+   case SVC_CREATE:
+      if (active_task != nullptr)
+      {
+         int PRIORITY = active_task->context.x[0];
+         // uart_printf(CONSOLE, "F{0x%x}\n", active_task->context.x[1]); // this prints the correct value
+         int ret_val = Create(PRIORITY, (void (*)())active_task->context.x[1]);
+         // uart_printf(CONSOLE, "TID: {%d}\n", ret_val);
+         SetRetval(ret_val);
+      }
+      else
+      {
+         // Shouldnt happen
+         uart_printf(CONSOLE, "PANIC No active task\n");
+      }
+      break;
+
+   case SVC_MYTID:
+      // uart_printf(CONSOLE, "Getting Task ID\n");
+      SetRetval(MyTid());
+      break;
+
+   case SVC_MYPARENTID:
+      // uart_printf(CONSOLE, "Getting Parent Task ID\n");
+      SetRetval(MyParentTid());
+      break;
+
+   case SVC_YIELD:
+      // uart_printf(CONSOLE, "Yielding Task\n");
+      Yield();
+      break;
+
+   case SVC_EXIT:
+      // uart_printf(CONSOLE, "Exiting Task\n");
+      Exit();
+      break;
+
+   default:
+      break;
+   }
+}
+
+extern "C" void printASM(int x0)
+{
+   uart_printf(CONSOLE, "X0: 0x%x \n", x0);
 }

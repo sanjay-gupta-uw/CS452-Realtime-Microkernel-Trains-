@@ -12,9 +12,10 @@
 
 #include "task.h"
 #include "kernel.h"
-#include "syscall.h"
+#include "dummy.h"
 #include "usertask.h"
 // #include "bwio.h"
+#include "memory.h"
 
 #define DEBUG 2
 #define ENABLE_RESET_MODE true
@@ -23,6 +24,12 @@
 typedef void (*funcvoid_t)();
 extern funcvoid_t __init_array_start;
 extern funcvoid_t __init_array_end;
+
+// ENSURE THESE GET INITIALIZED
+Clock clock;
+Switches switches;
+Trains trains;
+CommandPrompt cmd_prompt;
 
 void call_global_constructors()
 {
@@ -39,12 +46,6 @@ extern "C" int __cxa_atexit(void (*)(void *), void *, void *)
 
 void *__dso_handle = 0;
 
-Clock clock;
-Switches switches;
-Trains trains;
-CommandPrompt cmd_prompt;
-Kernel kernel;
-
 extern "C" size_t fetch_sp();
 
 extern "C" int kmain()
@@ -60,86 +61,55 @@ extern "C" int kmain()
    uart_config_and_enable(CONSOLE);
    uart_config_and_enable(MARKLIN);
 
+   // size_t sp = fetch_sp();
+   // uart_printf(CONSOLE, "Welcome to the Train Controller SP: %x\n", sp);
+
+   // uart_printf(CONSOLE, "F1{0x%x}, F2{0x%x}\n", Task1, Task2);
+   // Initialize kernel context
+   Context kernel_context;
+   Kernel kernel;
+
    // move_cursor(CONSOLE, 1, 1);
 
    // clock.Delay(time);
 
-   size_t sp = fetch_sp();
-   uart_printf(CONSOLE, "Welcome to the Train Controller !\n");
-   uart_printf(CONSOLE, "WELSOME SP: %x\n", sp);
-
-   uart_printf(CONSOLE, "Creating first task!\n");
    int taskID = kernel.Create(MEDIUM, Task1);
-   uart_printf(CONSOLE, "Task ID: %d\n", taskID);
+   if (taskID < 0)
+   {
+      uart_printf(CONSOLE, "ERROR CREATING FIRST USER TASK\n");
+   }
+   // uart_printf(CONSOLE, "FIRST USER TASK CREATED {%d}(id)\n", taskID);
 
-   int EL = _get_el_debug();
-   uart_printf(CONSOLE, "EL: %d\n", EL);
+   // int EL = _get_el_debug();
+   // uart_printf(CONSOLE, "EL: %d\n", EL);
    // clock.Delay(delay);
 
-   kernel.Scheduler();
-   for (;;)
+   TaskDescriptor *current_task = nullptr;
+
+   // scheduler pops the highest priority task into td
+   while ((current_task = kernel.Scheduler()))
    {
-   }
-
-   // UI ui;
-   // RingBuffer<Command> command_buffer;
-   // RingBuffer sensor_buffer;
-
-   // sensor_init(ENABLE_RESET_MODE); // enables reset mode
-   // switches.SetAll(CURVED);
-
-   // main polling loop
-   /*
-   for (;;)
-   {
-      // update the clock
-      clock.Update();
-      ui.Update(); // update_ui(&sensor_buffer);
-
-      Command tmp_cmd = {INVALID_CMD, -1, -1};
-      int status = cmd_prompt.ExtractCommand(&tmp_cmd);
-
-      if (status == SUCCESS_CMD)
+      int esr_el1 = kernel.DispatchTask(&kernel_context, current_task);
+      // apply mask to ESR to get SVC number
+      int N = esr_el1 & 0xFFFF;
+      // uart_printf(CONSOLE, "ESR: {%d}, N: {%d}\n", esr_el1, N);
+      if (esr_el1 < 0)
       {
-         // create function for this!
-         if (!command_buffer.IsFull())
+         uart_printf(CONSOLE, "UNEXPECTED ERROR");
+         for (;;)
          {
-            command_buffer.Push(&tmp_cmd);
          }
       }
-
-      if (!command_buffer.IsEmpty())
-      {
-         Command cmd;
-         int val = command_buffer.Pop(&cmd);
-         if (val == 0)
-         {
-            cmd_prompt.Execute(&cmd);
-            if (cmd.user_command == QUIT_CMD)
-            {
-               return 0;
-            }
-         }
-      }
-      else
-      {
-         // uint32_t time_start = get_current_time();
-
-         // sensor_read_all(NUM_BANKS, &sensor_buffer); // keep this
-
-         // uint32_t end_time = get_current_time();
-         // move_cursor(CONSOLE, 70, 1);
-         // clear_to_end_line(CONSOLE);
-         // uart_printf(CONSOLE, "Latency: {%d} ", (end_time - time_start));
-      }
-      {
-         // SOFTWARE EXCEPTION
-         ContextSwitch();
-      }
+      kernel.Handler(N);
    }
-   */
+
+   uart_printf(CONSOLE, "NO MORE TASKS\n");
+
+   for (;;)
+   {
+      // uart_printf(CONSOLE, "Kernel Loop\n");
+      // clock.Delay(1000);
+   }
+
    return 0;
 }
-
-// VBAR TABLE:
-//

@@ -2,7 +2,8 @@
 #include "task.h"
 
 // instantiate the template for task descriptor
-template class PQueue<TaskDescriptor *>;
+// template class PQueue<TaskDescriptor *>;
+template class PQueue<int>;
 
 template <typename T>
 PQueue<T>::PQueue()
@@ -16,7 +17,7 @@ PQueue<T>::~PQueue()
 }
 
 template <typename T>
-int PQueue<T>::Push(T *item, int priority)
+int PQueue<T>::Push(T item, int priority)
 {
    if (isFull())
    {
@@ -40,9 +41,8 @@ int PQueue<T>::Pop(T *item)
       return -1;
    }
 
-   *item = *(heap[0].data);
+   *item = heap[0].data;
    heap[0] = heap[--size];
-
    heapifyDown(0);
 
    return 0;

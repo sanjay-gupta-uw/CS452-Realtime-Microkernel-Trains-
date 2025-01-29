@@ -9,9 +9,9 @@
 
 // WAY WITHIN 1 GB OF MEMORY
 // 32 MB of memory --> goes from 0x80000 to 0x1F14800
-#define MBLOCK_COUNT 4
-#define STACK_SIZE 512 * KILOBYTE
+#define STACK_SIZE 4 * MEGABYTE
 
+#define MBLOCK_COUNT 64
 // verify
 #define STACK_START 0x90000
 
@@ -32,7 +32,7 @@ public:
    MemoryManager();
    ~MemoryManager();
    MemoryBlock *Allocate();
-   void Free(MemoryBlock *block);
+   void Free(int block_index);
 };
 
 #endif // _memory_h_

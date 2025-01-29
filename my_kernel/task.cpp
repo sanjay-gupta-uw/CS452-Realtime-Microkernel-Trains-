@@ -25,29 +25,24 @@ TaskDescriptor::~TaskDescriptor()
 // use kernel.Create to call this
 int TaskDescriptor::CreateTask(int priority, MemoryBlock *block, void (*function)())
 {
+
    this->priority = priority;
    this->state = READY;
-   // set parent to active task
+   this->block_index = block->index; // Store the memory block for this task
 
-   // Allocate a stack for the task
-   this->block = block;
-   this->sp = block->addr; // Align the stack pointer to 16 bytes
-   this->spsr = 0x00;      // set spsr EL0
+   // Initialize the context structure
+   this->context.sp = block->addr;          // top of the stack
+   this->context.elr = (uintptr_t)function; // Entry point for the task
+   this->context.spsr = 0x00;               // Initial SPSR value for EL0 execution
 
-   uart_printf(CONSOLE, "Task %d stack pointer: %x\n", this->tid, this->sp);
-
-   // Initialize the stack with the context
-   uint64_t *sp = (uint64_t *)this->sp;
-
-   *(--sp) = this->spsr;          // Push SPSR
-   *(--sp) = (uintptr_t)function; // Push program counter (PC) (entry point)
-
-   for (int i = 30; i >= 0; --i)
+   for (int i = 0; i < NUM_REGISTERS; i++)
    {
-      *(--sp) = 0; // dummy values for x0-x12
+      this->context.x[i] = i;
    }
 
-   this->sp = (uintptr_t)sp; // Update the stack pointer
+   Print();
+
+   // Prepare the stack to match the expected restore layout
 
    return 0;
 }
@@ -82,9 +77,8 @@ RunState TaskDescriptor::getState()
    return state;
 }
 
-MemoryBlock *TaskDescriptor::getBlock()
+// DISABLED
+void TaskDescriptor::Print()
 {
-   return block;
+   // uart_printf(CONSOLE, "tid {%d} :: Priority {%d} :: F {0x%x} :: SP {0x%x} :: &context {0x%x}\n", tid, priority, context.elr, context.sp, &context);
 }
-
-// ********** End TaskDescriptor **********

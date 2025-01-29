@@ -5,6 +5,7 @@
 #include "task.h"
 #include "memory.h"
 #include "pqueue.h"
+#include "shared_constants.h"
 
 class Kernel
 {
@@ -15,20 +16,21 @@ public:
    int MyTid();
    int MyParentTid();
    void Yield();
-   void Exit();      // relesase the task's tid and memory block, and push the task to free_tid
-   void Scheduler(); // sets the next task
-   void ContextSwitch();
+   void Exit(); // relesase the task's tid and memory block, and push the task to free_tid
+   TaskDescriptor *Scheduler();
+   int DispatchTask(volatile Context *kernel, TaskDescriptor *scheduled_task);
+   void Handler(int N);
 
 private:
-   void Dispatcher();
-
+   MemoryManager mem_manager;
    TaskDescriptor *active_task;
-   TaskDescriptor *next_task;
 
    TaskDescriptor task_table[MAX_TASKS];
    RingBuffer<int> free_tid;
-   PQueue<TaskDescriptor *> ready_queue;
-   MemoryManager mem_manager;
+   PQueue<int> ready_queue; // ready queue is a priority queue of task ids
+   // PQueue<TaskDescriptor *> ready_queue;
+   void inline SetRetval(int ret_val);
+   void inline RepushActiveTask();
 };
 
 #endif

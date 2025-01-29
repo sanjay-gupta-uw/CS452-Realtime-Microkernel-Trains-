@@ -1,53 +1,53 @@
 .section ".text.vectors"
-.align 11  // Align to 2 KB (minimum alignment for the vector table)
+.balign 0x800 // 2KB alignment
 vectors:
     // ---------------------
     // Current EL, SP_EL0
     // ---------------------
-    b sync_current_el_sp_el0_handler  // VBAR_ELx + 0x000
-    .space 128 - 4                   // Fill remaining space for 128 bytes
-    b irq_current_el_sp_el0_handler  // VBAR_ELx + 0x080
-    .space 128 - 4                   // Fill remaining space for 128 bytes
-    b fiq_current_el_sp_el0_handler  // VBAR_ELx + 0x100
-    .space 128 - 4                   // Fill remaining space for 128 bytes
-    b serr_current_el_sp_el0_handler // VBAR_ELx + 0x180
-    .space 128 - 4                   // Fill remaining space for 128 bytes
+    b _dummyHandler1  // VBAR_ELx + 0x000
+    .balign 0x80
+    b _dummyHandler1  // VBAR_ELx + 0x080
+    .balign 0x80
+    b _dummyHandler1  // VBAR_ELx + 0x100
+    .balign 0x80
+    b _dummyHandler1 // VBAR_ELx + 0x180
+    .balign 0x80
 
     // ---------------------
     // Current EL, SP_ELx
     // ---------------------
-    b sync_current_el_sp_elx_handler  // VBAR_ELx + 0x200
-    .space 128 - 4                    // Fill remaining space for 128 bytes
-    b irq_current_el_sp_elx_handler   // VBAR_ELx + 0x280
-    .space 128 - 4                    // Fill remaining space for 128 bytes
-    b fiq_current_el_sp_elx_handler   // VBAR_ELx + 0x300
-    .space 128 - 4                    // Fill remaining space for 128 bytes
-    b serr_current_el_sp_elx_handler  // VBAR_ELx + 0x380
-    .space 128 - 4                    // Fill remaining space for 128 bytes
+    b _dummyHandler2  // VBAR_ELx + 0x200
+    .balign 0x80
+    b _dummyHandler2   // VBAR_ELx + 0x280
+    .balign 0x80
+    b _dummyHandler2   // VBAR_ELx + 0x300
+    .balign 0x80
+    b _dummyHandler2  // VBAR_ELx + 0x380
+    .balign 0x80
 
     // ---------------------
     // Lower EL, AArch64
     // ---------------------
-    b sync_lower_el_aarch64_handler  // VBAR_ELx + 0x400
-    .space 128 - 4                   // Fill remaining space for 128 bytes
-    b irq_lower_el_aarch64_handler   // VBAR_ELx + 0x480
-    .space 128 - 4                   // Fill remaining space for 128 bytes
-    b fiq_lower_el_aarch64_handler   // VBAR_ELx + 0x500
-    .space 128 - 4                   // Fill remaining space for 128 bytes
-    b serr_lower_el_aarch64_handler  // VBAR_ELx + 0x580
-    .space 128 - 4                   // Fill remaining space for 128 bytes
+    b task_to_kernel_asm  // VBAR_ELx + 0x400
+    .balign 0x80
+    b _dummyHandler3   // VBAR_ELx + 0x480
+    .balign 0x80
+    b _dummyHandler3   // VBAR_ELx + 0x500
+    .balign 0x80
+    b _dummyHandler3  // VBAR_ELx + 0x580
+    .balign 0x80
 
     // ---------------------
     // Lower EL, AArch32
     // ---------------------
-    b sync_lower_el_aarch32_handler  // VBAR_ELx + 0x600
-    .space 128 - 4                   // Fill remaining space for 128 bytes
-    b irq_lower_el_aarch32_handler   // VBAR_ELx + 0x680
-    .space 128 - 4                   // Fill remaining space for 128 bytes
-    b fiq_lower_el_aarch32_handler   // VBAR_ELx + 0x700
-    .space 128 - 4                   // Fill remaining space for 128 bytes
-    b serr_lower_el_aarch32_handler  // VBAR_ELx + 0x780
-    .space 128 - 4                   // Fill remaining space for 128 bytes
+    b _dummyHandler4  // VBAR_ELx + 0x600
+    .balign 0x80
+    b _dummyHandler4  // VBAR_ELx + 0x680
+    .balign 0x80
+    b _dummyHandler4   // VBAR_ELx + 0x700
+    .balign 0x80
+    b _dummyHandler4  // VBAR_ELx + 0x780
+    .balign 0x80
 
 
 // ***************************************
@@ -127,6 +127,13 @@ el1_entry:
 	// initialize SP (initial stack below text here)
 	ldr x2, =_start
 	mov sp, x2
+	
+	// Set SPSel to 1
+	mov x3, 1
+	msr spsel, x3
+
+	// mask all interrupts
+	msr DAIFSet, #0b1111
 	// branch and link to main routine in C/C++
 	bl kmain
 

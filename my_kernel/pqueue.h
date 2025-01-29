@@ -10,7 +10,7 @@ public:
    PQueue();
    ~PQueue();
 
-   int Push(T *item, int priority);
+   int Push(T item, int priority);
    int Pop(T *item);
    bool isEmpty() const;
    bool isFull() const;
@@ -18,7 +18,7 @@ public:
 private:
    struct Node
    {
-      T *data;
+      T data;
       int priority;
    };
 
