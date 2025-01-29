@@ -1,55 +1,3 @@
-.section ".text.vectors"
-.balign 0x800 // 2KB alignment
-vectors:
-    // ---------------------
-    // Current EL, SP_EL0
-    // ---------------------
-    b _dummyHandler1  // VBAR_ELx + 0x000
-    .balign 0x80
-    b _dummyHandler1  // VBAR_ELx + 0x080
-    .balign 0x80
-    b _dummyHandler1  // VBAR_ELx + 0x100
-    .balign 0x80
-    b _dummyHandler1 // VBAR_ELx + 0x180
-    .balign 0x80
-
-    // ---------------------
-    // Current EL, SP_ELx
-    // ---------------------
-    b _dummyHandler2  // VBAR_ELx + 0x200
-    .balign 0x80
-    b _dummyHandler2   // VBAR_ELx + 0x280
-    .balign 0x80
-    b _dummyHandler2   // VBAR_ELx + 0x300
-    .balign 0x80
-    b _dummyHandler2  // VBAR_ELx + 0x380
-    .balign 0x80
-
-    // ---------------------
-    // Lower EL, AArch64
-    // ---------------------
-    b task_to_kernel_asm  // VBAR_ELx + 0x400
-    .balign 0x80
-    b _dummyHandler3   // VBAR_ELx + 0x480
-    .balign 0x80
-    b _dummyHandler3   // VBAR_ELx + 0x500
-    .balign 0x80
-    b _dummyHandler3  // VBAR_ELx + 0x580
-    .balign 0x80
-
-    // ---------------------
-    // Lower EL, AArch32
-    // ---------------------
-    b _dummyHandler4  // VBAR_ELx + 0x600
-    .balign 0x80
-    b _dummyHandler4  // VBAR_ELx + 0x680
-    .balign 0x80
-    b _dummyHandler4   // VBAR_ELx + 0x700
-    .balign 0x80
-    b _dummyHandler4  // VBAR_ELx + 0x780
-    .balign 0x80
-
-
 // ***************************************
 // SCTLR_EL1, System Control Register (EL1)
 // Architecture Reference Manual Section D17.2.118
@@ -111,14 +59,12 @@ _start:
 
 .global el1_entry
 el1_entry:
+	// set up vector table
+	ldr x0, =vectors
+	msr vbar_el1, x0
 	// configure processor
 	ldr x0, =(SCTLR_RESERVED | SCTLR_WFE_WFI)
 	msr sctlr_el1, x0
-
-	// configure vector table
-	ldr x0, =vectors
-	msr vbar_el1, x0
-	isb
 	
 	// disable EL0 trap on FP/SIMD/SVE instructions
 	ldr x1, =(FPEN_TRAP | ZEN_TRAP)
@@ -132,9 +78,6 @@ el1_entry:
 	mov x3, 1
 	msr spsel, x3
 
-	// mask all interrupts
-	msr DAIFSet, #0b1111
-	// branch and link to main routine in C/C++
 	bl kmain
 
 .global _reboot
@@ -156,3 +99,58 @@ exit:
 	// nop until event
 	wfe 
 	b exit
+
+
+
+
+.section ".text.vectors"
+.balign 0x800 // 2KB alignment
+vectors:
+    // ---------------------
+    // Current EL, SP_EL0
+    // ---------------------
+    b _dummyHandler1  // VBAR_ELx + 0x000
+    .balign 0x80
+    b _dummyHandler1  // VBAR_ELx + 0x080
+    .balign 0x80
+    b _dummyHandler1  // VBAR_ELx + 0x100
+    .balign 0x80
+    b _dummyHandler1 // VBAR_ELx + 0x180
+    .balign 0x80
+
+    // ---------------------
+    // Current EL, SP_ELx
+    // ---------------------
+    b _dummyHandler2  // VBAR_ELx + 0x200
+    .balign 0x80
+    b _dummyHandler2   // VBAR_ELx + 0x280
+    .balign 0x80
+    b _dummyHandler2   // VBAR_ELx + 0x300
+    .balign 0x80
+    b _dummyHandler2  // VBAR_ELx + 0x380
+    .balign 0x80
+
+    // ---------------------
+    // Lower EL, AArch64
+    // ---------------------
+    b task_to_kernel_asm  // VBAR_ELx + 0x400
+    .balign 0x80
+    b _dummyHandler3   // VBAR_ELx + 0x480
+    .balign 0x80
+    b _dummyHandler3   // VBAR_ELx + 0x500
+    .balign 0x80
+    b _dummyHandler3  // VBAR_ELx + 0x580
+    .balign 0x80
+
+    // ---------------------
+    // Lower EL, AArch32
+    // ---------------------
+    b _dummyHandler4  // VBAR_ELx + 0x600
+    .balign 0x80
+    b _dummyHandler4  // VBAR_ELx + 0x680
+    .balign 0x80
+    b _dummyHandler4   // VBAR_ELx + 0x700
+    .balign 0x80
+    b _dummyHandler4  // VBAR_ELx + 0x780
+    .balign 0x80
+ 
