@@ -1,6 +1,6 @@
 #include "dummy.h"
 #include "rpi.h"
-#include "kernel.h"
+#include "kern/kernel.h"
 #include "shared_constants.h"
 
 extern "C" size_t fetch_sp();

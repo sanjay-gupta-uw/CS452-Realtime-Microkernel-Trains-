@@ -2,7 +2,7 @@
 #define _task_h_
 
 #include "memory.h"
-#include "shared_constants.h"
+#include "../shared_constants.h"
 
 #define MAX_TASKS MBLOCK_COUNT
 

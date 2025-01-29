@@ -1,7 +1,7 @@
 #include "command.h"
 #include "ui.h"
-#include "train.h"
-#include "switch.h"
+#include "marklin/train.h"
+#include "marklin/switch.h"
 
 // ********** CommandPrompt Class **********
 CommandPrompt::CommandPrompt()

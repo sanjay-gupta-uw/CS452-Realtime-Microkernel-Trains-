@@ -1,6 +1,6 @@
 # make --version
-XDIR:=/u/cs452/public/xdev
-# XDIR:=/Applications/ArmGNUToolchain/14.2.rel1/aarch64-none-elf
+# XDIR:=/u/cs452/public/xdev
+XDIR:=/Applications/ArmGNUToolchain/14.2.rel1/aarch64-none-elf
 ARCH=cortex-a72
 TRIPLE=aarch64-none-elf
 XBINDIR:=$(XDIR)/bin
@@ -17,7 +17,8 @@ CXXFLAGS:=-g -pipe -static -mstrict-align -ffreestanding -fno-exceptions -fno-un
 LDFLAGS:=-Wl,-nmagic -Wl,-Tlinker.ld -Wl,--no-warn-rwx-segments -nostartfiles -nodefaultlibs -nostdlib
 
 # Source files and include dirs
-SOURCES := $(wildcard *.cpp) $(wildcard *.S) # Only look for .cpp and .S files
+SRC_DIR := src
+SOURCES := $(shell find $(SRC_DIR) -name "*.cpp" -o -name "*.S")
 OBJECTS := $(patsubst %.cpp, %.o, $(patsubst %.S, %.o, $(SOURCES)))
 DEPENDS := $(patsubst %.cpp, %.d, $(patsubst %.S, %.d, $(SOURCES)))
 

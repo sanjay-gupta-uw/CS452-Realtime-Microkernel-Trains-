@@ -1,11 +1,13 @@
 #ifndef _kernel_h_
 #define _kernel_h_
 
-#include "ringbuffer.h"
+#include "../shared_constants.h"
+
+#include "../containers/ringbuffer.h"
+#include "../containers/pqueue.h"
+
 #include "task.h"
 #include "memory.h"
-#include "pqueue.h"
-#include "shared_constants.h"
 
 class Kernel
 {

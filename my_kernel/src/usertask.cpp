@@ -1,7 +1,7 @@
 #include "usertask.h"
 #include "rpi.h"
 #include "shared_constants.h"
-#include "syscall.h"
+#include "kern/syscall.h"
 
 // ********** USER TASKS **********
 void Task1()

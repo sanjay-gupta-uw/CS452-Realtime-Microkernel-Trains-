@@ -3,23 +3,19 @@
 #include "rpi.h"
 #include "ui.h"
 #include "clock.h"
-
-#include "train.h"
-#include "switch.h"
-// #include "sensor.h"
-#include "command.h"
-#include "ringbuffer.h"
-
-#include "task.h"
-#include "kernel.h"
+#include "command.h" // for command prompt
 #include "dummy.h"
 #include "usertask.h"
-// #include "bwio.h"
-#include "memory.h"
 
-#define DEBUG 2
-#define ENABLE_RESET_MODE true
-#define DISABLE_RESET_MODE false
+#include "marklin/train.h"
+#include "marklin/switch.h"
+// #include "sensor.h"
+
+#include "containers/ringbuffer.h"
+
+#include "kern/task.h"
+#include "kern/kernel.h"
+#include "kern/memory.h"
 
 typedef void (*funcvoid_t)();
 extern funcvoid_t __init_array_start;

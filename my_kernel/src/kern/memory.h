@@ -1,7 +1,7 @@
 #ifndef _memory_h_
 #define _memory_h_
 
-#include "ringbuffer.h"
+#include "../containers/ringbuffer.h"
 #include <cstdint>
 
 #define KILOBYTE 1024

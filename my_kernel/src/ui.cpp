@@ -2,7 +2,7 @@
 
 #include "clock.h"
 #include "command.h"
-#include "switch.h"
+#include "marklin/switch.h"
 // #include "sensor.h"
 // #include "util.h"
 

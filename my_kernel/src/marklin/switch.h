@@ -3,7 +3,7 @@
 
 #include <stdbool.h>
 
-#include "util.h" // this includes rpi.h
+#include "../util.h" // this includes rpi.h
 
 class Clock;
 extern Clock clock;

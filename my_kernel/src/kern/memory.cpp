@@ -1,6 +1,6 @@
 #include "memory.h"
 
-#include "rpi.h"
+#include "../rpi.h"
 
 MemoryManager::MemoryManager()
 {

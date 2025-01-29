@@ -1,8 +1,8 @@
 #include "task.h"
 
-#include "rpi.h"
-#include "util.h"
-#include "clock.h"
+#include "../rpi.h"
+#include "../util.h"
+#include "../clock.h"
 
 #define DEBUG 65
 extern Clock clock;

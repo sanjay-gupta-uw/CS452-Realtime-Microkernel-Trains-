@@ -1,5 +1,4 @@
 #include "pqueue.h"
-#include "task.h"
 
 // instantiate the template for task descriptor
 // template class PQueue<TaskDescriptor *>;

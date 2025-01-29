@@ -1,1 +1,0 @@
-// Image starts at 0x80000 -> 524288

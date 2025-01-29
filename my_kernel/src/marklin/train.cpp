@@ -1,5 +1,5 @@
 #include "train.h"
-#include "clock.h" // this includes util which includes rpi.h
+#include "../clock.h" // this includes util which includes rpi.h
 
 // ********* Train Class *********
 // initialize with invaid train number

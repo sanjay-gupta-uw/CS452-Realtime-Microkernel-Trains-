@@ -1,5 +1,5 @@
 #include "switch.h"
-#include "clock.h"
+#include "../clock.h"
 
 #define STRAIGHT_CMD 0x21
 #define CURVED_CMD 0x22

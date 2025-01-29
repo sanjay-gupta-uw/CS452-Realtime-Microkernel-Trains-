@@ -1,5 +1,5 @@
 #include "kernel.h"
-#include "rpi.h"
+#include "../rpi.h"
 
 Kernel::Kernel()
 {
