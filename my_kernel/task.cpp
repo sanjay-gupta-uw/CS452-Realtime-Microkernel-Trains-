@@ -40,7 +40,7 @@ int TaskDescriptor::CreateTask(int priority, MemoryBlock *block, void (*function
       this->context.x[i] = i;
    }
 
-   Print();
+   // Print();
 
    // Prepare the stack to match the expected restore layout
 
@@ -80,5 +80,5 @@ RunState TaskDescriptor::getState()
 // DISABLED
 void TaskDescriptor::Print()
 {
-   // uart_printf(CONSOLE, "tid {%d} :: Priority {%d} :: F {0x%x} :: SP {0x%x} :: &context {0x%x}\n", tid, priority, context.elr, context.sp, &context);
+   uart_printf(CONSOLE, "tid {%d} :: Priority {%d} :: F {0x%x} :: SP {0x%x} :: &context {0x%x}\r\n", tid, priority, context.elr, context.sp, &context);
 }

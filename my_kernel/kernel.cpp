@@ -55,6 +55,7 @@ int Kernel::Create(int priority, void (*function)())
       return -3;          // No memory available
    }
    td->CreateTask(priority, stackBlock, function);
+   td->parent = active_task;
 
    if (td->isReady())
    {
@@ -86,7 +87,7 @@ int Kernel::MyParentTid()
       return -1;
    }
    RepushActiveTask();
-   return (active_task->parent)->tid;
+   return (active_task->parent->tid);
 }
 
 // causes a task to pause executing. The task is moved to the end of its priority queue, and will resume executing when next scheduled.
@@ -143,6 +144,7 @@ void Kernel::Handler(int N)
    switch (N)
    {
    case SVC_CREATE:
+      // uart_printf(CONSOLE, "Creating Task\r\n");
       if (active_task != nullptr)
       {
          int PRIORITY = active_task->context.x[0];
@@ -154,19 +156,23 @@ void Kernel::Handler(int N)
       else
       {
          // Shouldnt happen
-         uart_printf(CONSOLE, "PANIC No active task\n");
+         uart_printf(CONSOLE, "PANIC No active task\r\n");
       }
       break;
 
    case SVC_MYTID:
-      // uart_printf(CONSOLE, "Getting Task ID\n");
+      // uart_printf(CONSOLE, "Getting Task ID\r\n");
       SetRetval(MyTid());
       break;
 
    case SVC_MYPARENTID:
-      // uart_printf(CONSOLE, "Getting Parent Task ID\n");
-      SetRetval(MyParentTid());
+   {
+      // uart_printf(CONSOLE, "Getting Parent Task ID\r\n");
+      int parent_id = MyParentTid();
+      SetRetval(parent_id);
+      // uart_printf(CONSOLE, "Parent ID: %d\r\n", parent_id);
       break;
+   }
 
    case SVC_YIELD:
       // uart_printf(CONSOLE, "Yielding Task\n");

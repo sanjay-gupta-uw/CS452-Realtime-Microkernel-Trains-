@@ -17,9 +17,9 @@ void Task1()
    {
       int PRIORITY = i < 2 ? LOW : HIGH;
       int tid = CREATE(PRIORITY, Task2);
-      uart_printf(CONSOLE, "Created: <%d>\n", tid);
+      uart_printf(CONSOLE, "Created: <%d>\r\n", tid);
    }
-   uart_printf(CONSOLE, "FirstUserTask: exiting\n");
+   uart_printf(CONSOLE, "FirstUserTask: exiting\r\n");
    EXIT();
 }
 
@@ -27,8 +27,8 @@ void Task2()
 {
    int myid = MYTID();
    int parentid = MYPARENTTID();
-   uart_printf(CONSOLE, "TID: <%d>, PARENT-TID: <%d>\n", myid, parentid);
+   uart_printf(CONSOLE, "TID: <%d>, PARENT-TID: <%d>\r\n", myid, parentid);
    YIELD();
-   uart_printf(CONSOLE, "TID: <%d>, PARENT-TID: <%d>\n", myid, parentid);
+   uart_printf(CONSOLE, "TID: <%d>, PARENT-TID: <%d>\r\n", myid, parentid);
    EXIT();
 }

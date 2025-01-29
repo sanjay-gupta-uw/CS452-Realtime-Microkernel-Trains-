@@ -63,7 +63,7 @@ extern "C" int kmain()
 
    // size_t sp = fetch_sp();
    clear_screen(CONSOLE);
-   uart_printf(CONSOLE, "Welcome to the Train Controller\n");
+   uart_printf(CONSOLE, "Welcome to the Train Controller\r\n");
    // uart_printf(CONSOLE, "Welcome to the Train Controller SP: %x\n", sp);
 
    // uart_printf(CONSOLE, "F1{0x%x}, F2{0x%x}\n", Task1, Task2);
@@ -78,7 +78,7 @@ extern "C" int kmain()
    int taskID = kernel.Create(MEDIUM, Task1);
    if (taskID < 0)
    {
-      uart_printf(CONSOLE, "ERROR CREATING FIRST USER TASK\n");
+      uart_printf(CONSOLE, "ERROR CREATING FIRST USER TASK\r\n");
    }
    // uart_printf(CONSOLE, "FIRST USER TASK CREATED {%d}(id)\n", taskID);
 
@@ -97,7 +97,7 @@ extern "C" int kmain()
       // uart_printf(CONSOLE, "ESR: {%d}, N: {%d}\n", esr_el1, N);
       if (esr_el1 < 0)
       {
-         uart_printf(CONSOLE, "UNEXPECTED ERROR");
+         uart_printf(CONSOLE, "UNEXPECTED ERROR\r\n");
          for (;;)
          {
          }
@@ -105,7 +105,7 @@ extern "C" int kmain()
       kernel.Handler(N);
    }
 
-   uart_printf(CONSOLE, "NO MORE TASKS\n");
+   uart_printf(CONSOLE, "NO MORE TASKS\r\n");
 
    for (;;)
    {

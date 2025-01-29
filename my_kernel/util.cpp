@@ -77,7 +77,6 @@ void reset_formatting(size_t line)
 // DISABLED FOR QEMU
 void clear_screen(size_t line)
 {
-	return;
 	// clear screen
 	uart_puts(line, "\033[2J");
 	// move cursor to top left
