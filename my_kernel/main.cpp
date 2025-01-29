@@ -62,6 +62,8 @@ extern "C" int kmain()
    uart_config_and_enable(MARKLIN);
 
    // size_t sp = fetch_sp();
+   clear_screen(CONSOLE);
+   uart_printf(CONSOLE, "Welcome to the Train Controller\n");
    // uart_printf(CONSOLE, "Welcome to the Train Controller SP: %x\n", sp);
 
    // uart_printf(CONSOLE, "F1{0x%x}, F2{0x%x}\n", Task1, Task2);

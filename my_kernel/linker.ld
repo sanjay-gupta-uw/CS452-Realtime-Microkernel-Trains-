@@ -17,12 +17,6 @@ SECTIONS {
 		. = ALIGN(4); /* Align .bss section to 4-byte boundary */
     }
 
-	 /* Stack allocation */
-    . = ALIGN(4);  /* Ensure stack is aligned to a 4-byte boundary */
-    .stack : {
-        __stack_start = .; /* Mark the start of the stack */
-        . = . + 0x4000;    /* Allocate 16KB (0x4000) for the stack */
-        __stack_end = .;   /* Mark the end of the stack */
-    }
+
 }
 
