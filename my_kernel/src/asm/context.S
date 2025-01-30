@@ -9,8 +9,7 @@ kernel_to_task_asm:
     str x1, [sp, #-16]! // Store the task context pointer on the stack (sp -= 16, [sp] = x1)
     // sp: 0x7fe50
     
-
-    // then, store the register file into the context of the kernel
+    // store registers in kernel_context
     add x0, x0, #8 // X0: 0x7fed0
     
     stp x1, x2, [x0], #16 // X0: 0x7fee0
