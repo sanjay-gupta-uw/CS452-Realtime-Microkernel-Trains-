@@ -110,7 +110,7 @@ extern "C" int kmain()
       kernel.Handler(N);
    }
 
-   uart_printf(CONSOLE, "NO MORE TASKS\r\n");
+   uart_printf(CONSOLE, "NO MORE READY TASKS\r\n");
 
    for (;;)
    {

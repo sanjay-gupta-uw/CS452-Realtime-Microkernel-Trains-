@@ -167,13 +167,60 @@ void Kernel::Send()
       receiver_task->setState(READY); // RECEIVER UNBLOCKS
       ready_queue.Push(receiver_tid, receiver_task->getPriority());
 
-      sender_task->setState(REPLY_BLOCKED);                  // SENDER BLOCKS
-      int destLen = CopyMessage(sender_task, receiver_task); // KERNEL COPIES DATA
+      sender_task->setState(REPLY_BLOCKED);                         // SENDER BLOCKS
+      int destLen = CopyMessage(sender_task, receiver_task, false); // KERNEL COPIES DATA
       if (destLen == -1)
       {
          uart_printf(CONSOLE, "PANIC: COPY MESSAGE FAILED\r\n");
       }
    }
+}
+
+void Kernel::Receive()
+{
+   int sender_tid;
+   if (active_task->inbox.Pop(&sender_tid) == -1)
+   {
+      active_task->setState(RECEIVE_BLOCKED); // RECEIVER BLOCKS
+      return;
+   }
+   // ensure sender is in send block
+   // LOOKUP SENDER TASK
+   TaskDescriptor *sender_task = &task_table[sender_tid];
+   if (sender_task->state != SEND_BLOCKED) // SANITY
+   {
+      uart_printf(CONSOLE, "PANIC: POTENTIAL CAUSE ~ SENDER EXIT ALREADY.\r\n");
+      return;
+   }
+   sender_task->setState(REPLY_BLOCKED); // SENDER STILL BLOCKED
+   int destLen = CopyMessage(sender_task, active_task, false);
+   if (destLen == -1)
+   {
+      uart_printf(CONSOLE, "PANIC: COPY MESSAGE FAILED\r\n");
+   }
+   RepushActiveTask();
+
+   // KERNEL COPIES DATA
+   // SetRetval(-1);
+}
+
+void Kernel::Reply()
+{
+   int sender_tid = active_task->context.x[0];
+   TaskDescriptor *sender_task = &task_table[sender_tid];
+   if (sender_task->state != REPLY_BLOCKED) // check sender is waiting
+   {
+      uart_printf(CONSOLE, "PANIC: SENDER NOT WAITING FOR REPLY\r\n");
+      return;
+   }
+   int destLen = CopyMessage(active_task, sender_task, true); // KERNEL COPIES DATA
+   if (destLen == -1)
+   {
+      uart_printf(CONSOLE, "PANIC: COPY MESSAGE FAILED\r\n");
+   }
+   sender_task->setState(READY); // SENDER UNBLOCKS
+   ready_queue.Push(sender_tid, sender_task->getPriority());
+   RepushActiveTask();
 }
 
 TaskDescriptor *
@@ -259,38 +306,14 @@ void Kernel::Handler(int N)
    case SVC_RECEIVE:
    {
       uart_printf(CONSOLE, "Receiving Message Triggered\r\n");
-
-      int sender_tid;
-      if (active_task->inbox.Pop(&sender_tid) == -1)
-      {
-         active_task->setState(RECEIVE_BLOCKED); // RECEIVER BLOCKS
-         break;
-      }
-      // ensure sender is in send block
-      // LOOKUP SENDER TASK
-      TaskDescriptor *sender_task = &task_table[sender_tid];
-      if (sender_task->state != SEND_BLOCKED) // SANITY
-      {
-         uart_printf(CONSOLE, "PANIC: POTENTIAL CAUSE ~ SENDER EXIT ALREADY.\r\n");
-         break;
-      }
-      sender_task->setState(REPLY_BLOCKED); // SENDER STILL BLOCKED
-      CopyMessage(sender_task, active_task);
-      RepushActiveTask();
-
-      // KERNEL COPIES DATA
-      // SetRetval(-1);
+      Receive();
       break;
    }
 
    case SVC_REPLY:
    {
       uart_printf(CONSOLE, "Replying Message Triggered\r\n");
-      // int tid = active_task->context.x[0];
-      // const char *reply = (const char *)active_task->context.x[1];
-      // int replylen = active_task->context.x[2];
-      // int ret_val = Reply(tid, reply, replylen);
-      // SetRetval(-1);
+      Reply();
       break;
    }
 
@@ -299,8 +322,10 @@ void Kernel::Handler(int N)
    }
 }
 
-int Kernel::CopyMessage(TaskDescriptor *sender_td, TaskDescriptor *receiver_td)
+int Kernel::CopyMessage(TaskDescriptor *sender_td, TaskDescriptor *receiver_td, bool is_reply)
 {
+   // NOTE THAT THE ONLY DIFFERENCE FOR REPLY IS THAT WE USE x[3], x[4] instead of x[1], x[2] for sender
+
    // copy message from sender to receiver
    int requested_tid = static_cast<int>(sender_td->context.x[0]);
 
@@ -309,27 +334,25 @@ int Kernel::CopyMessage(TaskDescriptor *sender_td, TaskDescriptor *receiver_td)
       uart_printf(CONSOLE, "PANIC: SENDER TID MISMATCH\r\n");
       return -1; // Define enum for this to use by usertasks
    }
-   uart_printf(CONSOLE, "COPYING MESSAGE\r\n");
+
    const char *src = reinterpret_cast<const char *>(sender_td->context.x[1]);
    int srclen = static_cast<int>(sender_td->context.x[2]);
 
-   uart_printf(CONSOLE, "SRC: %s, SRCLEN: %d\r\n", src, srclen);
-
-   int *receiver_tid = reinterpret_cast<int *>(receiver_td->context.x[0]);
-   char *dest = reinterpret_cast<char *>(receiver_td->context.x[1]);
-   int destlen = static_cast<int>(receiver_td->context.x[2]);
+   char *dest = reinterpret_cast<char *>(receiver_td->context.x[is_reply ? 3 : 1]);
+   int destlen = static_cast<int>(receiver_td->context.x[is_reply ? 4 : 2]);
 
    destlen = (destlen < srclen) ? destlen : srclen;
-
-   *receiver_tid = sender_td->tid;
-   // dest, src, len
    memcpy(dest, src, destlen);
 
-   uart_printf(CONSOLE, "RECEIVER TID RET: %d, MSG: %s, MSGLEN: %d\r\n", *receiver_tid, dest, destlen);
+   if (!is_reply)
+   {
+      // set tid of sender in receiver's context
+      int *tid_loc = reinterpret_cast<int *>(receiver_td->context.x[0]);
+      *tid_loc = sender_td->tid;
+   }
 
    receiver_td->SetRetval(srclen);
    sender_td->SetRetval(destlen);
-
    return destlen;
 }
 

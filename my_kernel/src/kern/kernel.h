@@ -34,10 +34,10 @@ private:
    void Yield();
    void Exit(); // relesase the task's tid and memory block, and push the task to free_tid
    void Send();
-   int Receive();
-   int Reply();
+   void Receive();
+   void Reply();
 
-   int CopyMessage(TaskDescriptor *sender_td, TaskDescriptor *receiver_td);
+   int CopyMessage(TaskDescriptor *sender_td, TaskDescriptor *receiver_td, bool is_reply);
    void inline RepushActiveTask();
 };
 
