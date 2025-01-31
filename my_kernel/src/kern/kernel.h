@@ -13,12 +13,8 @@ class Kernel
 {
 public:
    Kernel();
+   Kernel(void (*function)());
    ~Kernel();
-   int Create(int priority, void (*function)()); // use free_tid to get a tid, create a new task, and push it to ready_queue
-   int MyTid();
-   int MyParentTid();
-   void Yield();
-   void Exit(); // relesase the task's tid and memory block, and push the task to free_tid
    TaskDescriptor *Scheduler();
    int DispatchTask(volatile Context *kernel, TaskDescriptor *scheduled_task);
    void Handler(int N);
@@ -30,8 +26,18 @@ private:
    TaskDescriptor task_table[MAX_TASKS];
    RingBuffer<int> free_tid;
    PQueue<int> ready_queue; // ready queue is a priority queue of task ids
-   // PQueue<TaskDescriptor *> ready_queue;
-   void inline SetRetval(int ret_val);
+                            // PQueue<TaskDescriptor *> ready_queue;
+
+   int Create(int priority, void (*function)()); // use free_tid to get a tid, create a new task, and push it to ready_queue
+   int MyTid();
+   int MyParentTid();
+   void Yield();
+   void Exit(); // relesase the task's tid and memory block, and push the task to free_tid
+   void Send();
+   int Receive();
+   int Reply();
+
+   int CopyMessage(TaskDescriptor *sender_td, TaskDescriptor *receiver_td);
    void inline RepushActiveTask();
 };
 

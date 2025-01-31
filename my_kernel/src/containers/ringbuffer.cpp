@@ -1,9 +1,9 @@
 #include "ringbuffer.h"
-
 #include "../command.h"
-// instantiate the template class
-template class RingBuffer<Command>;
+#include "../kern/task.h"
+
 template class RingBuffer<int>;
+template class RingBuffer<Command>;
 // template class RingBuffer<TaskDescriptor>;
 
 template <typename T>

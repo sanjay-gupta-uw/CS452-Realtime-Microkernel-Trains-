@@ -23,7 +23,7 @@ TaskDescriptor::~TaskDescriptor()
 }
 
 // use kernel.Create to call this
-int TaskDescriptor::CreateTask(int priority, MemoryBlock *block, void (*function)())
+int TaskDescriptor::InitTask(int priority, MemoryBlock *block, void (*function)())
 {
 
    this->priority = priority;
@@ -77,8 +77,13 @@ RunState TaskDescriptor::getState()
    return state;
 }
 
+void TaskDescriptor::SetRetval(int ret_val)
+{
+   this->context.x[0] = ret_val;
+}
+
 // DISABLED
 void TaskDescriptor::Print()
 {
-   uart_printf(CONSOLE, "tid {%d} :: Priority {%d} :: F {0x%x} :: SP {0x%x} :: &context {0x%x}\r\n", tid, priority, context.elr, context.sp, &context);
+   uart_printf(CONSOLE, "tid {%d} :: Priority {%d} :: F {0x%x} :: SP {0x%x} :: &context {0x%x} :: STATE {%d}\r\n", tid, priority, context.elr, context.sp, &context, state);
 }

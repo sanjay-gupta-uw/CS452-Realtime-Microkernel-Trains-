@@ -1,32 +1,12 @@
 #ifndef _task_h_
 #define _task_h_
 
+#include "task_structs.h" // importing Context and Inbox
 #include "memory.h"
 #include "../shared_constants.h"
+#include "../containers/ringbuffer.h"
 
 #define MAX_TASKS MBLOCK_COUNT
-
-extern "C" int _get_el_debug();
-
-#define NUM_REGISTERS 31
-typedef enum
-{
-   ACTIVE,
-   READY,
-   EXITED,
-   SEND_BLOCKED,
-   RECEIVE_BLOCKED,
-   REPLY_BLOCKED,
-   EVENT_BLOCKED,
-} RunState;
-
-struct Context
-{
-   uint64_t x[NUM_REGISTERS]; // general purpose registers
-   uint64_t spsr;
-   uint64_t sp;
-   uint64_t elr;
-};
 
 class Kernel;
 
@@ -36,7 +16,7 @@ public:
    TaskDescriptor();
    ~TaskDescriptor();
    // use wrapper Create to call this
-   int CreateTask(int priority, MemoryBlock *block, void (*function)());
+   int InitTask(int priority, MemoryBlock *block, void (*function)());
    bool isReady();
    int getPriority();
    int getTid();
@@ -44,6 +24,7 @@ public:
    void setState(RunState state);
    RunState getState();
    void Print();
+   void SetRetval(int ret_val);
 
 private:
    volatile Context context;
@@ -52,8 +33,7 @@ private:
    TaskDescriptor *parent;
    RunState state;
    int block_index;
-
-   int ret_val;
+   RingBuffer<int> inbox;
 
    friend class Kernel;
 };

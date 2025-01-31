@@ -1,19 +1,19 @@
 #include <stdbool.h>
 
-#include "rpi.h"
-#include "ui.h"
 #include "clock.h"
 #include "command.h" // for command prompt
 #include "dummy.h"
+#include "rpi.h"
+#include "ui.h"
 #include "usertask.h"
-
-#include "marklin/train.h"
 #include "marklin/switch.h"
-// #include "sensor.h"
+#include "marklin/train.h"
 
 #include "containers/ringbuffer.h"
 
-#include "kern/task.h"
+// #include "sensor.h"
+
+// instantiate the template class
 #include "kern/kernel.h"
 #include "kern/memory.h"
 
@@ -43,9 +43,14 @@ extern "C" int __cxa_atexit(void (*)(void *), void *, void *)
 void *__dso_handle = 0;
 
 extern "C" size_t fetch_sp();
+extern "C" int _get_el_debug();
+extern "C" void setup_mmu();
 
 extern "C" int kmain()
 {
+#if defined(MMU)
+   setup_mmu();
+#endif
 
    call_global_constructors();
    // Set up GPIO pins for both console and Marklin UARTs
@@ -60,22 +65,26 @@ extern "C" int kmain()
    // size_t sp = fetch_sp();
    clear_screen(CONSOLE);
    uart_printf(CONSOLE, "Welcome to the Train Controller\r\n");
+
+   // uart_printf(CONSOLE, "FUNCTION: 0x%x\r\n", function);
+   uart_printf(CONSOLE, "TASK1: 0x%x\r\n", Task1);
+   uart_printf(CONSOLE, "TASK2: 0x%x\r\n", Task2);
    // uart_printf(CONSOLE, "Welcome to the Train Controller SP: %x\n", sp);
 
    // uart_printf(CONSOLE, "F1{0x%x}, F2{0x%x}\n", Task1, Task2);
    // Initialize kernel context
    Context kernel_context;
-   Kernel kernel;
+   Kernel kernel(Task1);
 
    // move_cursor(CONSOLE, 1, 1);
 
    // clock.Delay(time);
 
-   int taskID = kernel.Create(MEDIUM, Task1);
-   if (taskID < 0)
-   {
-      uart_printf(CONSOLE, "ERROR CREATING FIRST USER TASK\r\n");
-   }
+   // int taskID = kernel.Create(MEDIUM, Task1);
+   // if (taskID < 0)
+   // {
+   //    uart_printf(CONSOLE, "ERROR CREATING FIRST USER TASK\r\n");
+   // }
    // uart_printf(CONSOLE, "FIRST USER TASK CREATED {%d}(id)\n", taskID);
 
    // int EL = _get_el_debug();

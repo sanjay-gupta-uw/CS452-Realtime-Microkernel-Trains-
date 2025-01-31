@@ -3,32 +3,40 @@
 #include "shared_constants.h"
 #include "kern/syscall.h"
 
+#define RPLEN 6
+#define MSGLEN 6
+
 // ********** USER TASKS **********
+// this runs with medium priority
 void Task1()
 {
-   // int myid = MyTid();
-   // uart_printf(CONSOLE, "THIS IS <TASK 1> MY ID: %d\n", myid);
-   // uart_puts(CONSOLE, "THIS IS <TASK 1>\n");
-   // uart_printf(CONSOLE, "CREATING HP TASK\n");
-   // int tid = CREATE(HIGH, Task2);
-   // uart_printf(CONSOLE, "CREATED HP TASK: %d\n", tid);
+   uart_printf(CONSOLE, "FirstUserTask running\r\n");
+   // int nameserver = CREATE(MEDIUM, NameServer);
+   // int rps_server = CREATE(MEDIUM, RPS);
+   char reply[RPLEN];
+   char msg[MSGLEN] = "Hello";
 
-   for (int i = 0; i < 4; ++i)
-   {
-      int PRIORITY = i < 2 ? LOW : HIGH;
-      int tid = CREATE(PRIORITY, Task2);
-      uart_printf(CONSOLE, "Created: <%d>\r\n", tid);
-   }
+   // can test S/R and R/S using priority
+   int test_send_id = CREATE(LOW, Task2);
+   int myid = MYTID();
+
+   uart_printf(CONSOLE, "FirstUserTask: TID: <%d>, TEST_SEND_ID: <%d>\r\n", myid, test_send_id);
+   int ret_val = SEND(test_send_id, msg, MSGLEN, reply, RPLEN);
+   uart_printf(CONSOLE, "FirstUserTask: SEND returned: <%d>\r\n", ret_val);
+
    uart_printf(CONSOLE, "FirstUserTask: exiting\r\n");
    EXIT();
 }
 
 void Task2()
 {
-   int myid = MYTID();
-   int parentid = MYPARENTTID();
-   uart_printf(CONSOLE, "TID: <%d>, PARENT-TID: <%d>\r\n", myid, parentid);
-   YIELD();
-   uart_printf(CONSOLE, "TID: <%d>, PARENT-TID: <%d>\r\n", myid, parentid);
+   uart_printf(CONSOLE, "SecondUserTask running\r\n");
+   int send_tid = -1;
+   char msg[MSGLEN]; // test with differing lengths
+
+   int ret_val = RECEIVE(&send_tid, msg, MSGLEN);
+   uart_printf(CONSOLE, "UT2: RECEIVE returned: <%d>\r\n", ret_val);
+   uart_printf(CONSOLE, "UT2: TID: <%d>, MSG: <%s>\r\n", send_tid, msg);
+
    EXIT();
 }

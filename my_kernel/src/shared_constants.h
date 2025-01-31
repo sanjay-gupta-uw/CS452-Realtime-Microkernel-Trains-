@@ -17,6 +17,9 @@ typedef enum
    SVC_MYPARENTID,
    SVC_YIELD,
    SVC_EXIT,
+   SVC_SEND,
+   SVC_RECEIVE,
+   SVC_REPLY,
 } Syscall;
 
 #endif
