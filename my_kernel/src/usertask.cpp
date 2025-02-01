@@ -2,17 +2,24 @@
 #include "rpi.h"
 #include "shared_constants.h"
 #include "kern/syscall.h"
+#include "user/name_server.h" 
 
 #define RPLEN 6
 #define MSGLEN 6
+#define NS_TEST_NAME "NS_TEST"
 
 // ********** USER TASKS **********
 // this runs with medium priority
 void Task1()
 {
    uart_printf(CONSOLE, "FirstUserTask running\r\n");
-   // int nameserver = CREATE(MEDIUM, NameServer);
+   int name_server_tid = CREATE(MEDIUM, NameServer);
+   uart_printf(CONSOLE, "FirstUserTask: Created NameServer with TID <%d>\r\n", name_server_tid);
    // int rps_server = CREATE(MEDIUM, RPS);
+
+   int ns_test_tid = CREATE(HIGH, Task4);
+   uart_printf(CONSOLE, "FirstUserTask: Created Task4 (NS TEST) with TID <%d>\r\n", ns_test_tid);
+
    char reply[RPLEN];
    char msg[MSGLEN] = "Hello";
 
@@ -50,5 +57,35 @@ void Task3()
 
    REPLY(0, "RPT3", 5);
 
+   EXIT();
+}
+
+void Task4()
+{
+   uart_printf(CONSOLE, "Task4 (NS TEST) running\r\n");
+
+   int my_tid = MYTID();
+   uart_printf(CONSOLE, "Task4: Registering NameServer Test Service as <NS_TEST>\r\n");
+
+   int reg_status = REGISTERAS(NS_TEST_NAME);
+   uart_printf(CONSOLE, "Task4: REGISTERAS returned <%d>\r\n", reg_status);
+
+   int whois_tid = WHOIS(NS_TEST_NAME);
+   uart_printf(CONSOLE, "Task4: WHOIS returned TID: <%d>\r\n", whois_tid);
+
+   if (whois_tid == my_tid)
+   {
+      uart_printf(CONSOLE, "Task4: NameServer TEST PASSED - Matching TID!\r\n");
+   }
+   else
+   {
+      uart_printf(CONSOLE, "Task4: NameServer TEST FAILED - TID mismatch!\r\n");
+   }
+
+   uart_printf(CONSOLE, "Task4: Yielding before exit to ensure NameServer finishes processing...\r\n");
+   
+   YIELD();
+
+   uart_printf(CONSOLE, "Task4: Now Exiting.\r\n");
    EXIT();
 }

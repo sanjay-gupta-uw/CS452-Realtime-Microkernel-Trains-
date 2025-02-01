@@ -1,6 +1,6 @@
 # make --version
 # XDIR:=/u/cs452/public/xdev
-XDIR:=/Applications/ArmGNUToolchain/14.2.rel1/aarch64-none-elf
+XDIR:=/opt/aarch64-none-elf
 ARCH=cortex-a72
 TRIPLE=aarch64-none-elf
 XBINDIR:=$(XDIR)/bin
@@ -28,7 +28,7 @@ CXXFLAGS:=-g -pipe -static -mstrict-align -ffreestanding -fno-exceptions -fno-un
 			-mgeneral-regs-only -mcpu=$(ARCH) -march=armv8-a $(MMUFLAGS) $(WARNINGS) $(OPTFLAGS) -std=c++17 
 
 # Linker options
-LDFLAGS:=-Wl,-nmagic -Wl,-Tlinker.ld -Wl,--no-warn-rwx-segments -nostartfiles -nodefaultlibs -nostdlib
+LDFLAGS:=-Wl,-nmagic -Wl,-Tlinker.ld -Wl,--no-warn-rwx-segments -nostartfiles -nodefaultlibs -nostdlib -lc
 
 # Source files and include dirs
 SRC_DIR := src
