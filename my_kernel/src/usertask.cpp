@@ -3,89 +3,22 @@
 #include "shared_constants.h"
 #include "kern/syscall.h"
 #include "user/name_server.h" 
+#include "user/rps_server.h" 
+#include "user/rps_client.h"
 
-#define RPLEN 6
-#define MSGLEN 6
-#define NS_TEST_NAME "NS_TEST"
+void Task1() {
+    uart_printf(CONSOLE, "FirstUserTask: Starting RPS test...\r\n");
 
-// ********** USER TASKS **********
-// this runs with medium priority
-void Task1()
-{
-   uart_printf(CONSOLE, "FirstUserTask running\r\n");
-   int name_server_tid = CREATE(MEDIUM, NameServer);
-   uart_printf(CONSOLE, "FirstUserTask: Created NameServer with TID <%d>\r\n", name_server_tid);
-   // int rps_server = CREATE(MEDIUM, RPS);
+    int ns_tid = CREATE(HIGH, NameServer);
+    uart_printf(CONSOLE, "FirstUserTask: Created NameServer TID = <%d>\r\n", ns_tid);
 
-   int ns_test_tid = CREATE(HIGH, Task4);
-   uart_printf(CONSOLE, "FirstUserTask: Created Task4 (NS TEST) with TID <%d>\r\n", ns_test_tid);
+    int rps_tid = CREATE(MEDIUM, RPSServer);
+    uart_printf(CONSOLE, "FirstUserTask: Created RPS Server TID = <%d>\r\n", rps_tid);
 
-   char reply[RPLEN];
-   char msg[MSGLEN] = "Hello";
+    int c1_tid = CREATE(LOW, RPSClient);
+    int c2_tid = CREATE(LOW, RPSClient);
+    uart_printf(CONSOLE, "FirstUserTask: Created RPS Clients c1 = <%d>, c2 = <%d>\r\n", c1_tid, c2_tid);
 
-   // can test S/R and R/S using priority
-   int test_send_id = CREATE(LOW, Task2);
-   int myid = MYTID();
-
-   uart_printf(CONSOLE, "FirstUserTask: TID: <%d>, TEST_SEND_ID: <%d>\r\n", myid, test_send_id);
-   int ret_val = SEND(test_send_id, msg, MSGLEN, reply, RPLEN);
-   uart_printf(CONSOLE, "FirstUserTask: SEND returned: <%d>, REPLY: <%s>\r\n", ret_val, reply);
-
-   uart_printf(CONSOLE, "FirstUserTask: exiting\r\n");
-   EXIT();
-}
-
-void Task2()
-{
-   uart_printf(CONSOLE, "SecondUserTask running\r\n");
-   int send_tid = -1;
-   char msg[MSGLEN]; // test with differing lengths
-
-   int ret_val = RECEIVE(&send_tid, msg, MSGLEN);
-   uart_printf(CONSOLE, "UT2: BUF SIZE: <%d>, SENDER: <%d>, MSG: <%s>\r\n", ret_val, send_tid, msg);
-
-   int reply_id = CREATE(HIGH, Task3);
-   uart_printf(CONSOLE, "T2 CREATED HIGH PRIORITY TASK FOR REPLY: <%d>\r\n", reply_id);
-   EXIT();
-}
-
-void Task3()
-{
-   uart_printf(CONSOLE, "ThirdUserTask running\r\n");
-   int myid = MYTID();
-   uart_printf(CONSOLE, "ThirdUserTask: TID: <%d>\r\n", myid);
-
-   REPLY(0, "RPT3", 5);
-
-   EXIT();
-}
-
-void Task4()
-{
-   uart_printf(CONSOLE, "Task4 (NS TEST) running\r\n");
-
-   int my_tid = MYTID();
-   uart_printf(CONSOLE, "Task4: Registering NameServer Test Service as <NS_TEST>\r\n");
-
-   int reg_status = REGISTERAS(NS_TEST_NAME);
-   uart_printf(CONSOLE, "Task4: REGISTERAS returned <%d>\r\n", reg_status);
-
-   int whois_tid = WHOIS(NS_TEST_NAME);
-   uart_printf(CONSOLE, "Task4: WHOIS returned TID: <%d>\r\n", whois_tid);
-
-   if (whois_tid == my_tid)
-   {
-      uart_printf(CONSOLE, "Task4: NameServer TEST PASSED - Matching TID!\r\n");
-   }
-   else
-   {
-      uart_printf(CONSOLE, "Task4: NameServer TEST FAILED - TID mismatch!\r\n");
-   }
-
-   uart_printf(CONSOLE, "Task4: Yielding before exit to ensure NameServer finishes processing...\r\n");
-   
-   YIELD();
-
-   uart_printf(CONSOLE, "Task4: Now Exiting.\r\n");
-   EXIT();
+    uart_printf(CONSOLE, "FirstUserTask: Exiting...\r\n");
+    EXIT();
 }

@@ -68,7 +68,7 @@ extern "C" int kmain()
 
    // uart_printf(CONSOLE, "FUNCTION: 0x%x\r\n", function);
    uart_printf(CONSOLE, "TASK1: 0x%x\r\n", Task1);
-   uart_printf(CONSOLE, "TASK2: 0x%x\r\n", Task2);
+   // uart_printf(CONSOLE, "TASK2: 0x%x\r\n", Task2);
    // uart_printf(CONSOLE, "Welcome to the Train Controller SP: %x\n", sp);
 
    // uart_printf(CONSOLE, "F1{0x%x}, F2{0x%x}\n", Task1, Task2);
