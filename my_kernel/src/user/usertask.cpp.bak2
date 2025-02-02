@@ -1,0 +1,58 @@
+#include "usertask.h"
+#include "../rpi.h"
+#include "../shared_constants.h"
+#include "../kern/syscall.h"
+#include "name_server.h" 
+
+// 主测试任务
+void Task1() {
+    uart_printf(CONSOLE, "Task1 started.\r\n");
+
+    // 启动名称服务器任务
+    int ns_tid = CREATE(HIGH, NameServer);
+    setNameServerTid(ns_tid); // 设置名称服务器的任务ID
+
+    // 创建测试任务
+    CREATE(MEDIUM, Task2);
+    CREATE(MEDIUM, Task3);
+    CREATE(MEDIUM, Task4);
+
+    // 注册自己的名字
+    if (REGISTERAS("Task1") != 0) {
+        uart_printf(CONSOLE, "Error registering Task1.\r\n");
+    }
+
+    // 查询任务名并打印结果
+    int test_tid = WHOIS("Task2");
+    uart_printf(CONSOLE, "WHOIS Task2: TID = %d\r\n", test_tid);
+
+    // 发送退出命令
+    EXIT();
+}
+
+// 辅助测试任务
+void Task2() {
+    uart_printf(CONSOLE, "Task2 started.\r\n");
+    if (REGISTERAS("Task2") != 0) {
+        uart_printf(CONSOLE, "Error registering Task2.\r\n");
+    }
+    EXIT();
+}
+
+void Task3() {
+    uart_printf(CONSOLE, "Task3 started.\r\n");
+    if (REGISTERAS("Task3") != 0) {
+        uart_printf(CONSOLE, "Error registering Task3.\r\n");
+    }
+    EXIT();
+}
+
+void Task4() {
+    uart_printf(CONSOLE, "Task4 started.\r\n");
+    if (REGISTERAS("Task4") != 0) {
+        uart_printf(CONSOLE, "Error registering Task4.\r\n");
+    }
+    int whois_tid = WHOIS("Task3");
+    uart_printf(CONSOLE, "WHOIS Task3: TID = %d\r\n", whois_tid);
+    EXIT();
+}

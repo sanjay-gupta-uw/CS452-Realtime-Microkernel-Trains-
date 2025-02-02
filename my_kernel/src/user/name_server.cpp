@@ -1,96 +1,111 @@
 #include "name_server.h"
 #include "../kern/syscall.h"
-#include "../containers/ringbuffer.h"
-#include "../containers/pqueue.h"
-#include "../kern/kernel.h"
-#include "../kern/task.h"
 #include "../rpi.h"
 #include <cstring>
+#include <cstdlib>
 
 #define MAX_NAME_ENTRIES 64
 #define MAX_NAME_LENGTH 32
 
 struct NameEntry {
-    char name[MAX_NAME_LENGTH];
+    char name[MAX_NAME_LENGTH + 1]; // Ensure space for null-terminator
     int tid;
 };
+
+static int name_server_tid = -1; // Global variable to store Name Server task ID
 
 void NameServer() {
     uart_printf(CONSOLE, "Name Server running...\r\n");
 
-    NameEntry names[MAX_NAME_ENTRIES];
+    NameEntry names[MAX_NAME_ENTRIES] = {};
     int name_count = 0;
 
     while (true) {
         int sender_tid;
-        char msg[MAX_NAME_LENGTH + 2];
+        char msg[MAX_NAME_LENGTH + 2]; // Extra space for command and null-terminator
 
-        RECEIVE(&sender_tid, msg, sizeof(msg));
+        int received = RECEIVE(&sender_tid, msg, sizeof(msg) - 1);
+        uart_printf(CONSOLE, "Received message from TID %d with content: %s\n", sender_tid, msg);
 
-        if (msg[0] == 'R') { // REGISTERAS request
-            if (name_count < MAX_NAME_ENTRIES) {
-                strncpy(names[name_count].name, msg + 1, MAX_NAME_LENGTH);
-                names[name_count].tid = sender_tid;
-                name_count++;
+        if (received < 0) {
+            uart_printf(CONSOLE, "NameServer: Error receiving message.\r\n");
+            continue;
+        }
+        msg[received] = '\0'; // Ensure null-termination
 
-                if (REPLY(sender_tid, "OK", 2) < 0) {
-                    uart_printf(CONSOLE, "NameServer: WARNING - Failed to REPLY to TID <%d>\r\n", sender_tid);
-                }
-            } else {
-                if (REPLY(sender_tid, "FULL", 4) < 0) {
-                    uart_printf(CONSOLE, "NameServer: WARNING - Failed to REPLY (FULL) to TID <%d>\r\n", sender_tid);
-                }
-            }
-        } 
-        else if (msg[0] == 'W') { // WHOIS request
-            int found = 0;
-            int found_tid = -1;
+        char command = msg[0];
+        const char* name = msg + 1;
 
-            for (int i = 0; i < name_count; i++) {
-                if (strncmp(names[i].name, msg + 1, MAX_NAME_LENGTH) == 0) {
-                    found_tid = names[i].tid;
-                    found = 1;
+        uart_printf(CONSOLE, "Processing command: %c for name: %s\n", command, name);
+
+        if (command == 'R') { // REGISTERAS request
+            int index = -1;
+            for (int i = 0; i < name_count; ++i) {
+                if (strcmp(names[i].name, name) == 0) {
+                    index = i;
                     break;
                 }
             }
 
-            if (!found) {
-                found_tid = -1;
+            if (index == -1) { // New entry
+                if (name_count >= MAX_NAME_ENTRIES) {
+                    REPLY(sender_tid, "FULL", 5);
+                    continue;
+                }
+                index = name_count++;
+                strncpy(names[index].name, name, MAX_NAME_LENGTH);
+                names[index].name[MAX_NAME_LENGTH] = '\0'; // Ensure null-termination
             }
-
-            if (REPLY(sender_tid, (char*)&found_tid, sizeof(int)) < 0) {
-                uart_printf(CONSOLE, "NameServer: WARNING - Failed to REPLY to TID <%d>\r\n", sender_tid);
+            names[index].tid = sender_tid;
+            uart_printf(CONSOLE, "Registered name: %s with TID: %d\n", name, sender_tid);
+            REPLY(sender_tid, "OK", 3);
+        } else if (command == 'W') { // WHOIS request
+            int found_tid = -1;
+            for (int i = 0; i < name_count; i++) {
+                if (strcmp(names[i].name, name) == 0) {
+                    found_tid = names[i].tid;
+                    break;
+                }
             }
+            uart_printf(CONSOLE, "Lookup for name: %s found TID: %d\n", name, found_tid);
+            REPLY(sender_tid, reinterpret_cast<char*>(&found_tid), sizeof(found_tid));
         }
-
-        YIELD();
     }
 }
 
 
 int REGISTERAS(const char *name) {
-    char msg[MAX_NAME_LENGTH + 2];
-    char reply[4];
+    if (name_server_tid == -1) {
+        return -3; // NameServer not started or unknown
+    }
 
-    msg[0] = 'R'; 
+    char msg[MAX_NAME_LENGTH + 2] = {'R'};
     strncpy(msg + 1, name, MAX_NAME_LENGTH);
+    msg[MAX_NAME_LENGTH + 1] = '\0'; // Ensure null-termination
 
-    int ret = SEND(1, msg, sizeof(msg), reply, sizeof(reply));
-    if (ret < 0) return -2;  // Error in SEND()
+    char reply[5];
+    int ret = SEND(name_server_tid, msg, strlen(msg) + 1, reply, sizeof(reply));
+    reply[sizeof(reply) - 1] = '\0'; // Ensure null-termination for safety
 
-    return (strncmp(reply, "OK", 2) == 0) ? 0 : -1;
+    if (ret < 0) return -2; // Error in SEND()
+    return (strcmp(reply, "OK") == 0) ? 0 : -1;
 }
 
 int WHOIS(const char *name) {
-    char msg[MAX_NAME_LENGTH + 2];
-    int tid = -1;
+    if (name_server_tid == -1) {
+        return -3; // NameServer not started or unknown error
+    }
 
-    msg[0] = 'W'; 
+    char msg[MAX_NAME_LENGTH + 2] = {'W'};
     strncpy(msg + 1, name, MAX_NAME_LENGTH);
+    msg[MAX_NAME_LENGTH + 1] = '\0'; // Ensure null-termination
 
-    int ret = SEND(1, msg, sizeof(msg), (char*)&tid, sizeof(int));
-    if (ret < 0) return -2;  // Error in SEND()
-
+    int tid;
+    int ret = SEND(name_server_tid, msg, strlen(msg) + 1, reinterpret_cast<char*>(&tid), sizeof(tid));
+    if (ret < 0) return -2; // Error in SEND()
     return tid;
 }
 
+void setNameServerTid(int tid) {
+    name_server_tid = tid;
+}

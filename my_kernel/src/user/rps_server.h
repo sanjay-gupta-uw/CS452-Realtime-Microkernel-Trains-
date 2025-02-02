@@ -1,6 +1,7 @@
-#ifndef _RPS_SERVER_H_
-#define _RPS_SERVER_H_
+#ifndef RPS_SERVER_H
+#define RPS_SERVER_H
 
-void RPSServer();
+// Function to start the Rock/Paper/Scissors server
+void RpsServer();
 
-#endif // _RPS_SERVER_H_
+#endif // RPS_SERVER_H

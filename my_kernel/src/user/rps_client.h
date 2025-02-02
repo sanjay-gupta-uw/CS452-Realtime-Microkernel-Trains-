@@ -1,6 +1,7 @@
-#ifndef _RPS_CLIENT_H_
-#define _RPS_CLIENT_H_
+#ifndef RPS_CLIENT_H
+#define RPS_CLIENT_H
 
-void RPSClient();
+// Function to start an RPS game client
+void RpsClient();
 
-#endif // _RPS_CLIENT_H_
+#endif // RPS_CLIENT_H

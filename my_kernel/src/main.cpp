@@ -5,7 +5,7 @@
 #include "dummy.h"
 #include "rpi.h"
 #include "ui.h"
-#include "usertask.h"
+#include "user/usertask.h"
 #include "marklin/switch.h"
 #include "marklin/train.h"
 

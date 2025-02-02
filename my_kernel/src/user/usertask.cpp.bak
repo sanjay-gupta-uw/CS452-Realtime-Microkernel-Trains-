@@ -1,8 +1,10 @@
 #include "usertask.h"
-#include "rpi.h"
-#include "shared_constants.h"
-#include "kern/syscall.h"
-#include "user/name_server.h" 
+#include "../rpi.h"
+#include "../shared_constants.h"
+#include "../kern/syscall.h"
+#include "name_server.h" 
+#include "rps_server.h" 
+#include "rps_client.h"
 
 #define RPLEN 6
 #define MSGLEN 6
