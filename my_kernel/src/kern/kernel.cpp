@@ -154,17 +154,17 @@ void Kernel::Send()
    TaskDescriptor *sender_task = active_task;
    TaskDescriptor *receiver_task = &task_table[receiver_tid];
 
-   receiver_task->inbox.Push(sender_task->tid); // transfer sender's tid to receiver's inbox
-
    if (receiver_task->state != RECEIVE_BLOCKED)
    {
-      sender_task->setState(SEND_BLOCKED); // SENDER BLOCKS
+      receiver_task->inbox.Push(sender_task->tid); // transfer sender's tid to receiver's inbox
+      sender_task->setState(SEND_BLOCKED);         // SENDER BLOCKS
       return;
    }
    else
    {
       // CREATE FUNCTION FOR THIS
       receiver_task->setState(READY); // RECEIVER UNBLOCKS
+      receiver_task->inbox.Pop(&receiver_tid);
       ready_queue.Push(receiver_tid, receiver_task->getPriority());
 
       sender_task->setState(REPLY_BLOCKED);                         // SENDER BLOCKS
@@ -182,11 +182,13 @@ void Kernel::Receive()
    if (active_task->inbox.Pop(&sender_tid) == -1)
    {
       active_task->setState(RECEIVE_BLOCKED); // RECEIVER BLOCKS
+      uart_printf(CONSOLE, "RECEIVER BLOCKED\r\n");
       return;
    }
    // ensure sender is in send block
    // LOOKUP SENDER TASK
    TaskDescriptor *sender_task = &task_table[sender_tid];
+   uart_printf(CONSOLE, "ACTIVE TASK: %d, SENDER TASK: %d\r\n", active_task->tid, sender_task->tid);
    if (sender_task->state != SEND_BLOCKED) // SANITY
    {
       uart_printf(CONSOLE, "PANIC: POTENTIAL CAUSE ~ SENDER EXIT ALREADY.\r\n");
@@ -254,11 +256,11 @@ int Kernel::DispatchTask(volatile Context *kernel, TaskDescriptor *scheduled_tas
 
 void Kernel::Handler(int N)
 {
-   uart_printf(CONSOLE, "HANDLER: %d\r\n", N);
+   uart_printf(CONSOLE, "HANDLER: {%d}", N);
    switch (N)
    {
    case SVC_CREATE:
-      // uart_printf(CONSOLE, "Creating Task\r\n");
+      uart_printf(CONSOLE, "(CREATE)\r\n");
       if (active_task != nullptr)
       {
          int PRIORITY = active_task->context.x[0];
@@ -275,13 +277,13 @@ void Kernel::Handler(int N)
       break;
 
    case SVC_MYTID:
-      // uart_printf(CONSOLE, "Getting Task ID\r\n");
+      uart_printf(CONSOLE, "(MYTID)\r\n");
       active_task->SetRetval(MyTid());
       break;
 
    case SVC_MYPARENTID:
    {
-      // uart_printf(CONSOLE, "Getting Parent Task ID\r\n");
+      uart_printf(CONSOLE, "(MYPARENTID)\r\n");
       int parent_id = MyParentTid();
       active_task->SetRetval(parent_id);
       // uart_printf(CONSOLE, "Parent ID: %d\r\n", parent_id);
@@ -289,30 +291,30 @@ void Kernel::Handler(int N)
    }
 
    case SVC_YIELD:
-      // uart_printf(CONSOLE, "Yielding Task\n");
+      uart_printf(CONSOLE, "(YIELD)\r\n");
       Yield();
       break;
 
    case SVC_EXIT:
-      // uart_printf(CONSOLE, "Exiting Task\n");
+      uart_printf(CONSOLE, "(EXIT)\r\n");
       Exit();
       break;
 
    case SVC_SEND:
-      uart_printf(CONSOLE, "Sending Message Triggered\r\n");
+      uart_printf(CONSOLE, "(SEND)\r\n");
       Send();
       break;
 
    case SVC_RECEIVE:
    {
-      uart_printf(CONSOLE, "Receiving Message Triggered\r\n");
+      uart_printf(CONSOLE, "(RECEIVE)\r\n");
       Receive();
       break;
    }
 
    case SVC_REPLY:
    {
-      uart_printf(CONSOLE, "Replying Message Triggered\r\n");
+      uart_printf(CONSOLE, "(REPLY)\r\n");
       Reply();
       break;
    }

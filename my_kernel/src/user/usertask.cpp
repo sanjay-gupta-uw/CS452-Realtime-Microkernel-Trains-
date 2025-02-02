@@ -13,56 +13,61 @@ void TaskQuery();
 void TaskStressTest();
 
 // Main task to start system services and tests
-void Task1() {
+void Task1()
+{
     uart_printf(CONSOLE, "FirstUserTask: Starting system services.\r\n");
 
     // Start the Name Server
     int ns_tid = CREATE(HIGH, NameServer);
-    if (ns_tid < 0) {
+
+    if (ns_tid < 0)
+    {
         uart_printf(CONSOLE, "Failed to start Name Server. Exiting...\r\n");
         EXIT();
     }
     setNameServerTid(ns_tid);
     uart_printf(CONSOLE, "Name Server started with TID: %d\r\n", ns_tid);
 
-    //test Name Server registration
-    CREATE(MEDIUM, TaskRegister);
+    // test Name Server registration
+    int TR_TID = CREATE(MEDIUM, TaskRegister);
 
-    //test Name Server queries
-    CREATE(MEDIUM, TaskQuery);
+    // test Name Server queries
+    int TQ_TID = CREATE(LOW, TaskQuery);
+
+    uart_printf(CONSOLE, "FUT Created TaskRegister {%d} and TaskQuery {%d}\r\n", TR_TID, TQ_TID);
 
     // test the Name Server
-    CREATE(LOW, TaskStressTest);
+    // CREATE(LOW, TaskStressTest);
 
-    // Allow some time for tasks to execute
-    for (int i = 0; i < 20; ++i) {
-        YIELD();  // Let other tasks process
-    }
-
-    uart_printf(CONSOLE, "FirstUserTask: Shutting down system after tests.\r\n");
-    EXIT();  // End Task1
+    uart_printf(CONSOLE, "FirstUserTask: exiting.\r\n");
+    EXIT(); // End Task1
 }
 
 // Task to register names with the Name Server
-void TaskRegister() {
-    const char* names[] = {"ServiceA", "ServiceB", "ServiceC", "ServiceA"};
-    char reply[10];
+void TaskRegister()
+{
+    int my_tid = MYTID();
 
-    for (int i = 0; i < 4; i++) {
+    const char *names[] = {"ServiceA", "ServiceB", "ServiceC", "ServiceD"};
+
+    for (int i = 0; i < 4; i++)
+    {
+        uart_printf(CONSOLE, "Attempting to regiter self (%d) as '%s'\r\n", my_tid, names[i]);
         int ret = REGISTERAS(names[i]);
-        RECEIVE(0, reply, sizeof(reply)); // Expecting reply from Name Server
-        uart_printf(CONSOLE, "Register '%s' result: %d, reply: %s\r\n", names[i], ret, reply);
+        uart_printf(CONSOLE, "Registration for '%s' returned: %d\r\n", names[i], ret);
     }
 
     EXIT();
 }
 
 // Task to query registered names from the Name Server
-void TaskQuery() {
-    const char* names[] = {"ServiceA", "ServiceB", "ServiceC", "ServiceD"};
+void TaskQuery()
+{
+    const char *names[] = {"ServiceA", "ServiceB", "ServiceC", "ServiceD"};
     int tid;
 
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < 4; i++)
+    {
         tid = WHOIS(names[i]);
         uart_printf(CONSOLE, "WHOIS '%s': TID=%d\r\n", names[i], tid);
     }
@@ -71,15 +76,17 @@ void TaskQuery() {
 }
 
 // Stress test for the Name Server, registers many names
-void TaskStressTest() {
+void TaskStressTest()
+{
     char name[20];
-    char reply[10];
 
-    for (int i = 0; i < 100; i++) {
+    for (int i = 0; i < 100; i++)
+    {
         uart_printf(CONSOLE, "Attempting to register Service%d\r\n", i);
         int ret = REGISTERAS(name);
-        RECEIVE(0, reply, sizeof(reply)); // Expecting reply from Name Server
-        if (ret < 0) {
+        // RECEIVE(0, reply, sizeof(reply)); // Expecting reply from Name Server
+        if (ret < 0)
+        {
             uart_printf(CONSOLE, "Failed to register '%s' due to overflow or error\r\n", name);
             break;
         }
@@ -87,7 +94,6 @@ void TaskStressTest() {
 
     EXIT();
 }
-
 
 /*
 // Task1 starts the servers and clients

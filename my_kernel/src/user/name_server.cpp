@@ -7,48 +7,62 @@
 #define MAX_NAME_ENTRIES 64
 #define MAX_NAME_LENGTH 32
 
-struct NameEntry {
+struct NameEntry
+{
     char name[MAX_NAME_LENGTH + 1]; // Ensure space for null-terminator
     int tid;
 };
 
-static int name_server_tid = -1; // Global variable to store Name Server task ID
+static int NAME_SERVER_TID = -1; // Global variable to store Name Server task ID
 
-void NameServer() {
+void NameServer()
+{
     uart_printf(CONSOLE, "Name Server running...\r\n");
+    // uart_printf(CONSOLE, "DEBUG PAUSE HERE\r\n");
+    // for (;;)
+    // {
+    // }
 
     NameEntry names[MAX_NAME_ENTRIES] = {};
     int name_count = 0;
 
-    while (true) {
+    while (true)
+    {
         int sender_tid;
         char msg[MAX_NAME_LENGTH + 2]; // Extra space for command and null-terminator
 
+        uart_printf(CONSOLE, "NameServer: Waiting for message...\r\n");
         int received = RECEIVE(&sender_tid, msg, sizeof(msg) - 1);
-        uart_printf(CONSOLE, "Received message from TID %d with content: %s\n", sender_tid, msg);
+        uart_printf(CONSOLE, "Received message from TID %d with content: %s\r\n", sender_tid, msg);
 
-        if (received < 0) {
+        if (received < 0)
+        {
             uart_printf(CONSOLE, "NameServer: Error receiving message.\r\n");
             continue;
         }
         msg[received] = '\0'; // Ensure null-termination
 
         char command = msg[0];
-        const char* name = msg + 1;
+        const char *name = msg + 1;
 
-        uart_printf(CONSOLE, "Processing command: %c for name: %s\n", command, name);
+        uart_printf(CONSOLE, "Processing command: %c for name: %s\r\n", command, name);
 
-        if (command == 'R') { // REGISTERAS request
+        if (command == 'R')
+        { // REGISTERAS request
             int index = -1;
-            for (int i = 0; i < name_count; ++i) {
-                if (strcmp(names[i].name, name) == 0) {
+            for (int i = 0; i < name_count; ++i)
+            {
+                if (strcmp(names[i].name, name) == 0)
+                {
                     index = i;
                     break;
                 }
             }
 
-            if (index == -1) { // New entry
-                if (name_count >= MAX_NAME_ENTRIES) {
+            if (index == -1)
+            { // New entry
+                if (name_count >= MAX_NAME_ENTRIES)
+                {
                     REPLY(sender_tid, "FULL", 5);
                     continue;
                 }
@@ -57,42 +71,57 @@ void NameServer() {
                 names[index].name[MAX_NAME_LENGTH] = '\0'; // Ensure null-termination
             }
             names[index].tid = sender_tid;
-            uart_printf(CONSOLE, "Registered name: %s with TID: %d\n", name, sender_tid);
+            uart_printf(CONSOLE, "Registered name: %s with TID: %d\r`\n", name, sender_tid);
             REPLY(sender_tid, "OK", 3);
-        } else if (command == 'W') { // WHOIS request
+        }
+        else if (command == 'W')
+        { // WHOIS request
             int found_tid = -1;
-            for (int i = 0; i < name_count; i++) {
-                if (strcmp(names[i].name, name) == 0) {
+            for (int i = 0; i < name_count; i++)
+            {
+                if (strcmp(names[i].name, name) == 0)
+                {
                     found_tid = names[i].tid;
                     break;
                 }
             }
             uart_printf(CONSOLE, "Lookup for name: %s found TID: %d\n", name, found_tid);
-            REPLY(sender_tid, reinterpret_cast<char*>(&found_tid), sizeof(found_tid));
+            char *reply = reinterpret_cast<char *>(&found_tid);
+            uart_printf(CONSOLE, "Reply: %s\n", reply);
+
+            REPLY(sender_tid, reinterpret_cast<char *>(&found_tid), sizeof(found_tid));
         }
     }
 }
 
-
-int REGISTERAS(const char *name) {
-    if (name_server_tid == -1) {
+int REGISTERAS(const char *name)
+{
+    uart_printf(CONSOLE, "REGISTERAS name: %s\r\n", name);
+    if (NAME_SERVER_TID == -1)
+    {
         return -3; // NameServer not started or unknown
     }
+
+    int my_tid = MYTID();
 
     char msg[MAX_NAME_LENGTH + 2] = {'R'};
     strncpy(msg + 1, name, MAX_NAME_LENGTH);
     msg[MAX_NAME_LENGTH + 1] = '\0'; // Ensure null-termination
 
-    char reply[5];
-    int ret = SEND(name_server_tid, msg, strlen(msg) + 1, reply, sizeof(reply));
-    reply[sizeof(reply) - 1] = '\0'; // Ensure null-termination for safety
+    char reply[3];
+    int reply_len = sizeof(reply);
 
-    if (ret < 0) return -2; // Error in SEND()
+    int ret = SEND(NAME_SERVER_TID, msg, strlen(msg) + 1, reply, reply_len);
+    uart_printf(CONSOLE, "Registered TID {%d} with name {%s}\r\n", my_tid, name);
+    if (ret < 0)
+        return -2; // Error in SEND()
     return (strcmp(reply, "OK") == 0) ? 0 : -1;
 }
 
-int WHOIS(const char *name) {
-    if (name_server_tid == -1) {
+int WHOIS(const char *name)
+{
+    if (NAME_SERVER_TID == -1)
+    {
         return -3; // NameServer not started or unknown error
     }
 
@@ -101,11 +130,13 @@ int WHOIS(const char *name) {
     msg[MAX_NAME_LENGTH + 1] = '\0'; // Ensure null-termination
 
     int tid;
-    int ret = SEND(name_server_tid, msg, strlen(msg) + 1, reinterpret_cast<char*>(&tid), sizeof(tid));
-    if (ret < 0) return -2; // Error in SEND()
+    int ret = SEND(NAME_SERVER_TID, msg, strlen(msg) + 1, reinterpret_cast<char *>(&tid), sizeof(tid));
+    if (ret < 0)
+        return -2; // Error in SEND()
     return tid;
 }
 
-void setNameServerTid(int tid) {
-    name_server_tid = tid;
+void setNameServerTid(int tid)
+{
+    NAME_SERVER_TID = tid;
 }
