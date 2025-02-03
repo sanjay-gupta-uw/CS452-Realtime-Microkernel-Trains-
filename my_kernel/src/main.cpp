@@ -46,6 +46,11 @@ extern "C" size_t fetch_sp();
 extern "C" int _get_el_debug();
 extern "C" void setup_mmu();
 
+extern "C" void printASM(int x0)
+{
+   uart_printf(CONSOLE, "X0: 0x%x \n", x0);
+}
+
 extern "C" int kmain()
 {
 #if defined(MMU)
@@ -74,7 +79,8 @@ extern "C" int kmain()
    // uart_printf(CONSOLE, "F1{0x%x}, F2{0x%x}\n", Task1, Task2);
    // Initialize kernel context
    Context kernel_context;
-   Kernel kernel(Task1);
+   // Kernel kernel(Task1);
+   Kernel kernel(PerformanceTask); // bootstrap with performance task
 
    // move_cursor(CONSOLE, 1, 1);
 

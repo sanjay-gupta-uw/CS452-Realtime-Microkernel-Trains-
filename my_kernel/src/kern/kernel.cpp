@@ -1,5 +1,7 @@
 #include "kernel.h"
 #include "../rpi.h"
+
+/***************************************************/
 // #if !defined(MMU)
 #include <cstddef>
 
@@ -23,6 +25,7 @@ extern "C" void *memcpy(void *dest, const void *src, size_t n)
    return dest;
 }
 // #endif
+/***************************************************/
 
 Kernel::Kernel()
 {
@@ -264,6 +267,7 @@ void Kernel::Handler(int N)
       if (active_task != nullptr)
       {
          int PRIORITY = active_task->context.x[0];
+         uart_printf(CONSOLE, "PRIORITY: {%d}\r\n", PRIORITY);
          // uart_printf(CONSOLE, "F{0x%x}\n", active_task->context.x[1]); // this prints the correct value
          int ret_val = Create(PRIORITY, (void (*)())active_task->context.x[1]);
          // uart_printf(CONSOLE, "TID: {%d}\n", ret_val);
@@ -319,6 +323,21 @@ void Kernel::Handler(int N)
       break;
    }
 
+   case SVC_ICACHE:
+      uart_printf(CONSOLE, "(ICACHE)\r\n");
+      enable_icache();
+      break;
+
+   case SVC_DCACHE:
+      uart_printf(CONSOLE, "(DCACHE)\r\n");
+      enable_dcache();
+      break;
+
+   case SVC_BCACHE:
+      uart_printf(CONSOLE, "(BCACHE)\r\n");
+      enable_bcache();
+      break;
+
    default:
       break;
    }
@@ -358,7 +377,28 @@ int Kernel::CopyMessage(TaskDescriptor *sender_td, TaskDescriptor *receiver_td, 
    return destlen;
 }
 
-extern "C" void printASM(int x0)
+// *********************************************
+// Perf test runs in this order, and starts with no cache
+// so when we enable icache first, it is from disabled state -> enabled state
+void Kernel::enable_icache()
 {
-   uart_printf(CONSOLE, "X0: 0x%x \n", x0);
+   asm volatile("msr sctlr_el1, %x0\n\t" ::"r"(1 << 12));
+   RepushActiveTask();
+}
+
+void Kernel::enable_dcache()
+{
+   asm volatile("msr sctlr_el1, %x0\n\t" ::"r"(1 << 2));
+   RepushActiveTask();
+}
+
+void Kernel::enable_bcache()
+{
+   // enabled -> enabled (clean cache)
+   asm volatile("msr sctlr_el1, %x0\n\t" ::"r"((1 << 2) | (1 << 12)));
+
+   asm volatile("dc cisw, %x0\n\t" ::"r"(0)); // Clean and invalidate D-cache
+   asm volatile("ic ialluis\n\t");            // Invalidate I-cache
+
+   RepushActiveTask();
 }

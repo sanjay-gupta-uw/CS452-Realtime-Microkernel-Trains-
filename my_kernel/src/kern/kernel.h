@@ -39,6 +39,9 @@ private:
 
    int CopyMessage(TaskDescriptor *sender_td, TaskDescriptor *receiver_td, bool is_reply);
    void inline RepushActiveTask();
+   void enable_icache();
+   void enable_dcache();
+   void enable_bcache();
 };
 
 #endif

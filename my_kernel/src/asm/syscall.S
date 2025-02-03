@@ -48,3 +48,22 @@ RECEIVE:
 REPLY:
     svc #7
     ret
+
+
+.global ENABLE_ICACHE
+.balign 16
+ENABLE_ICACHE:
+    svc #8
+    ret
+
+.global ENABLE_DCACHE
+.balign 16
+ENABLE_DCACHE:
+    svc #9
+    ret
+
+.global ENABLE_BCACHE
+.balign 16
+ENABLE_BCACHE:
+    svc #10
+    ret

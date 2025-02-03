@@ -37,7 +37,7 @@ Clock::Clock()
 
 Clock::~Clock() {}
 
-uint32_t Clock::Time() { return last_time; }
+uint32_t Clock::Time() { return SYSTIMER_REG(SYSTIMER_CLO); }
 
 void Clock::Update()
 {

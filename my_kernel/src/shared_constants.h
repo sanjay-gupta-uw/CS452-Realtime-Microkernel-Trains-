@@ -20,6 +20,9 @@ typedef enum
    SVC_SEND,
    SVC_RECEIVE,
    SVC_REPLY,
+   SVC_ICACHE,
+   SVC_DCACHE,
+   SVC_BCACHE,
 } Syscall;
 
 #endif

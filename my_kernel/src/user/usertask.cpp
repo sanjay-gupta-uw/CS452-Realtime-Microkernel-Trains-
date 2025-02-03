@@ -7,6 +7,12 @@
 #include "rps_client.h"
 #include <cstring>
 
+#define CACHE_OPTS 4
+#define SSR_EXCHANGE_OPTS 2
+#define MSG_SIZE_OPTS 3
+// #define REPEATS 1
+#define REPEATS 100
+
 // Task function prototypes
 void TaskRegister();
 void TaskQuery();
@@ -127,3 +133,200 @@ void Task1() {
     EXIT();  // End Task1
 }
 */
+
+static void SendTask(int r_tid, int msglen)
+{
+    char reply_4[4] = "123";
+    char reply_64[64] = "123456789012345678901234567890123456789012345678901234567890123";
+    char reply_256[256] = "123456789012345678901234567890123456789012345678901234567890123412345678901234567890123456789012345678901234567890123456789012341234567890123456789012345678901234567890123456789012345678901234123456789012345678901234567890123456789012345678901234567890123";
+    char quit[2] = "q";
+
+    char *s;
+    switch (msglen)
+    {
+    case 0:
+        s = reply_4;
+        msglen = 4;
+        break;
+
+    case 1:
+        s = reply_64;
+        msglen = 64;
+        break;
+
+    case 2:
+        s = reply_256;
+        msglen = 256;
+        break;
+    case 3:
+        s = quit;
+        msglen = 2;
+    }
+
+    uart_printf(CONSOLE, "ABOUT TO SEND TO RECEIVER %d\r\n", r_tid);
+    int retval = SEND(r_tid, s, msglen, s, msglen);
+    uart_printf(CONSOLE, "Received {%d} bytes {%s} from R{%d}\r\n", retval, s, r_tid);
+    if (retval < 0)
+    {
+        uart_printf(CONSOLE, "SendTask: SEND failed with retval %d\r\n", retval);
+    }
+}
+// This task is used to test the performance of the SSR system under 48 different scenarios
+void PerformanceTask()
+{
+#if OPT == 1
+#define OPT_VALUE 1
+#else
+#define OPT_VALUE 0
+#endif
+
+    int message_sizes[3] = {4, 64, 256};
+    // Performance test
+    int tid = MYTID();
+    uart_printf(CONSOLE, "PerformanceTask: TID=%d\r\n", tid);
+
+    // Performance test
+    // int COMPILER_OPTS = 2; // perform this outside of the loop
+
+    uint32_t times[CACHE_OPTS][SSR_EXCHANGE_OPTS][MSG_SIZE_OPTS];
+
+    for (int cache_opt = 0; cache_opt < CACHE_OPTS; ++cache_opt)
+    {
+        // if (cache_opt > 0)
+        // {
+        //     break;
+        // }
+        switch (cache_opt)
+        {
+        case 0:
+            // No cache
+            break;
+        case 1:
+            // I-cache
+            uart_printf(CONSOLE, "ENABLE_ICACHE\r\n");
+            ENABLE_ICACHE();
+            uart_printf(CONSOLE, "HERE1\r\n");
+            break;
+        case 2:
+            // D-cache
+            uart_printf(CONSOLE, "ENABLE_DCACHE\r\n");
+            ENABLE_DCACHE();
+            break;
+        case 3:
+            // Both caches
+            uart_printf(CONSOLE, "ENABLE_BCACHE\r\n");
+            ENABLE_BCACHE();
+            break;
+        }
+        uart_printf(CONSOLE, "HERE2\r\n");
+
+        uint32_t start_time, end_time;
+        for (int isReceiveFirst = 0; isReceiveFirst < SSR_EXCHANGE_OPTS; ++isReceiveFirst)
+        {
+            int receiver_tid = isReceiveFirst ? CREATE(HIGH, ReceiveTask) : CREATE(LOW, ReceiveTask);
+            // YIELD(); // dont need yield since create reschedules
+            for (int msg_opt = 0; msg_opt < MSG_SIZE_OPTS; ++msg_opt)
+            {
+                start_time = clock.Time();
+
+                // Performance test
+                for (int m = 0; m < REPEATS; ++m)
+                {
+                    SendTask(receiver_tid, msg_opt);
+                }
+                end_time = clock.Time();
+
+                times[cache_opt][isReceiveFirst][msg_opt] = (end_time - start_time) / REPEATS; // update times array
+            }
+            SendTask(receiver_tid, 3); // need to restart task with different priority
+        }
+    }
+
+    clear_screen(CONSOLE);
+
+    uart_printf(CONSOLE, "**********\r\n");
+    uart_printf(CONSOLE, "Final Results (REPEAT = %d):\r\n", REPEATS);
+
+    const char *opt = "opt";
+    const char *noopt = "noopt";
+
+    const char *opt_string;
+    opt_string = OPT_VALUE ? opt : noopt;
+
+    for (int cache_opt = 0; cache_opt < CACHE_OPTS; ++cache_opt)
+    {
+        // if (cache_opt > 0)
+        // {
+        //     break;
+        // }
+        const char *nocache = "nocache";
+        const char *icache = "icache";
+        const char *dcache = "dcache";
+        const char *bcache = "bcache";
+
+        const char *cache_string;
+        switch (cache_opt)
+        {
+        case 0:
+            cache_string = nocache;
+            break;
+        case 1:
+            cache_string = icache;
+            break;
+        case 2:
+            cache_string = dcache;
+            break;
+        case 3:
+            cache_string = bcache;
+            break;
+        }
+
+        for (int isReceiveFirst = 0; isReceiveFirst < SSR_EXCHANGE_OPTS; ++isReceiveFirst)
+        {
+            for (int msg_opt = 0; msg_opt < MSG_SIZE_OPTS; ++msg_opt)
+            {
+                uart_printf(CONSOLE, "%s,%s,%c,%d,%d\r\n", opt_string, cache_string, isReceiveFirst ? 'R' : 'S', message_sizes[msg_opt], times[cache_opt][isReceiveFirst][msg_opt]);
+            }
+        }
+    }
+    EXIT();
+}
+
+void ReceiveTask()
+{
+    int tid = MYTID();
+    uart_printf(CONSOLE, "ReceiveTask: TID=%d\r\n", tid);
+    int sender_tid;
+    char msg[256];
+    char reply[256];
+
+    while (true)
+    {
+        int msglen = RECEIVE(&sender_tid, msg, 256);
+        if (msglen < 0)
+        {
+            uart_printf(CONSOLE, "ReceiveTask: RECEIVE failed with retval %d\r\n", msglen);
+            break;
+        }
+        uart_printf(CONSOLE, "ReceiveTask: Received message ({%d} bytes) from %d: %s\r\n", msglen, sender_tid, msg);
+
+        if (msg[0] == 'q')
+        {
+            uart_printf(CONSOLE, "ReceiveTask: Exiting.\r\n");
+            msglen = REPLY(sender_tid, "Q", 2);
+            break;
+        }
+        for (int i = 0; i < msglen - 1; i++)
+        {
+            reply[i] = '1';
+        }
+        reply[msglen] = '\0';
+        // reply
+        REPLY(sender_tid, reply, msglen);
+
+        // this should execute after the sender has received the reply if LOWER priority
+        // uart_printf(CONSOLE, "ReceiveTask: Replied to %d: %s\r\n", sender_tid, "World");
+    }
+
+    EXIT();
+}
