@@ -25,6 +25,7 @@ void RpsClient() {
         uart_printf(CONSOLE, "Failed to find RPS Server\r\n");
         return;
     }
+    uart_printf(CONSOLE, "RPS Server found by RPS Client with Tid %d\r\n", MYTID());
 
     // Register with the server
     GameRequest req;
@@ -45,10 +46,8 @@ void RpsClient() {
         return;
     }
 
-    // Interpret the game result
     uart_printf(CONSOLE, "Game result: %s\r\n", reply);
 
-    // Send a quit message
     req.type = QUIT;
     SEND(server_tid, (char*)&req, sizeof(req), NULL, 0);
 }

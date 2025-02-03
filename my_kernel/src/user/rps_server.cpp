@@ -75,11 +75,11 @@ void RpsServer() {
                     players[index].active = false;
                     uart_printf(CONSOLE, "Player %d quit.\r\n", sender_tid);
                     // Handle the case if player was in a game
-                    resolveGame(index, -1); // Force resolve with no opponent
+                    resolveGame(index, -1);
                 }
                 break;
         }
-        YIELD();  // Yield CPU to other tasks
+        YIELD(); 
     }
 }
 
@@ -97,26 +97,33 @@ void handlePlay(int index, int choice) {
 }
 
 void resolveGame(int p1_index, int p2_index) {
-    if (p2_index == -1) {  // No opponent to match
-        REPLY(players[p1_index].tid, "WAIT", 5); // Tell player to wait
+    if (p2_index == -1) {
+        REPLY(players[p1_index].tid, "WAIT", 5);
+        uart_printf(CONSOLE, "Game unresolved for Player %d: Waiting for an opponent.\r\n", players[p1_index].tid);
         return;
     }
 
     int result1, result2;
     if (players[p1_index].choice == players[p2_index].choice) {
         result1 = result2 = 0; // Draw
+        uart_printf(CONSOLE, "Game draw between Player %d and Player %d.\r\n", players[p1_index].tid, players[p2_index].tid);
     } else if ((players[p1_index].choice + 1) % 3 == players[p2_index].choice) {
         result1 = -1; // p1 loses
         result2 = 1;  // p2 wins
+        uart_printf(CONSOLE, "Player %d wins over Player %d.\r\n", players[p2_index].tid, players[p1_index].tid);
     } else {
         result1 = 1;  // p1 wins
         result2 = -1; // p2 loses
+        uart_printf(CONSOLE, "Player %d wins over Player %d.\r\n", players[p1_index].tid, players[p2_index].tid);
     }
 
-    // Reply to both players with the result
+    uart_printf(CONSOLE, "Sending result to Player %d: %d\r\n", players[p1_index].tid, result1);
+    uart_printf(CONSOLE, "Sending result to Player %d: %d\r\n", players[p2_index].tid, result2);
+
     REPLY(players[p1_index].tid, (char*)&result1, sizeof(result1));
     REPLY(players[p2_index].tid, (char*)&result2, sizeof(result2));
 
     // Reset choices after the game
     players[p1_index].choice = players[p2_index].choice = -1;
 }
+
