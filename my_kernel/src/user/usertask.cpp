@@ -11,7 +11,7 @@
 #define SSR_EXCHANGE_OPTS 2
 #define MSG_SIZE_OPTS 3
 // #define REPEATS 1
-#define REPEATS 10
+#define REPEATS 1000
 
 // Task function prototypes
 void TaskRegister();
@@ -163,9 +163,9 @@ static void SendTask(int r_tid, int msglen)
         msglen = 2;
     }
 
-    uart_printf(CONSOLE, "ABOUT TO SEND TO RECEIVER %d\r\n", r_tid);
+    // uart_printf(CONSOLE, "ABOUT TO SEND TO RECEIVER %d\r\n", r_tid);
     int retval = SEND(r_tid, s, msglen, s, msglen);
-    uart_printf(CONSOLE, "Received {%d} bytes {%s} from R{%d}\r\n", retval, s, r_tid);
+    // uart_printf(CONSOLE, "Received {%d} bytes {%s} from R{%d}\r\n", retval, s, r_tid);
     if (retval < 0)
     {
         uart_printf(CONSOLE, "SendTask: SEND failed with retval %d\r\n", retval);
@@ -218,7 +218,6 @@ void PerformanceTask()
             ENABLE_BCACHE();
             break;
         }
-        uart_printf(CONSOLE, "HERE2\r\n");
 
         uint32_t start_time, end_time;
         for (int isReceiveFirst = 0; isReceiveFirst < SSR_EXCHANGE_OPTS; ++isReceiveFirst)
@@ -289,13 +288,14 @@ void PerformanceTask()
             }
         }
     }
+
     EXIT();
 }
 
 void ReceiveTask()
 {
     int tid = MYTID();
-    uart_printf(CONSOLE, "ReceiveTask: TID=%d\r\n", tid);
+    // uart_printf(CONSOLE, "ReceiveTask: TID=%d\r\n", tid);
     int sender_tid;
     char msg[256];
     char reply[256];
@@ -308,11 +308,11 @@ void ReceiveTask()
             uart_printf(CONSOLE, "ReceiveTask: RECEIVE failed with retval %d\r\n", msglen);
             break;
         }
-        uart_printf(CONSOLE, "ReceiveTask: Received message ({%d} bytes) from %d: %s\r\n", msglen, sender_tid, msg);
+        // uart_printf(CONSOLE, "ReceiveTask: Received message ({%d} bytes) from %d: %s\r\n", msglen, sender_tid, msg);
 
         if (msg[0] == 'q')
         {
-            uart_printf(CONSOLE, "ReceiveTask: Exiting.\r\n");
+            // uart_printf(CONSOLE, "ReceiveTask: Exiting.\r\n");
             msglen = REPLY(sender_tid, "Q", 2);
             break;
         }

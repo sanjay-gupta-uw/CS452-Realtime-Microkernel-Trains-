@@ -71,32 +71,9 @@ extern "C" int kmain()
    clear_screen(CONSOLE);
    uart_printf(CONSOLE, "Welcome to the Train Controller\r\n");
 
-   // uart_printf(CONSOLE, "FUNCTION: 0x%x\r\n", function);
-   uart_printf(CONSOLE, "TASK1: 0x%x\r\n", Task1);
-   // uart_printf(CONSOLE, "TASK2: 0x%x\r\n", Task2);
-   // uart_printf(CONSOLE, "Welcome to the Train Controller SP: %x\n", sp);
-
-   // uart_printf(CONSOLE, "F1{0x%x}, F2{0x%x}\n", Task1, Task2);
-   // Initialize kernel context
-   Context kernel_context;
+   Context kernel_context; // Initialize kernel context
    // Kernel kernel(Task1);
    Kernel kernel(PerformanceTask); // bootstrap with performance task
-
-   // move_cursor(CONSOLE, 1, 1);
-
-   // clock.Delay(time);
-
-   // int taskID = kernel.Create(MEDIUM, Task1);
-   // if (taskID < 0)
-   // {
-   //    uart_printf(CONSOLE, "ERROR CREATING FIRST USER TASK\r\n");
-   // }
-   // uart_printf(CONSOLE, "FIRST USER TASK CREATED {%d}(id)\n", taskID);
-
-   // int EL = _get_el_debug();
-   // uart_printf(CONSOLE, "EL: %d\n", EL);
-   // clock.Delay(delay);
-
    TaskDescriptor *current_task = nullptr;
 
    // scheduler pops the highest priority task into td
@@ -114,7 +91,7 @@ extern "C" int kmain()
          }
       }
       kernel.Handler(N);
-      }
+   }
 
    uart_printf(CONSOLE, "NO MORE READY TASKS\r\n");
 
