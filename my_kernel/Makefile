@@ -26,7 +26,9 @@ endif
 
 
 CXXFLAGS:=-g -pipe -static -mstrict-align -ffreestanding -fno-exceptions -fno-unwind-tables \
-			-mgeneral-regs-only -mcpu=$(ARCH) -march=armv8-a $(MMUFLAGS) $(WARNINGS) $(OPTFLAGS) -DOPT=$(OPT) -std=c++17 
+			-mgeneral-regs-only -mcpu=$(ARCH) -march=armv8-a $(MMUFLAGS) $(WARNINGS) $(OPTFLAGS) \
+			 -DOPT=$(OPT) -DPERF=$(PERF) \
+			 -std=c++17 
 
 # Linker options
 LDFLAGS:=-Wl,-nmagic -Wl,-Tlinker.ld -Wl,--no-warn-rwx-segments -nostartfiles -nodefaultlibs -nostdlib -lc

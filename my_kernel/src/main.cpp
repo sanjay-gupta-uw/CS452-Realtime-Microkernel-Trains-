@@ -72,6 +72,7 @@ extern "C" int kmain()
    uart_printf(CONSOLE, "Welcome to the Train Controller\r\n");
 
    Context kernel_context; // Initialize kernel context
+
    // Kernel kernel(Task1);
    Kernel kernel(PerformanceTask); // bootstrap with performance task
    TaskDescriptor *current_task = nullptr;
