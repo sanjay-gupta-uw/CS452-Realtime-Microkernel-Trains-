@@ -1,7 +1,7 @@
 # make --version
-# XDIR:=/u/cs452/public/xdev
+XDIR:=/u/cs452/public/xdev
 # XDIR:=/opt/aarch64-none-elf
-XDIR:=/Applications/ArmGNUToolchain/14.2.rel1/aarch64-none-elf
+# XDIR:=/Applications/ArmGNUToolchain/14.2.rel1/aarch64-none-elf
 ARCH=cortex-a72
 TRIPLE=aarch64-none-elf
 XBINDIR:=$(XDIR)/bin
@@ -10,7 +10,7 @@ OBJCOPY:=$(XBINDIR)/$(TRIPLE)-objcopy
 OBJDUMP:=$(XBINDIR)/$(TRIPLE)-objdump
 
 MMU?=1
-OPT?=0
+OPT?=1
 
 # COMPILE OPTIONS
 WARNINGS=-Wall -Wextra -Wpedantic

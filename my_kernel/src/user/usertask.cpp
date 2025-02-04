@@ -11,7 +11,7 @@
 #define SSR_EXCHANGE_OPTS 2
 #define MSG_SIZE_OPTS 3
 // #define REPEATS 1
-#define REPEATS 100
+#define REPEATS 10
 
 // Task function prototypes
 void TaskRegister();
@@ -174,6 +174,7 @@ static void SendTask(int r_tid, int msglen)
 // This task is used to test the performance of the SSR system under 48 different scenarios
 void PerformanceTask()
 {
+    uart_printf(CONSOLE, "PerformanceTask: Starting.\r\n");
 #if OPT == 1
 #define OPT_VALUE 1
 #else
@@ -205,7 +206,6 @@ void PerformanceTask()
             // I-cache
             uart_printf(CONSOLE, "ENABLE_ICACHE\r\n");
             ENABLE_ICACHE();
-            uart_printf(CONSOLE, "HERE1\r\n");
             break;
         case 2:
             // D-cache

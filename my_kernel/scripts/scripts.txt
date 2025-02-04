@@ -1,1 +1,1 @@
-./upload.sh iotest.img d8:3a:dd:1b:36:7d 
+./upload.sh ../iotest.img d8:3a:dd:1b:36:9e

@@ -37,6 +37,16 @@ Kernel::Kernel()
    }
 
    active_task = nullptr; // initilize active task
+   for (int i = 0; i < 3; ++i)
+   {
+      uart_printf(CONSOLE, "%d\r\n", i % MAX_TASKS);
+   }
+   uart_printf(CONSOLE, "TIDs: ");
+   for (int i = 0; i < MAX_TASKS; i++)
+   {
+      task_table[i].tid = i;
+      uart_printf(CONSOLE, " %d ", task_table[i].tid);
+   }
 
    // initilize default task
 }
@@ -87,6 +97,7 @@ int Kernel::Create(int priority, void (*function)())
 
    // create a new task
    TaskDescriptor *td = &task_table[tid];
+   uart_printf(CONSOLE, "TID FROM TABLE: %d\r\n", td->tid);
    MemoryBlock *stackBlock = mem_manager.Allocate();
    if (!stackBlock)
    {
@@ -101,6 +112,7 @@ int Kernel::Create(int priority, void (*function)())
       // uart_printf(CONSOLE, "Task %d is ready\r\n", tid);
       ready_queue.Push(tid, priority);
    }
+   uart_printf(CONSOLE, "Task %d created with priority %d\r\n", tid, priority);
    RepushActiveTask();
    return tid;
 }
@@ -250,9 +262,11 @@ int Kernel::DispatchTask(volatile Context *kernel, TaskDescriptor *scheduled_tas
    // uart_printf(CONSOLE, "DISPATCH KC: 0x%x, SC: 0x%x\n", kernel, &scheduled_task->context);
 
    scheduled_task->setState(ACTIVE);
+   scheduled_task->Print();
    active_task = scheduled_task;
 
    // call the task
+   uart_printf(CONSOLE, "DISPATCHING TASK: %d\r\n", scheduled_task->tid);
    int esr_el1 = kernel_to_task_asm(kernel, &scheduled_task->context);
    return esr_el1;
 }
@@ -270,7 +284,14 @@ void Kernel::Handler(int N)
          uart_printf(CONSOLE, "PRIORITY: {%d}\r\n", PRIORITY);
          // uart_printf(CONSOLE, "F{0x%x}\n", active_task->context.x[1]); // this prints the correct value
          int ret_val = Create(PRIORITY, (void (*)())active_task->context.x[1]);
-         // uart_printf(CONSOLE, "TID: {%d}\n", ret_val);
+         uart_printf(CONSOLE, "CREATED TASK WITH TID: {%d}\r\n", ret_val);
+         // VERIFY IN TABLE:
+         TaskDescriptor *TD = &(task_table[ret_val]);
+         TD->Print();
+         if (ret_val != TD->tid)
+         {
+            uart_printf(CONSOLE, "PANIC: TID MISMATCH\r\n");
+         }
          active_task->SetRetval(ret_val);
       }
       else
@@ -380,25 +401,56 @@ int Kernel::CopyMessage(TaskDescriptor *sender_td, TaskDescriptor *receiver_td, 
 // *********************************************
 // Perf test runs in this order, and starts with no cache
 // so when we enable icache first, it is from disabled state -> enabled state
+// void Kernel::enable_icache()
+// {
+//    uart_printf(CONSOLE, "KERNEL Enabling I-Cache\r\n");
+//    asm volatile("msr sctlr_el1, %x0\n\t" ::"r"(1 << 12));
+//    uart_printf(CONSOLE, "KERNEL I-Cache Enabled, repushing active task\r\n");
+//    RepushActiveTask();
+// }
 void Kernel::enable_icache()
 {
-   asm volatile("msr sctlr_el1, %x0\n\t" ::"r"(1 << 12));
+   uart_printf(CONSOLE, "KERNEL Enabling I-Cache\r\n");
+   asm volatile(
+       "mrs x0, sctlr_el1\n\t"      // Read SCTLR_EL1 into x0
+       "orr x0, x0, #(1 << 12)\n\t" // Set bit 12 to enable I-Cache
+       "msr sctlr_el1, x0\n\t"      // Write back to SCTLR_EL1
+       "isb"                        // Instruction Synchronization Barrier
+       :
+       :
+       : "x0");
+   uart_printf(CONSOLE, "KERNEL I-Cache Enabled, repushing active task\r\n");
    RepushActiveTask();
 }
 
 void Kernel::enable_dcache()
 {
-   asm volatile("msr sctlr_el1, %x0\n\t" ::"r"(1 << 2));
+   asm volatile(
+       "mrs x0, sctlr_el1\n\t"     // Read SCTLR_EL1 into x0
+       "orr x0, x0, #(1 << 2)\n\t" // Set bit 2 to enable D-Cache
+       "msr sctlr_el1, x0\n\t"     // Write back to SCTLR_EL1
+       "isb"                       // Instruction Synchronization Barrier
+       :
+       :
+       : "x0");
    RepushActiveTask();
 }
 
 void Kernel::enable_bcache()
 {
    // enabled -> enabled (clean cache)
-   asm volatile("msr sctlr_el1, %x0\n\t" ::"r"((1 << 2) | (1 << 12)));
+   asm volatile(
+       "mrs x0, sctlr_el1\n\t"      // Read SCTLR_EL1 into x0
+       "orr x0, x0, #(1 << 2)\n\t"  // Set bit 2 (D-Cache enable)
+       "orr x0, x0, #(1 << 12)\n\t" // Set bit 12 (I-Cache enable)
+       "msr sctlr_el1, x0\n\t"      // Write back to SCTLR_EL1
+       "isb"                        // Instruction Synchronization Barrier
+       :
+       :
+       : "x0");
 
    asm volatile("dc cisw, %x0\n\t" ::"r"(0)); // Clean and invalidate D-cache
-   asm volatile("ic ialluis\n\t");            // Invalidate I-cache
+   asm volatile("ic iallu\n\t");              // Invalidate I-cache
 
    RepushActiveTask();
 }

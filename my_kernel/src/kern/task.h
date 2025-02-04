@@ -14,6 +14,8 @@ class TaskDescriptor
 {
 public:
    TaskDescriptor();
+   TaskDescriptor(int tid);
+
    ~TaskDescriptor();
    // use wrapper Create to call this
    int InitTask(int priority, MemoryBlock *block, void (*function)());
