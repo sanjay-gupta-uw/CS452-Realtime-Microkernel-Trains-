@@ -81,6 +81,7 @@ void RpsServer()
         case PLAY:
             if (index != -1 && players[index].active && players[index].inGame)
             {
+                uart_printf(CONSOLE, "PLEASE PRESS SPACE TO CONSUME MOVE\r\n");
                 // wait for space key to handle input
                 while (uart_getc(CONSOLE) != ' ')
                     ;
