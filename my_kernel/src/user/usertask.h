@@ -12,7 +12,8 @@ void TaskStressTest();
 
 void PerformanceTask();
 
-void SendTask();
+bool SendTask(int r_tid, int msglen);
+
 void ReceiveTask();
 
 #endif

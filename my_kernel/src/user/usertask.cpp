@@ -134,14 +134,14 @@ void Task1() {
 }
 */
 
-static void SendTask(int r_tid, int msglen)
+bool SendTask(int r_tid, int msglen)
 {
     char reply_4[4] = "123";
     char reply_64[64] = "123456789012345678901234567890123456789012345678901234567890123";
     char reply_256[256] = "123456789012345678901234567890123456789012345678901234567890123412345678901234567890123456789012345678901234567890123456789012341234567890123456789012345678901234567890123456789012345678901234123456789012345678901234567890123456789012345678901234567890123";
     char quit[2] = "q";
 
-    char *s;
+    char *s = nullptr;
     switch (msglen)
     {
     case 0:
@@ -161,6 +161,9 @@ static void SendTask(int r_tid, int msglen)
     case 3:
         s = quit;
         msglen = 2;
+        break;
+    default:
+        return false;
     }
 
     // uart_printf(CONSOLE, "ABOUT TO SEND TO RECEIVER %d\r\n", r_tid);
@@ -169,7 +172,9 @@ static void SendTask(int r_tid, int msglen)
     if (retval < 0)
     {
         uart_printf(CONSOLE, "SendTask: SEND failed with retval %d\r\n", retval);
+        return false;
     }
+    return true;
 }
 // This task is used to test the performance of the SSR system under 48 different scenarios
 void PerformanceTask()
@@ -231,17 +236,23 @@ void PerformanceTask()
                 // Performance test
                 for (int m = 0; m < REPEATS; ++m)
                 {
-                    SendTask(receiver_tid, msg_opt);
+                    bool success = SendTask(receiver_tid, msg_opt);
+                    if (!success)
+                    {
+                        uart_printf(CONSOLE, "PerformanceTask: SendTask failed.\r\n");
+                        break;
+                    }
                 }
                 end_time = clock.Time();
 
+                uart_printf(CONSOLE, "Start Time: %d, End Time: %d\r\n", start_time, end_time);
                 times[cache_opt][isReceiveFirst][msg_opt] = (end_time - start_time) / REPEATS; // update times array
             }
             SendTask(receiver_tid, 3); // need to restart task with different priority
         }
     }
 
-    clear_screen(CONSOLE);
+    // clear_screen(CONSOLE);
 
     uart_printf(CONSOLE, "**********\r\n");
     uart_printf(CONSOLE, "Final Results (REPEAT = %d):\r\n", REPEATS);
@@ -294,7 +305,7 @@ void PerformanceTask()
 
 void ReceiveTask()
 {
-    int tid = MYTID();
+    // int tid = MYTID();
     // uart_printf(CONSOLE, "ReceiveTask: TID=%d\r\n", tid);
     int sender_tid;
     char msg[256];
