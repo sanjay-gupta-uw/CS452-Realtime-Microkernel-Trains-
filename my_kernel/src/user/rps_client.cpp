@@ -37,7 +37,12 @@ void RpsClient(GameMove *moves, int num_moves) {
                 uart_printf(CONSOLE, "Failed to send play move\r\n");
                 break;
             }
-            uart_printf(CONSOLE, "Game result for TID %d: %s\r\n", MYTID(), reply);
+            if (strcmp(reply, "OTHER_QUIT") == 0) {
+                uart_printf(CONSOLE, "Other player quit. Game over for TID %d.\r\n", MYTID());
+            break;
+            } else {
+                uart_printf(CONSOLE, "Game result for TID %d: %s\r\n", MYTID(), reply);
+            }
         }
     }
 }

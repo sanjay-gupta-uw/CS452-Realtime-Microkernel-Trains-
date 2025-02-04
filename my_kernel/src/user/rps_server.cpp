@@ -54,13 +54,25 @@ void RpsServer() {
                     handlePlay(index, req.move);
                 }
                 break;
-            case QUIT:
+            case QUIT_GAME:
                 if (index != -1) {
+                    int p2_index = -1;
+                    for (int j = 0; j < player_count; ++j) {
+                        if (j != index && players[j].inGame && players[index].inGame && players[j].tid != players[index].tid) {
+                            p2_index = j;
+                            break;
+                        }
+                    }
                     players[index].active = false;
                     players[index].inGame = false;
                     uart_printf(CONSOLE, "Player %d quit.\r\n", sender_tid);
-                    resolveGame(index, -1); // Force resolve with no opponent
-                    REPLY(sender_tid, "QUIT_OK", 8);
+                    if (p2_index != -1) { // Notify the other player if in game
+                        players[p2_index].inGame = false;
+                        REPLY(players[p2_index].tid, "OTHER_QUIT", 11);
+                        uart_printf(CONSOLE, "Notifying Player %d of the other's quit.\r\n", players[p2_index].tid);
+                    }
+                    resolveGame(index, -1); // Resolve game if mid-match
+                    matchPlayers(); // Attempt to match remaining players
                 }
                 break;
         }
