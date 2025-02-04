@@ -1,54 +1,59 @@
 #include "rps_client.h"
+#include "rps_server.h"
 #include "name_server.h"
 #include "../kern/syscall.h"
 #include "../rpi.h"
 #include <cstring>
 
-// Define game moves and request types
-enum GameMove {
-    ROCK, PAPER, SCISSORS
-};
-
-enum RequestType {
-    SIGNUP, PLAY, QUIT
-};
-
-// Structure to send game requests
-struct GameRequest {
-    RequestType type;
-    GameMove move;
-};
-
-void RpsClient() {
+void RpsClient(GameMove *moves, int num_moves)
+{
     int server_tid = WHOIS("RPSServer");
-    if (server_tid < 0) {
+    if (server_tid < 0)
+    {
         uart_printf(CONSOLE, "Failed to find RPS Server\r\n");
         return;
     }
+    uart_printf(CONSOLE, "RPS Server found by RPS Client with TID %d\r\n", MYTID());
 
-    // Register with the server
-    GameRequest req;
-    req.type = SIGNUP;
-    char reply[10]; // Ensure this is enough space for any reply
-    int result = SEND(server_tid, (char*)&req, sizeof(req), reply, sizeof(reply));
-    if (result < 0 || strcmp(reply, "OK") != 0) {
+    // Sign up for the game
+    GameRequest req = {SIGNUP, ROCK}; // Initial move does not matter for signup
+    char reply[20];
+    int result = SEND(server_tid, (char *)&req, sizeof(req), reply, sizeof(reply));
+    if (result < 0 || strcmp(reply, "PAIRED") != 0)
+    {
         uart_printf(CONSOLE, "Failed to sign up or bad reply: %s\r\n", reply);
         return;
     }
 
-    // Wait for a match and play the game
-    req.type = PLAY;
-    req.move = ROCK;  // Example move
-    result = SEND(server_tid, (char*)&req, sizeof(req), reply, sizeof(reply));
-    if (result < 0) {
-        uart_printf(CONSOLE, "Failed to send play move\r\n");
-        return;
+    // Play the game according to the list of moves
+    for (int i = 0; i < num_moves; i++)
+    {
+        if (moves[i] == QUIT)
+        {
+            req.type = QUIT_GAME;
+            SEND(server_tid, (char *)&req, sizeof(req), NULL, 0);
+            uart_printf(CONSOLE, "Player TID %d quitting game.\r\n", MYTID());
+            break;
+        }
+        else
+        {
+            req.type = PLAY;
+            req.move = static_cast<GameMove>(moves[i]);
+            result = SEND(server_tid, (char *)&req, sizeof(req), reply, sizeof(reply));
+            if (result < 0)
+            {
+                uart_printf(CONSOLE, "Failed to send play move\r\n");
+                break;
+            }
+            if (strcmp(reply, "OTHER_QUIT") == 0)
+            {
+                uart_printf(CONSOLE, "Other player quit. Game over for TID %d.\r\n", MYTID());
+                break;
+            }
+            else
+            {
+                uart_printf(CONSOLE, "Game result for TID %d: %s\r\n", MYTID(), reply);
+            }
+        }
     }
-
-    // Interpret the game result
-    uart_printf(CONSOLE, "Game result: %s\r\n", reply);
-
-    // Send a quit message
-    req.type = QUIT;
-    SEND(server_tid, (char*)&req, sizeof(req), NULL, 0);
 }
