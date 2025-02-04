@@ -4,8 +4,9 @@
 #include "../kern/syscall.h"
 #include "../rpi.h"
 #include <cstring>
+#include "../containers/queue.h"
 
-#define MAX_PLAYERS 10
+#define MAX_PLAYERS QUEUE_MAX_SIZE
 
 struct Player
 {
@@ -13,28 +14,42 @@ struct Player
     int choice = -1;
     bool active = false;
     bool inGame = false;
+    Player *opponent_player = nullptr;
+    bool markDead = true;
 };
 
+Queue<Player *> freePlayers;
+Queue<Player *> readyQueue;
+// Queue<Player *> activePlayers;
 Player players[MAX_PLAYERS];
 int player_count = 0;
 
 void matchPlayers();
 void handlePlay(int index, int choice);
-void resolveGame(int p1_index, int p2_index);
+void resolveGame(int player_index);
 
 void RpsServer()
 {
     uart_printf(CONSOLE, "RPS Server running...\r\n");
     REGISTERAS("RPSServer");
 
+    for (int i = 0; i < MAX_PLAYERS; ++i)
+    {
+        players[i] = {-1, -1, false, false};
+        freePlayers.Push(&players[i]);
+    }
+
     while (true)
     {
+        uart_printf(CONSOLE, "RPS Server waiting for requests...\r\n");
         int sender_tid;
         GameRequest req;
-        RECEIVE(&sender_tid, (char *)&req, sizeof(req));
+        int sendLen = RECEIVE(&sender_tid, (char *)&req, sizeof(req));
+        // uart_printf(CONSOLE, "RPS Server received request from TID %d of length %d\r\n", sender_tid, sendLen);
+        // uart_printf(CONSOLE, "Request type: %d, move: %d\r\n", req.type, req.move);
 
         int index = -1;
-        for (int i = 0; i < player_count; ++i)
+        for (int i = 0; i < MAX_PLAYERS; ++i)
         {
             if (players[i].tid == sender_tid)
             {
@@ -46,11 +61,16 @@ void RpsServer()
         switch (req.type)
         {
         case SIGNUP:
-            if (index == -1 && player_count < MAX_PLAYERS)
+            if (index == -1 && !freePlayers.IsEmpty())
             {
-                players[player_count] = {sender_tid, -1, true, false};
+                // player: tid, choice, active, inGame, opponent_player, markDead
+                Player *player = nullptr;
+                freePlayers.Pop(&player);
+                *player = {sender_tid, -1, true, false, nullptr, false};
                 player_count++;
-                uart_printf(CONSOLE, "Player %d signed up.\r\n", sender_tid);
+                uart_printf(CONSOLE, "Player %d signed up.\r\n", player->tid);
+
+                readyQueue.Push(player);
                 matchPlayers(); // Check if two players can be paired
             }
             else
@@ -61,32 +81,22 @@ void RpsServer()
         case PLAY:
             if (index != -1 && players[index].active && players[index].inGame)
             {
+                // wait for space key to handle input
+                while (uart_getc(CONSOLE) != ' ')
+                    ;
                 handlePlay(index, req.move);
             }
             break;
         case QUIT_GAME:
             if (index != -1)
             {
-                int p2_index = -1;
-                for (int j = 0; j < player_count; ++j)
-                {
-                    if (j != index && players[j].inGame && players[index].inGame && players[j].tid != players[index].tid)
-                    {
-                        p2_index = j;
-                        break;
-                    }
-                }
-                players[index].active = false;
-                players[index].inGame = false;
-                uart_printf(CONSOLE, "Player %d quit.\r\n", sender_tid);
-                if (p2_index != -1)
-                { // Notify the other player if in game
-                    players[p2_index].inGame = false;
-                    REPLY(players[p2_index].tid, "OTHER_QUIT", 11);
-                    uart_printf(CONSOLE, "Notifying Player %d of the other's quit.\r\n", players[p2_index].tid);
-                }
-                resolveGame(index, -1); // Resolve game if mid-match
-                matchPlayers();         // Attempt to match remaining players
+                Player *quit_player = &players[index];
+                Player *p2 = quit_player->opponent_player;
+
+                quit_player->markDead = true;
+                resolveGame(index); // Resolve game if mid-match
+                uart_printf(CONSOLE, "Player %d quit.\r\n", quit_player->tid);
+                // matchPlayers();     // Attempt to match remaining players
             }
             break;
         }
@@ -109,77 +119,145 @@ const char *getMoveName(int move)
     }
 }
 
-const char *getResultDescription(int result)
+char getResultDescription(int result)
 {
     switch (result)
     {
     case 0:
-        return "Draw";
+        return 'D';
     case 1:
-        return "Wins";
+        return 'W';
     case -1:
-        return "Loses";
+        return 'L';
     default:
-        return "Error";
+        return 'U';
     }
 }
 
 void matchPlayers()
 {
-    int first = -1;
-    for (int i = 0; i < player_count; ++i)
+    while (!readyQueue.IsEmpty())
     {
-        if (players[i].active && !players[i].inGame && first == -1)
+        Player *p1, *p2 = nullptr;
+        readyQueue.Pop(&p1);
+        readyQueue.Pop(&p2);
+
+        if (p2 == nullptr)
         {
-            first = i;
+            readyQueue.Push(p1);
+            break;
         }
-        else if (players[i].active && !players[i].inGame && first != -1)
+        else if (!p1->inGame && !p2->inGame && p1->tid != p2->tid && p1->active && p2->active)
         {
-            // Pair the players
-            players[first].inGame = players[i].inGame = true;
-            REPLY(players[first].tid, "PAIRED", 7);
-            REPLY(players[i].tid, "PAIRED", 7);
-            uart_printf(CONSOLE, "Players %d and %d are paired for a game.\r\n", players[first].tid, players[i].tid);
-            return;
+            p1->inGame = p2->inGame = true;
+            p1->opponent_player = p2;
+            p2->opponent_player = p1;
+
+            REPLY(p1->tid, "PAIRED", 7);
+            REPLY(p2->tid, "PAIRED", 7);
+
+            // activePlayers.Push(p1);
+            uart_printf(CONSOLE, "Players %d and %d are paired for a game.\r\n", p1->tid, p2->tid);
+        }
+        else
+        {
+            freePlayers.Push(p1);
+            freePlayers.Push(p2);
+            break;
         }
     }
 }
 
 void handlePlay(int index, int choice)
 {
-    players[index].choice = choice;
-    uart_printf(CONSOLE, "Player %d played %s.\r\n", players[index].tid, getMoveName(choice));
-
-    for (int i = 0; i < player_count; ++i)
+    Player *player = &players[index];
+    if (player->opponent_player != nullptr && player->active && player->inGame)
     {
-        if (i != index && players[i].choice != -1 && players[i].active && players[i].inGame)
+        player->choice = choice;
+        uart_printf(CONSOLE, "Player %d played %s.\r\n", players[index].tid, getMoveName(choice));
+
+        if (player->opponent_player->choice != -1)
         {
-            resolveGame(index, i);
-            break;
+            resolveGame(index);
         }
+    }
+    else
+    {
+        uart_printf(CONSOLE, "Potential logic error in HandlePlay function.\r\n");
     }
 }
 
-void resolveGame(int p1_index, int p2_index)
+static void reclaimPlayer(int index)
 {
-    if (p2_index == -1)
+    Player *p1 = &players[index];
+    Player *p2 = p1->opponent_player;
+    uart_printf(CONSOLE, "Reclaiming partner player %d .\r\n", p2->tid);
+
+    p1->choice = p2->choice = -1;
+    p1->inGame = p2->inGame = false;
+    p1->active = p2->active = false;
+    p1->markDead = p2->markDead = true;
+    p1->opponent_player = nullptr;
+    p2->opponent_player = nullptr;
+
+    freePlayers.Push(p1);
+    freePlayers.Push(p2);
+}
+
+void resolveGame(int player_index)
+{
+    Player *p1 = &players[player_index];
+    Player *p2 = p1->opponent_player;
+
+    if (p1->markDead)
     {
-        REPLY(players[p1_index].tid, "WAIT", 5);
-        uart_printf(CONSOLE, "Game unresolved for Player %d: Waiting for an opponent.\r\n", players[p1_index].tid);
+        uart_printf(CONSOLE, "P1 marked dead, Game unresolved for Player %d: Waiting for an opponent.\r\n", p1->tid);
+        reclaimPlayer(player_index);
         return;
     }
 
-    const char *result1Desc = getResultDescription(players[p1_index].choice == players[p2_index].choice ? 0 : (players[p1_index].choice + 1) % 3 == players[p2_index].choice ? -1
-                                                                                                                                                                             : 1);
-    const char *result2Desc = getResultDescription(players[p1_index].choice == players[p2_index].choice ? 0 : (players[p1_index].choice + 1) % 3 == players[p2_index].choice ? 1
-                                                                                                                                                                             : -1);
+    char result1Desc = getResultDescription(p1->choice == p2->choice ? 0 : (p1->choice + 1) % 3 == p2->choice ? -1
+                                                                                                              : 1);
+    char result2Desc = getResultDescription(p1->choice == p2->choice ? 0 : (p1->choice + 1) % 3 == p2->choice ? 1
+                                                                                                              : -1);
 
-    uart_printf(CONSOLE, "Game result between Player %d and Player %d: %s, %s\r\n",
-                players[p1_index].tid, players[p2_index].tid, result1Desc, result2Desc);
+    const char *winDesc = "Win";
+    const char *drawDesc = "Draw";
+    const char *loseDesc = "Lose";
+    const char *unkownDesc = "Unknown";
 
-    REPLY(players[p1_index].tid, result1Desc, strlen(result1Desc) + 1);
-    REPLY(players[p2_index].tid, result2Desc, strlen(result2Desc) + 1);
+    char results[2] = {result1Desc, result2Desc};
+    const char *desc[2];
+    for (int i = 0; i < 2; ++i)
+    {
+        switch (results[i])
+        {
+        case 'W':
+            desc[i] = winDesc;
+            break;
+        case 'D':
+            desc[i] = drawDesc;
+            break;
+        case 'L':
+            desc[i] = loseDesc;
+            break;
+        default:
+            desc[i] = unkownDesc;
+            break;
+        }
+    }
 
-    players[p1_index].choice = players[p2_index].choice = -1;
-    players[p1_index].inGame = players[p2_index].inGame = false;
+    for (int i = 0; i < 2; ++i)
+    {
+        uart_printf(CONSOLE, "Desc %d: %s\r\n", i, desc[i]);
+    }
+
+    uart_printf(CONSOLE, "Game result: Player %d %s\r\n", p1->tid, desc[0]);
+    uart_printf(CONSOLE, "Game result: Player %d %s\r\n", p2->tid, desc[1]);
+
+    REPLY(p1->tid, desc[0], strlen(desc[0]) + 1);
+    REPLY(p2->tid, desc[1], strlen(desc[1]) + 1);
+
+    p1->choice = p2->choice = -1;
+    // p1->inGame = p2->inGame = false;
 }

@@ -178,7 +178,8 @@ void Kernel::Send()
       receiver_task->inbox.Pop(&receiver_tid);
       ready_queue.Push(receiver_tid, receiver_task->getPriority());
 
-      sender_task->setState(REPLY_BLOCKED);                         // SENDER BLOCKS
+      sender_task->setState(REPLY_BLOCKED); // SENDER BLOCKS
+      // uart_printf(CONSOLE, "SENDER BLOCKED\r\n");                   // SENDER BLOCKS
       int destLen = CopyMessage(sender_task, receiver_task, false); // KERNEL COPIES DATA
       if (destLen == -1)
       {
@@ -193,7 +194,7 @@ void Kernel::Receive()
    if (active_task->inbox.Pop(&sender_tid) == -1)
    {
       active_task->setState(RECEIVE_BLOCKED); // RECEIVER BLOCKS
-      // uart_printf(CONSOLE, "RECEIVER BLOCKED\r\n");
+      uart_printf(CONSOLE, "RECEIVER BLOCKED\r\n");
       return;
    }
    // ensure sender is in send block
@@ -269,7 +270,7 @@ int Kernel::DispatchTask(volatile Context *kernel, TaskDescriptor *scheduled_tas
 
 void Kernel::Handler(int N)
 {
-   // uart_printf(CONSOLE, "HANDLER: {%d}", N);
+   // uart_printf(CONSOLE, "HANDLER: {%d}, ACTIVE TASK: {%d} ", N, active_task->tid);
    switch (N)
    {
    case SVC_CREATE:
@@ -335,7 +336,7 @@ void Kernel::Handler(int N)
 
    case SVC_REPLY:
    {
-      // uart_printf(CONSOLE, "(REPLY)\r\n");
+      // uart_printf(CONSOLE, "(REPLY) (TID %d)\r\n", active_task->context.x[0]);
       Reply();
       break;
    }

@@ -1,7 +1,7 @@
 # make --version
-# XDIR:=/u/cs452/public/xdev // linux 
-# XDIR:=/opt/aarch64-none-elf // windows?
-XDIR:=/Applications/ArmGNUToolchain/14.2.rel1/aarch64-none-elf // mac
+# XDIR:=/u/cs452/public/xdev
+# XDIR:=/opt/aarch64-none-elf
+XDIR:=/Applications/ArmGNUToolchain/14.2.rel1/aarch64-none-elf
 ARCH=cortex-a72
 TRIPLE=aarch64-none-elf
 XBINDIR:=$(XDIR)/bin
@@ -11,6 +11,7 @@ OBJDUMP:=$(XBINDIR)/$(TRIPLE)-objdump
 
 MMU?=1
 OPT?=1
+PERF?=1
 
 # COMPILE OPTIONS
 WARNINGS=-Wall -Wextra -Wpedantic
@@ -26,7 +27,9 @@ endif
 
 
 CXXFLAGS:=-g -pipe -static -mstrict-align -ffreestanding -fno-exceptions -fno-unwind-tables \
-			-mgeneral-regs-only -mcpu=$(ARCH) -march=armv8-a $(MMUFLAGS) $(WARNINGS) $(OPTFLAGS) -DOPT=$(OPT) -std=c++17 
+			-mgeneral-regs-only -mcpu=$(ARCH) -march=armv8-a $(MMUFLAGS) $(WARNINGS) $(OPTFLAGS) 
+			-DOPT=$(OPT)  
+			-DPERF=$(PERF) -std=c++17 
 
 # Linker options
 LDFLAGS:=-Wl,-nmagic -Wl,-Tlinker.ld -Wl,--no-warn-rwx-segments -nostartfiles -nodefaultlibs -nostdlib -lc

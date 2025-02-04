@@ -17,6 +17,12 @@
 #include "kern/kernel.h"
 #include "kern/memory.h"
 
+#if PERF == 1
+#define PERF_VALUE 1
+#else
+#define PERF_VALUE 0
+#endif
+
 typedef void (*funcvoid_t)();
 extern funcvoid_t __init_array_start;
 extern funcvoid_t __init_array_end;
@@ -72,8 +78,12 @@ extern "C" int kmain()
    uart_printf(CONSOLE, "Welcome to the Train Controller\r\n");
 
    Context kernel_context; // Initialize kernel context
-   // Kernel kernel(Task1);
-   Kernel kernel(PerformanceTask); // bootstrap with performance task
+
+   // create pointer to function, and aet pointer to desired function
+   uart_printf(CONSOLE, "PERF VAL: %d\n", PERF_VALUE);
+   funcvoid_t bootstrap_task = PERF_VALUE == 1 ? PerformanceTask : Task1;
+
+   Kernel kernel(bootstrap_task); // bootstrap
    TaskDescriptor *current_task = nullptr;
 
    // scheduler pops the highest priority task into td
