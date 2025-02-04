@@ -13,24 +13,27 @@ int a2d(char ch)
 }
 
 // ascii string to unsigned int, with base
-char a2ui(char ch, char **src, unsigned int base, unsigned int *nump)
+uint32_t a2ui(char **src, unsigned int base)
 {
+	// uart_printf(CONSOLE, "a2ui: ch=%c, base=%d, nump=%d\r\n", ch, base, *nump);
 	unsigned int num;
 	int digit;
 	char *p;
 
-	p = *src;
+	p = *src; //
 	num = 0;
+
+	char ch = *p;
 	while ((digit = a2d(ch)) >= 0)
 	{
+		// uart_printf(CONSOLE, "a2ui: digit=%d\r\n", digit);
 		if ((unsigned int)digit > base)
 			break;
 		num = num * base + digit;
-		ch = *p++;
+		ch = *++p;
 	}
-	*src = p;
-	*nump = num;
-	return ch;
+	// *src = p;
+	return num;
 }
 
 // unsigned int to ascii string, with base

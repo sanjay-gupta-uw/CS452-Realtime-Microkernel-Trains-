@@ -404,23 +404,34 @@ int Kernel::CopyMessage(TaskDescriptor *sender_td, TaskDescriptor *receiver_td, 
 //    uart_printf(CONSOLE, "KERNEL I-Cache Enabled, repushing active task\r\n");
 //    RepushActiveTask();
 // }
+static void invalidate_icache()
+{
+   asm volatile("dsb sy\n\t"
+                "ic ialluis\n\t"
+                "dsb sy\n\t"
+                "isb\n\t");
+}
+
+extern "C" void InvalidateANDCleanDCache();
+
 void Kernel::enable_icache()
 {
+   invalidate_icache();
    // uart_printf(CONSOLE, "KERNEL Enabling I-Cache\r\n");
    asm volatile(
        "mrs x0, sctlr_el1\n\t"      // Read SCTLR_EL1 into x0
        "orr x0, x0, #(1 << 12)\n\t" // Set bit 12 to enable I-Cache
        "msr sctlr_el1, x0\n\t"      // Write back to SCTLR_EL1
        "isb"                        // Instruction Synchronization Barrier
-       :
-       :
-       : "x0");
+       : : : "x0");
    // uart_printf(CONSOLE, "KERNEL I-Cache Enabled, repushing active task\r\n");
    RepushActiveTask();
 }
 
 void Kernel::enable_dcache()
 {
+   InvalidateANDCleanDCache();
+
    asm volatile(
        "mrs x0, sctlr_el1\n\t"     // Read SCTLR_EL1 into x0
        "orr x0, x0, #(1 << 2)\n\t" // Set bit 2 to enable D-Cache
@@ -434,6 +445,9 @@ void Kernel::enable_dcache()
 
 void Kernel::enable_bcache()
 {
+   invalidate_icache();
+   InvalidateANDCleanDCache();
+
    // enabled -> enabled (clean cache)
    asm volatile(
        "mrs x0, sctlr_el1\n\t"      // Read SCTLR_EL1 into x0
@@ -444,9 +458,6 @@ void Kernel::enable_bcache()
        :
        :
        : "x0");
-
-   asm volatile("dc cisw, %x0\n\t" ::"r"(0)); // Clean and invalidate D-cache
-   asm volatile("ic iallu\n\t");              // Invalidate I-cache
 
    RepushActiveTask();
 }

@@ -11,7 +11,7 @@
 #define SSR_EXCHANGE_OPTS 2
 #define MSG_SIZE_OPTS 3
 // #define REPEATS 1
-#define REPEATS 1000
+#define REPEATS 10000
 
 // Task function prototypes
 void TaskRegister();
@@ -134,32 +134,39 @@ void Task1() {
 }
 */
 
-bool SendTask(int r_tid, int msglen)
+bool SendTask(int r_tid, int msglen_opt, char *reply, int replylen)
 {
-    char reply_4[4] = "123";
-    char reply_64[64] = "123456789012345678901234567890123456789012345678901234567890123";
-    char reply_256[256] = "123456789012345678901234567890123456789012345678901234567890123412345678901234567890123456789012345678901234567890123456789012341234567890123456789012345678901234567890123456789012345678901234123456789012345678901234567890123456789012345678901234567890123";
+    char msg_4[4] = "123";
+    char msg_64[64] = "123456789012345678901234567890123456789012345678901234567890123";
+    char msg_256[256] = "123456789012345678901234567890123456789012345678901234567890123412345678901234567890123456789012345678901234567890123456789012341234567890123456789012345678901234567890123456789012345678901234123456789012345678901234567890123456789012345678901234567890123";
+    char getTime[2] = "t";
     char quit[2] = "q";
 
-    char *s = nullptr;
-    switch (msglen)
+    int msglen = 0;
+
+    char *msg = nullptr;
+    switch (msglen_opt)
     {
     case 0:
-        s = reply_4;
+        msg = msg_4;
         msglen = 4;
         break;
 
     case 1:
-        s = reply_64;
+        msg = msg_64;
         msglen = 64;
         break;
 
     case 2:
-        s = reply_256;
+        msg = msg_256;
         msglen = 256;
         break;
     case 3:
-        s = quit;
+        msg = getTime;
+        msglen = 2;
+        break;
+    case 4:
+        msg = quit;
         msglen = 2;
         break;
     default:
@@ -167,7 +174,7 @@ bool SendTask(int r_tid, int msglen)
     }
 
     // uart_printf(CONSOLE, "ABOUT TO SEND TO RECEIVER %d\r\n", r_tid);
-    int retval = SEND(r_tid, s, msglen, s, msglen);
+    int retval = SEND(r_tid, msg, msglen, reply, replylen);
     // uart_printf(CONSOLE, "Received {%d} bytes {%s} from R{%d}\r\n", retval, s, r_tid);
     if (retval < 0)
     {
@@ -180,13 +187,20 @@ bool SendTask(int r_tid, int msglen)
 void PerformanceTask()
 {
     uart_printf(CONSOLE, "PerformanceTask: Starting.\r\n");
+
+    char reply_4[4];
+    char reply_64[64];
+    char reply_256[256];
+
+    char *replies[3] = {reply_4, reply_64, reply_256};
+    int message_sizes[3] = {4, 64, 256};
+
 #if OPT == 1
 #define OPT_VALUE 1
 #else
 #define OPT_VALUE 0
 #endif
 
-    int message_sizes[3] = {4, 64, 256};
     // Performance test
     int tid = MYTID();
     uart_printf(CONSOLE, "PerformanceTask: TID=%d\r\n", tid);
@@ -195,13 +209,14 @@ void PerformanceTask()
     // int COMPILER_OPTS = 2; // perform this outside of the loop
 
     uint32_t times[CACHE_OPTS][SSR_EXCHANGE_OPTS][MSG_SIZE_OPTS];
+    int TEST_TO_CACHE = 2;
 
     for (int cache_opt = 0; cache_opt < CACHE_OPTS; ++cache_opt)
     {
-        // if (cache_opt > 0)
-        // {
-        //     break;
-        // }
+        if (cache_opt > TEST_TO_CACHE)
+        {
+            break;
+        }
         switch (cache_opt)
         {
         case 0:
@@ -232,11 +247,10 @@ void PerformanceTask()
             for (int msg_opt = 0; msg_opt < MSG_SIZE_OPTS; ++msg_opt)
             {
                 start_time = clock.Time();
-
                 // Performance test
                 for (int m = 0; m < REPEATS; ++m)
                 {
-                    bool success = SendTask(receiver_tid, msg_opt);
+                    bool success = SendTask(receiver_tid, msg_opt, replies[msg_opt], message_sizes[msg_opt]);
                     if (!success)
                     {
                         uart_printf(CONSOLE, "PerformanceTask: SendTask failed.\r\n");
@@ -244,11 +258,18 @@ void PerformanceTask()
                     }
                 }
                 end_time = clock.Time();
+                SendTask(receiver_tid, 3, replies[1], message_sizes[1]); // get the start time in 64 byte buffer
+                // uart_printf(CONSOLE, "PERF: Start Time: %s\r\n", replies[1]);
+                // convert replies[1] to uint32_t
+                unsigned int receiver_start_time = a2ui(&replies[1], 10);
+                // uart_printf(CONSOLE, "PERF: Start Time (uint): %d\r\n", receiver_start_time); // uart_printf(CONSOLE, "PERF: Receiver Start Time: %d\r\n", receiver_start_time);
 
-                uart_printf(CONSOLE, "Start Time: %d, End Time: %d\r\n", start_time, end_time);
+                start_time = start_time > receiver_start_time ? receiver_start_time : start_time;
+
+                // uart_printf(CONSOLE, "Start Time: %d, End Time: %d, Duration: %d\r\n", start_time, end_time, end_time - start_time);
                 times[cache_opt][isReceiveFirst][msg_opt] = (end_time - start_time) / REPEATS; // update times array
             }
-            SendTask(receiver_tid, 3); // need to restart task with different priority
+            SendTask(receiver_tid, 4, replies[0], message_sizes[0]); // quit -> 4 bytes sufficient
         }
     }
 
@@ -265,10 +286,10 @@ void PerformanceTask()
 
     for (int cache_opt = 0; cache_opt < CACHE_OPTS; ++cache_opt)
     {
-        // if (cache_opt > 0)
-        // {
-        //     break;
-        // }
+        if (cache_opt > TEST_TO_CACHE)
+        {
+            break;
+        }
         const char *nocache = "nocache";
         const char *icache = "icache";
         const char *dcache = "dcache";
@@ -305,6 +326,7 @@ void PerformanceTask()
 
 void ReceiveTask()
 {
+    uint32_t start_time = clock.Time();
     // int tid = MYTID();
     // uart_printf(CONSOLE, "ReceiveTask: TID=%d\r\n", tid);
     int sender_tid;
@@ -321,23 +343,33 @@ void ReceiveTask()
         }
         // uart_printf(CONSOLE, "ReceiveTask: Received message ({%d} bytes) from %d: %s\r\n", msglen, sender_tid, msg);
 
-        if (msg[0] == 'q')
+        switch (msg[0])
         {
-            // uart_printf(CONSOLE, "ReceiveTask: Exiting.\r\n");
-            msglen = REPLY(sender_tid, "Q", 2);
+        case 't':
+        {
+            // if t, send the start time
+            ui2a(start_time, 10, reply);
+            msglen = REPLY(sender_tid, reply, 12);
             break;
         }
-        for (int i = 0; i < msglen - 1; i++)
+        case 'q':
         {
-            reply[i] = '1';
+            // if q, exit
+            msglen = REPLY(sender_tid, "Q", 2);
+            EXIT();
+            break; // this should never be reached
         }
-        reply[msglen] = '\0';
-        // reply
-        REPLY(sender_tid, reply, msglen);
-
-        // this should execute after the sender has received the reply if LOWER priority
-        // uart_printf(CONSOLE, "ReceiveTask: Replied to %d: %s\r\n", sender_tid, "World");
+        default:
+            for (int i = 0; i < msglen - 1; i++)
+            {
+                reply[i] = '1';
+            }
+            reply[msglen] = '\0';
+            // reply
+            REPLY(sender_tid, reply, msglen);
+            break;
+        }
     }
 
-    EXIT();
+    // EXIT();
 }

@@ -3,9 +3,10 @@
 #define _util_h_
 
 #include "rpi.h"
+#include <cstdint> // For uint32_t
 
 int a2d(char ch);
-char a2i(char ch, char **src, int base, int *nump);
+uint32_t a2ui(char **src, unsigned int base);
 void ui2a(unsigned int num, unsigned int base, char *bf);
 void i2a(int num, char *bf);
 
