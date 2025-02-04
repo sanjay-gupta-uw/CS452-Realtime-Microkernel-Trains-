@@ -75,6 +75,7 @@ extern "C" int kmain()
 
    // size_t sp = fetch_sp();
    clear_screen(CONSOLE);
+   reset_formatting(CONSOLE);
    uart_printf(CONSOLE, "Welcome to the Train Controller\r\n");
 
    Context kernel_context; // Initialize kernel context

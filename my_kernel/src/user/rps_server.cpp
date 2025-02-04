@@ -84,6 +84,7 @@ void RpsServer()
                 // wait for space key to handle input
                 while (uart_getc(CONSOLE) != ' ')
                     ;
+                clear_screen(CONSOLE);
                 handlePlay(index, req.move);
             }
             break;

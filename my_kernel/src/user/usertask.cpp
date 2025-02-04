@@ -117,14 +117,14 @@ void clientTask2()
 
 void clientTask3()
 {
-    GameMove moves[] = {PAPER, SCISSORS, SCISSORS, QUIT};
-    RpsClient(moves, 4);
+    GameMove moves[] = {PAPER, SCISSORS, SCISSORS, QUIT, QUIT, QUIT};
+    RpsClient(moves, 6);
 }
 
 void clientTask4()
 {
-    GameMove moves[] = {PAPER, SCISSORS, PAPER, PAPER, QUIT};
-    RpsClient(moves, 5);
+    GameMove moves[] = {PAPER, SCISSORS, PAPER, PAPER, QUIT, QUIT, QUIT};
+    RpsClient(moves, 7);
 }
 
 void Task1()
@@ -149,8 +149,8 @@ void Task1()
     int client_tid1 = CREATE(MEDIUM, clientTask1);
     int client_tid2 = CREATE(MEDIUM, clientTask2);
 
-    // int client_tid3 = CREATE(MEDIUM, clientTask3);
-    // int client_tid4 = CREATE(MEDIUM, clientTask4);
+    int client_tid3 = CREATE(MEDIUM, clientTask3);
+    int client_tid4 = CREATE(MEDIUM, clientTask4);
 
     // for (int i = 0; i < 20; ++i)
     // {
@@ -293,7 +293,7 @@ void PerformanceTask()
 
                 start_time = start_time > receiver_start_time ? receiver_start_time : start_time;
 
-                // uart_printf(CONSOLE, "Start Time: %d, End Time: %d, Duration: %d\r\n", start_time, end_time, end_time - start_time);
+                uart_printf(CONSOLE, "Start Time: %d, End Time: %d, Duration: %d\r\n", start_time, end_time, end_time - start_time);
                 times[cache_opt][isReceiveFirst][msg_opt] = (end_time - start_time) / REPEATS; // update times array
             }
             SendTask(receiver_tid, 4, replies[0], message_sizes[0]); // quit -> 4 bytes sufficient
