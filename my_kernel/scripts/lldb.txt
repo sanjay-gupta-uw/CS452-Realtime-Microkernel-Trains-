@@ -1,9 +1,9 @@
 gdb-remote localhost:1234
-register read pc
-image lookup -b kmain
-register write pc 0x8bdc0
+image lookup -n kmain
+register write pc 0x8bb88
 image list
 continue / c
 
 breakpoint set -r "Handler"
+breakpoint set -r "call_global_constructors"
 breakpoint set -r "setup_mmu"

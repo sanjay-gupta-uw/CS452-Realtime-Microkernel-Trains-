@@ -52,6 +52,8 @@ extern "C" size_t fetch_sp();
 extern "C" int _get_el_debug();
 extern "C" void setup_mmu();
 
+extern "C" void _start(); // expose this to LLDB
+
 extern "C" void printASM(int x0)
 {
    uart_printf(CONSOLE, "X0: 0x%x \n", x0);
@@ -59,10 +61,10 @@ extern "C" void printASM(int x0)
 
 extern "C" int kmain()
 {
-#if defined(MMU)
-   setup_mmu();
-#endif
-
+   if (false)
+   {
+      _start();
+   }
    call_global_constructors();
    // Set up GPIO pins for both console and Marklin UARTs
    gpio_init();
@@ -77,6 +79,10 @@ extern "C" int kmain()
    clear_screen(CONSOLE);
    reset_formatting(CONSOLE);
    uart_printf(CONSOLE, "Welcome to the Train Controller\r\n");
+
+#if defined(MMU)
+   setup_mmu();
+#endif
 
    Context kernel_context; // Initialize kernel context
 
