@@ -400,3 +400,12 @@ void ReceiveTask()
 
     // EXIT();
 }
+
+// **************************************** K3 ****************************************
+
+// void FirstUserTask_K3()
+// {
+//     uart_printf(CONSOLE, "FirstUserTask: Starting system services.\r\n");
+//     uart_printf(CONSOLE, "FirstUserTask: Exiting.\r\n");
+//     EXIT();
+// }

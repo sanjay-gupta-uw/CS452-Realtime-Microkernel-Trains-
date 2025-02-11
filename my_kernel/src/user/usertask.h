@@ -15,5 +15,6 @@ void PerformanceTask();
 bool SendTask(int r_tid, int msglen, char *reply, int replylen);
 
 void ReceiveTask();
+void FirstUserTask_K3();
 
 #endif

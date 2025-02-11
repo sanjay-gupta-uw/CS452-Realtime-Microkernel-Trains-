@@ -83,6 +83,7 @@ extern "C" int kmain()
    // create pointer to function, and aet pointer to desired function
    uart_printf(CONSOLE, "PERF VAL: %d\n", PERF_VALUE);
    funcvoid_t bootstrap_task = PERF_VALUE == 1 ? PerformanceTask : Task1;
+   // funcvoid_t bootstrap_task = FirstUserTask_K3;
 
    Kernel kernel(bootstrap_task); // bootstrap
    TaskDescriptor *current_task = nullptr;
