@@ -44,6 +44,8 @@ Kernel::Kernel()
       // uart_printf(CONSOLE, " %d ", task_table[i].tid);
    }
 
+   tasks_awaiting_event = 0;
+
    // initilize default task
 }
 
@@ -243,10 +245,13 @@ void Kernel::Reply()
 
 void Kernel::AwaitEvent(int eventType)
 {
+   enable_irq(); // need to disable this interrupt after handling
    uart_printf(CONSOLE, "AWAITING EVENT: %d\r\n", eventType);
+   // enable this interrupt
    // active_task->Print();
    active_task->setState(EVENT_BLOCKED);
-   RepushActiveTask();
+   tasks_awaiting_event++;
+   // RepushActiveTask();
 }
 
 TaskDescriptor *

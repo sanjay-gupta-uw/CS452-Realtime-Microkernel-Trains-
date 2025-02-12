@@ -4,6 +4,7 @@
 #include "../shared_constants.h"
 
 #include "../containers/ringbuffer.h"
+#include "../containers/queue.h"
 #include "../containers/pqueue.h"
 
 #include "task.h"
@@ -43,6 +44,8 @@ private:
    void enable_dcache();
    void enable_bcache();
    void AwaitEvent(int eventType);
+
+   int tasks_awaiting_event;
 };
 
 #endif

@@ -25,8 +25,7 @@
 // Architecture Reference Manual Section C5.2.19
 // ***************************************
 
-#define SPSR_MASK_DF (9 << 6) // mask D,F
-//#define SPSR_MASK_ALL (11 << 6) // mask D,I,F
+#define SPSR_MASK_ALL (11 << 6) // mask D,I,F
 #define SPSR_EL1       (5 << 0) // EL1 with SP_EL1
 #define GICD_ENABLE (3) // forward group0 and group1 interrupts to the CPU interface
 
@@ -53,8 +52,7 @@ _start:
 	msr hcr_el2, x3
 
 	// switch to EL1 by fake exception return
-//	ldr x4, =(SPSR_MASK_ALL | SPSR_EL1)
-	ldr x4, =(SPSR_MASK_DF | SPSR_EL1)
+	ldr x4, =(SPSR_MASK_ALL | SPSR_EL1)
 	msr spsr_el2, x4
 
 	adr x5, el1_entry

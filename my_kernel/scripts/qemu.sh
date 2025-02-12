@@ -9,5 +9,5 @@
     # echo "Opening terminal on $pts"
     # tmux splitw -v screen $pts 2400 # For some reason qemu only works with uart0
     cat
-} < <(qemu-system-aarch64 -kernel ../iotest.img -machine raspi4b -cpu cortex-a72 -nographic -serial pty -serial none -serial none -serial pty -s -S)
-# } < <(qemu-system-aarch64 -kernel ../iotest.img -machine raspi4b -cpu cortex-a72 -nographic -serial pty -serial none -serial none -serial pty)
+# } < <(qemu-system-aarch64 -kernel ../iotest.img -machine raspi4b -cpu cortex-a72 -nographic -serial pty -serial none -serial none -serial pty -s -S)
+} < <(qemu-system-aarch64 -kernel ../iotest.img -machine raspi4b -cpu cortex-a72 -nographic -serial pty -serial none -serial none -serial pty)
