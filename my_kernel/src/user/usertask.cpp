@@ -403,24 +403,37 @@ void ReceiveTask()
 
 // **************************************** K3 ****************************************
 
-static void DoNothing()
-{
-    asm volatile("nop");
-}
-
 #define TIMER_C1 97
 #define TIMER_C3 99
 void FirstUserTask_K3()
 {
-    uart_printf(CONSOLE, "K3 FirstUserTask: Starting system services.\r\n");
+    int tid = MYTID();
+    uart_printf(CONSOLE, "K3 FirstUserTask: Starting system services, TID=%d.\r\n", tid);
 
-    // CREATE TEST INTERRUPT
-    // uart_printf(CONSOLE, "K# testing SGI\r\n");
+    CREATE(IDLE, idle_task);
+    uart_printf(CONSOLE, "FUT EXit.\r\n");
+    EXIT();
+}
 
-    AWAITEVENT(TIMER_C1);
-    // DoNothing();
-    // GENERATE_SGI();
+void idle_task()
+{
+    int tid = MYTID();
+    uart_printf(CONSOLE, "IDLE TASK: Starting with TID=%d.\r\n", tid);
 
-    uart_printf(CONSOLE, "K3 FirstUserTask: Exiting.\r\n");
+    CREATE(HIGH, AwaitTestTask_K3);
+    while (1)
+    {
+        // uart_printf(CONSOLE, "IDLE TASK\r\n");
+        asm volatile("wfi"); // Wait for interrupt (ARMv8 low-power mode)
+        // YIELD();
+    }
+}
+
+void AwaitTestTask_K3()
+{
+    int tid = MYTID();
+    uart_printf(CONSOLE, "K3 AwaitTestTask: Starting with TID=%d.\r\n", tid);
+    int ret = AWAITEVENT(TIMER_TICK);
+    uart_printf(CONSOLE, "EXITING AWAIT TASK");
     EXIT();
 }

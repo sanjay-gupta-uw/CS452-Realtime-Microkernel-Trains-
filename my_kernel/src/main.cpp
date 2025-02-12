@@ -100,7 +100,7 @@ extern "C" int kmain()
       int esr_el1 = kernel.DispatchTask(&kernel_context, current_task);
       // apply mask to ESR to get SVC number
       int N = esr_el1 & 0xFFFF;
-      uart_printf(CONSOLE, "ESR: {%d}, N: {%d}\n", esr_el1, N);
+      uart_printf(CONSOLE, "ESR: {%d}, N: {%d}\r\n", esr_el1, N);
       if (esr_el1 < 0)
       {
          uart_printf(CONSOLE, "UNEXPECTED ERROR\r\n");

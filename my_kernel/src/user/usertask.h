@@ -16,5 +16,7 @@ bool SendTask(int r_tid, int msglen, char *reply, int replylen);
 
 void ReceiveTask();
 void FirstUserTask_K3();
+void AwaitTestTask_K3();
+void idle_task();
 
 #endif

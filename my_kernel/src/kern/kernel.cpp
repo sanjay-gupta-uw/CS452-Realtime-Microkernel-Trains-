@@ -5,6 +5,9 @@
 #include <cstddef>
 #include "interrupts.h"
 
+#include "../clock.h"
+extern Clock clock;
+
 // define our own memset to avoid SIMD instructions emitted from the compiler
 extern "C" void *memset(void *s, int c, size_t n)
 {
@@ -245,13 +248,12 @@ void Kernel::Reply()
 
 void Kernel::AwaitEvent(int eventType)
 {
-   enable_irq(); // need to disable this interrupt after handling
    uart_printf(CONSOLE, "AWAITING EVENT: %d\r\n", eventType);
-   // enable this interrupt
-   // active_task->Print();
    active_task->setState(EVENT_BLOCKED);
-   tasks_awaiting_event++;
-   // RepushActiveTask();
+   if (eventType == TIMER_TICK)
+   {
+      clock.ReArmTimer(1000); // Rearm timer for next interval
+   }
 }
 
 TaskDescriptor *
@@ -374,12 +376,13 @@ void Kernel::Handler(int N)
       break;
 
    case SVC_AWAITEVENT:
-      uart_printf(CONSOLE, "(AWAITEVENT) Triggered\r\n");
+      uart_printf(CONSOLE, "(AWAITEVENT) Triggered by {%d}\r\n", active_task->getTid());
       AwaitEvent(active_task->context.x[0]);
       break;
 
    case IRQ:
       uart_printf(CONSOLE, "(IRQ) Triggered \r\n");
+      IRQ_Handler();
       break;
 
    default:

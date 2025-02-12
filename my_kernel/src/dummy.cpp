@@ -17,10 +17,10 @@ extern "C" void _dummyHandler1()
    }
 }
 
-extern "C" void _dummyHandler2(int CASE)
+extern "C" void _dummyHandler2()
 {
    // Get the system call number
-   uart_printf(CONSOLE, "Dummy Handler 2, <CASE: {%d}>\n", CASE);
+   uart_printf(CONSOLE, "Dummy Handler 2\n");
    size_t sp = fetch_sp();
    uart_printf(CONSOLE, "SP: %x\n", sp);
 
@@ -29,12 +29,12 @@ extern "C" void _dummyHandler2(int CASE)
    }
 }
 
-extern "C" void _dummyHandler3(int CASE)
+extern "C" void _dummyHandler3()
 {
    // Get the system call number
-   uart_printf(CONSOLE, "Dummy Handler 3, <CASE: {%d}>\n", CASE);
+   uart_printf(CONSOLE, "Dummy Handler 3\r\n");
    size_t sp = fetch_sp();
-   uart_printf(CONSOLE, "SP: %x\n", sp);
+   uart_printf(CONSOLE, "SP: %x\r\n", sp);
 
    for (;;)
    {

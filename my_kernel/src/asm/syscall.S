@@ -83,6 +83,5 @@ ENABLE_BCACHE:
 .global AWAITEVENT
 .balign 16
 AWAITEVENT:
-    // wfe
     svc #11
     ret

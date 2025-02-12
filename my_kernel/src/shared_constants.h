@@ -1,6 +1,11 @@
 #ifndef _shared_constants_h_
 #define _shared_constants_h_
 
+typedef enum
+{
+   TIMER_TICK,
+} InterruptEvents;
+
 // priority levels
 typedef enum
 {

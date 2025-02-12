@@ -8,6 +8,7 @@
 class Clock
 {
 public:
+   int TICKS;
    // reintegrate with Tid: https://student.cs.uwaterloo.ca/~cs452/W25/assignments/kernel.html
    Clock();
    ~Clock();
@@ -16,6 +17,8 @@ public:
    void Update();
    void Delay(uint32_t delay_ms);
    void Display(int LOCATION);
+   void ReArmTimer(uint32_t delay_interval);
+   void DisarmTimer();
 
 private:
    uint32_t last_time;

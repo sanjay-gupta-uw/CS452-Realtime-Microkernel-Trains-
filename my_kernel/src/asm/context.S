@@ -1,4 +1,4 @@
-.equ IRQ, 11  // define IRQ value
+.equ IRQ, 12  // define IRQ value
 
 .macro transition_to_kernel isIRQ
     // x0 and x1 contain arguments to pass to kernel

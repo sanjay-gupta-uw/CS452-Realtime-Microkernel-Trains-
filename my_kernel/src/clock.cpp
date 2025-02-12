@@ -1,4 +1,5 @@
 #include "clock.h"
+#include <assert.h>
 // #include "rpi.h"
 
 #define TENTH_OF_SECOND_MICRO_SECONDS 100000
@@ -12,9 +13,9 @@ static const uint32_t SYSTIMER_CS = 0x00;  // System Timer Control/Status
 static const uint32_t SYSTIMER_CLO = 0x04; // System Timer Counter Lower 32 bits
 static const uint32_t SYSTIMER_CHI = 0x08; // System Timer Counter Higher 32 bits
 // static const uint32_t SYSTIMER_C0 = 0x0C;	 // System Timer Compare 0
-// static const uint32_t SYSTIMER_C1 = 0x10;	 // System Timer Compare 1
+static const uint32_t SYSTIMER_C1 = 0x10; // System Timer Compare 1
 // static const uint32_t SYSTIMER_C2 = 0x14;	 // System Timer Compare 2
-// static const uint32_t SYSTIMER_C3 = 0x18;	 // System Timer Compare 3
+static const uint32_t SYSTIMER_C3 = 0x18; // System Timer Compare 3
 
 // CS register masks
 static const uint32_t SYSTIMER_CS_M0 = 0x01; // Match 0
@@ -28,6 +29,7 @@ static const uint32_t SYSTIMER_CS_M3 = 0x04; // Match 3
 
 Clock::Clock()
 {
+   TICKS = 0;
    last_time = SYSTIMER_REG(SYSTIMER_CLO);
    minutes = 0;
    seconds = 0;
@@ -106,4 +108,18 @@ void Clock::Display(int LOCATION)
    uart_printf(CONSOLE, "%u", tenths); // Tenths don't need padding
 
    UPDATE_DISPLAY = false;
+}
+
+// CMP_REG should be 1/3
+void Clock::ReArmTimer(uint32_t delay_interval)
+{
+   uart_printf(CONSOLE, "REARMING TIMER\r\n");
+   uint32_t next_match = SYSTIMER_REG(SYSTIMER_CLO) + delay_interval;
+   SYSTIMER_REG(SYSTIMER_C1) = next_match;
+   // ++TICKS;
+}
+
+void Clock::DisarmTimer()
+{
+   SYSTIMER_REG(SYSTIMER_CS) = (1 << 1); // clear match bit for C1 (2nd bit)
 }
