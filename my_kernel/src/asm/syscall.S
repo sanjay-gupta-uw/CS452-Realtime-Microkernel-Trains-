@@ -67,3 +67,19 @@ ENABLE_DCACHE:
 ENABLE_BCACHE:
     svc #10
     ret
+
+.equ GIC_BASE,  0xFF840000
+.equ GICD_BASE, (GIC_BASE + 0x1000)
+.equ GICD_SGIR, (GICD_BASE + 0xF00)
+
+.global GENERATE_SGI
+.balign 16
+GENERATE_SGI:
+    //@ mrs x0, DAIF
+    mov x1, #0x01000000 //@ Example: SGI ID 0, target list 1 (CPU 0)
+    ldr x0, =GICD_SGIR  //@ Load address of GICD_SGIR
+    str w1, [x0]        //@ Write SGI command to GICD_SGIR
+    dsb sy              //@ Ensure memory sync
+    isb                 //@ Instruction sync
+
+    ret                 //@ Return to caller

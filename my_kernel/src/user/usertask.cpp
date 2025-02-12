@@ -403,9 +403,14 @@ void ReceiveTask()
 
 // **************************************** K3 ****************************************
 
-// void FirstUserTask_K3()
-// {
-//     uart_printf(CONSOLE, "FirstUserTask: Starting system services.\r\n");
-//     uart_printf(CONSOLE, "FirstUserTask: Exiting.\r\n");
-//     EXIT();
-// }
+void FirstUserTask_K3()
+{
+    uart_printf(CONSOLE, "K3 FirstUserTask: Starting system services.\r\n");
+
+    // CREATE TEST INTERRUPT
+    uart_printf(CONSOLE, "K# testing SGI\r\n");
+    GENERATE_SGI();
+
+    uart_printf(CONSOLE, "K3 FirstUserTask: Exiting.\r\n");
+    EXIT();
+}

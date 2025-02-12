@@ -1,3 +1,78 @@
+.equ IRQ, 11  // define IRQ value
+
+.macro transition_to_kernel isIRQ
+    // x0 and x1 contain arguments to pass to kernel
+    ldr x16, [sp], #16 // pop the task context pointer
+
+    str x0, [x16, #0]  // save x0 arg
+    add x0, x16, #8 // make x0 point to x1 location
+    
+    
+    // store all the registers
+    stp x1, x2, [x0], #16
+    stp x3, x4, [x0], #16
+    stp x5, x6, [x0], #16
+    stp x7, x8, [x0], #16
+    stp x9, x10, [x0], #16
+    stp x11, x12, [x0], #16
+    stp x13, x14, [x0], #16
+    stp x15, x16, [x0], #16
+    stp x17, x18, [x0], #16
+    stp x19, x20, [x0], #16
+    stp x21, x22, [x0], #16
+    stp x23, x24, [x0], #16
+    stp x25, x26, [x0], #16
+    stp x27, x28, [x0], #16
+    stp x29, x30, [x0], #16
+
+    // CONTEXT:
+    /*
+    struct context_t
+    {
+        int64_t registers[31]; // x0 to x30
+        uint64_t spsr;         // saved program status reg
+        uint64_t stack_pointer;
+        uint64_t exception_lr;
+    };
+     */
+    
+    // now save special registers
+    mrs x1, spsr_el1
+    str x1, [x0], #8
+    mrs x1, sp_el0
+    str x1, [x0], #8
+    mrs x1, elr_el1
+    str x1, [x0], #8
+
+    // return to kernel
+    ldr x0, [sp], #16
+    add x0, x0, #8
+    ldp x1, x2, [x0], #16 
+    ldp x3, x4, [x0], #16 
+    ldp x5, x6, [x0], #16 
+    ldp x7, x8, [x0], #16 
+    ldp x9, x10, [x0], #16
+    ldp x11, x12, [x0], #16
+    ldp x13, x14, [x0], #16
+    ldp x15, x16, [x0], #16
+    ldp x17, x18, [x0], #16
+    ldp x19, x20, [x0], #16
+    ldp x21, x22, [x0], #16
+    ldp x23, x24, [x0], #16
+    ldp x25, x26, [x0], #16
+    ldp x27, x28, [x0], #16
+    ldp x29, x30, [x0], #16
+
+    .if \isIRQ
+        mov x0, IRQ
+    .else 
+        mrs x0, esr_el1 // return ESR_EL1 to 0
+    .endif
+    
+    ret // return to kernel
+.endm
+
+
 .global kernel_to_task_asm
 .balign 16
 kernel_to_task_asm:
@@ -77,78 +152,15 @@ kernel_to_task_asm:
     eret // return from exception: EL1->EL0
     
 
+
+
+
 .global task_to_kernel_asm
 .balign 16
 task_to_kernel_asm:
-    // x0 and x1 contain arguments to pass to kernel
-    ldr x16, [sp], #16 // pop the task context pointer
+    transition_to_kernel 0
 
-    str x0, [x16, #0]  // save x0 arg
-    add x0, x16, #8 // make x0 point to x1 location
-    
-    
-    // store all the registers
-    stp x1, x2, [x0], #16
-    stp x3, x4, [x0], #16
-    stp x5, x6, [x0], #16
-    stp x7, x8, [x0], #16
-    stp x9, x10, [x0], #16
-    stp x11, x12, [x0], #16
-    stp x13, x14, [x0], #16
-    stp x15, x16, [x0], #16
-    stp x17, x18, [x0], #16
-    stp x19, x20, [x0], #16
-    stp x21, x22, [x0], #16
-    stp x23, x24, [x0], #16
-    stp x25, x26, [x0], #16
-    stp x27, x28, [x0], #16
-    stp x29, x30, [x0], #16
-
-    // CONTEXT:
-    /*
-    struct context_t
-    {
-        int64_t registers[31]; // x0 to x30
-        uint64_t spsr;         // saved program status reg
-        uint64_t stack_pointer;
-        uint64_t exception_lr;
-    };
-     */
-    
-    // now save special registers
-    mrs x1, spsr_el1
-    str x1, [x0], #8
-    mrs x1, sp_el0
-    str x1, [x0], #8
-    mrs x1, elr_el1
-    str x1, [x0], #8
-
-    // return to kernel
-    ldr x0, [sp], #16
-    add x0, x0, #8
-    ldp x1, x2, [x0], #16 
-    ldp x3, x4, [x0], #16 
-    ldp x5, x6, [x0], #16 
-    ldp x7, x8, [x0], #16 
-    ldp x9, x10, [x0], #16
-    ldp x11, x12, [x0], #16
-    ldp x13, x14, [x0], #16
-    ldp x15, x16, [x0], #16
-    ldp x17, x18, [x0], #16
-    ldp x19, x20, [x0], #16
-    ldp x21, x22, [x0], #16
-    ldp x23, x24, [x0], #16
-    ldp x25, x26, [x0], #16
-    ldp x27, x28, [x0], #16
-    ldp x29, x30, [x0], #16
-
-    mrs x0, esr_el1 // return ESR_EL1 to 0
-    ret // return to kernel
-
-
-
-
-
-    
-
-
+.global irq_to_kernel_asm
+.balign 16
+irq_to_kernel_asm:
+    transition_to_kernel 1

@@ -24,7 +24,9 @@
 // SPSR_EL2, Saved Program Status Register (EL2)
 // Architecture Reference Manual Section C5.2.19
 // ***************************************
-#define SPSR_MASK_ALL (11 << 6) // mask D,I,F
+
+#define SPSR_MASK_DF (9 << 6) // mask D,F
+//#define SPSR_MASK_ALL (11 << 6) // mask D,I,F
 #define SPSR_EL1       (5 << 0) // EL1 with SP_EL1
 
 // ensure the linker puts this at the start of the image
@@ -50,7 +52,8 @@ _start:
 	msr hcr_el2, x3
 
 	// switch to EL1 by fake exception return
-	ldr x4, =(SPSR_MASK_ALL | SPSR_EL1)
+//	ldr x4, =(SPSR_MASK_ALL | SPSR_EL1)
+	ldr x4, =(SPSR_MASK_DF | SPSR_EL1)
 	msr spsr_el2, x4
 	adr x5, el1_entry
 	msr elr_el2, x5
@@ -135,7 +138,7 @@ vectors:
     // ---------------------
     b task_to_kernel_asm  // VBAR_ELx + 0x400
     .balign 0x80
-    b _dummyHandler3   // VBAR_ELx + 0x480
+    b irq_to_kernel_asm  // VBAR_ELx + 0x480
     .balign 0x80
     b _dummyHandler3   // VBAR_ELx + 0x500
     .balign 0x80

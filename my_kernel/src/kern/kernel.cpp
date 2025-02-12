@@ -356,6 +356,10 @@ void Kernel::Handler(int N)
       enable_bcache();
       break;
 
+   case IRQ:
+      uart_printf(CONSOLE, "(IRQ) Triggered \r\n");
+      break;
+
    default:
       break;
    }

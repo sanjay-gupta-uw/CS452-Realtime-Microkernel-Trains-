@@ -23,6 +23,7 @@ typedef enum
    SVC_ICACHE,
    SVC_DCACHE,
    SVC_BCACHE,
+   IRQ,
 } Syscall;
 
 #endif
