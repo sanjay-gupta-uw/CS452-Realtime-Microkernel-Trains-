@@ -28,6 +28,7 @@
 #define SPSR_MASK_DF (9 << 6) // mask D,F
 //#define SPSR_MASK_ALL (11 << 6) // mask D,I,F
 #define SPSR_EL1       (5 << 0) // EL1 with SP_EL1
+#define GICD_ENABLE (3) // forward group0 and group1 interrupts to the CPU interface
 
 // ensure the linker puts this at the start of the image
 .section ".text.boot"
@@ -55,6 +56,7 @@ _start:
 //	ldr x4, =(SPSR_MASK_ALL | SPSR_EL1)
 	ldr x4, =(SPSR_MASK_DF | SPSR_EL1)
 	msr spsr_el2, x4
+
 	adr x5, el1_entry
 	msr elr_el2, x5
 

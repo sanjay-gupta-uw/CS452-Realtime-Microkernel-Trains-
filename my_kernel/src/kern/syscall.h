@@ -12,5 +12,7 @@ extern "C" int REPLY(int tid, const char *reply, int replylen);
 extern "C" void ENABLE_ICACHE();
 extern "C" void ENABLE_DCACHE();
 extern "C" void ENABLE_BCACHE();
-extern "C" void GENERATE_SGI();
+extern "C" void AWAITEVENT(int eventType);
+
+// extern "C" void GENERATE_SGI();
 #endif // _syscall_h_

@@ -42,6 +42,7 @@ private:
    void enable_icache();
    void enable_dcache();
    void enable_bcache();
+   void AwaitEvent(int eventType);
 };
 
 #endif

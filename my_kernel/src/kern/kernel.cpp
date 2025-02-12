@@ -1,9 +1,9 @@
 #include "kernel.h"
 #include "../rpi.h"
-
 /***************************************************/
 // #if !defined(MMU)
 #include <cstddef>
+#include "interrupts.h"
 
 // define our own memset to avoid SIMD instructions emitted from the compiler
 extern "C" void *memset(void *s, int c, size_t n)
@@ -53,6 +53,10 @@ Kernel::Kernel(void (*function)()) : Kernel()
    int tid = Create(MEDIUM, function);
    uart_printf(CONSOLE, "FUNCTION: 0x%x\r\n", function);
    uart_printf(CONSOLE, "BootStrap Task ID: %d\r\n", tid);
+
+   // initialize INTERRUPTS
+   InitGIC();
+   uart_printf(CONSOLE, "Finished Initializing GIC\r\n");
 }
 
 Kernel::~Kernel()
@@ -237,6 +241,14 @@ void Kernel::Reply()
    RepushActiveTask();
 }
 
+void Kernel::AwaitEvent(int eventType)
+{
+   uart_printf(CONSOLE, "AWAITING EVENT: %d\r\n", eventType);
+   // active_task->Print();
+   active_task->setState(EVENT_BLOCKED);
+   RepushActiveTask();
+}
+
 TaskDescriptor *
 Kernel::Scheduler()
 {
@@ -354,6 +366,11 @@ void Kernel::Handler(int N)
    case SVC_BCACHE:
       // uart_printf(CONSOLE, "(BCACHE)\r\n");
       enable_bcache();
+      break;
+
+   case SVC_AWAITEVENT:
+      uart_printf(CONSOLE, "(AWAITEVENT) Triggered\r\n");
+      AwaitEvent(active_task->context.x[0]);
       break;
 
    case IRQ:

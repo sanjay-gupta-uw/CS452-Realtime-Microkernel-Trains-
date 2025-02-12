@@ -68,18 +68,21 @@ ENABLE_BCACHE:
     svc #10
     ret
 
-.equ GIC_BASE,  0xFF840000
-.equ GICD_BASE, (GIC_BASE + 0x1000)
-.equ GICD_SGIR, (GICD_BASE + 0xF00)
+//.global GENERATE_SGI
+//.balign 16
+//GENERATE_SGI:
+    //movz x0, #0x0F00
+    //movk x0, #0xFF84, lsl 16  // Load GICD_SGIR address into x0
+    //mov w1, #1                // Example SGI value
+    //str w1, [x0]              // Store SGI command to GICD_SGIR
+    //dsb sy
+    //isb
+    //ret
 
-.global GENERATE_SGI
+
+.global AWAITEVENT
 .balign 16
-GENERATE_SGI:
-    //@ mrs x0, DAIF
-    mov x1, #0x01000000 //@ Example: SGI ID 0, target list 1 (CPU 0)
-    ldr x0, =GICD_SGIR  //@ Load address of GICD_SGIR
-    str w1, [x0]        //@ Write SGI command to GICD_SGIR
-    dsb sy              //@ Ensure memory sync
-    isb                 //@ Instruction sync
-
-    ret                 //@ Return to caller
+AWAITEVENT:
+    // wfe
+    svc #11
+    ret
