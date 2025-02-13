@@ -89,7 +89,6 @@ void clear_screen(size_t line)
 // DISABLED FOR QEMU
 void clear_to_end_line(size_t line)
 {
-	return;
 	uart_puts(line, "\033[K"); // wipe rest of line
 }
 
@@ -112,6 +111,16 @@ void move_cursor(size_t line, int row, int col)
 	uart_putc(line, '0' + (col % 10));	  // Ones digit
 
 	uart_putc(line, 'H'); // End of sequence
+}
+
+void SaveCursor(size_t line)
+{
+	uart_puts(line, "\033[s");
+}
+
+void RestoreCursor(size_t line)
+{
+	uart_puts(line, "\033[u");
 }
 
 void color_black() { uart_puts(CONSOLE, "\033[30m"); }

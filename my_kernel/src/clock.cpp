@@ -113,7 +113,7 @@ void Clock::Display(int LOCATION)
 // CMP_REG should be 1/3
 void Clock::ReArmTimer(uint32_t delay_interval)
 {
-   uart_printf(CONSOLE, "REARMING TIMER\r\n");
+   // uart_printf(CONSOLE, "REARMING TIMER\r\n");
    uint32_t next_match = SYSTIMER_REG(SYSTIMER_CLO) + delay_interval;
    SYSTIMER_REG(SYSTIMER_C1) = next_match;
    // ++TICKS;

@@ -16,6 +16,9 @@ void clear_screen(size_t line);
 void move_cursor(size_t line, int row, int col);
 void reset_formatting(size_t line);
 
+void SaveCursor(size_t line);
+void RestoreCursor(size_t line);
+
 // color helper functions
 void color_black();
 void color_red();

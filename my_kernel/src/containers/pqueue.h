@@ -12,6 +12,7 @@ public:
 
    int Push(T item, int priority);
    int Pop(T *item);
+   int Peek(T *item, int *priority);
    bool isEmpty() const;
    bool isFull() const;
 

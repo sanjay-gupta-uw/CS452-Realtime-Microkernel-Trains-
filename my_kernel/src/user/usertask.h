@@ -1,22 +1,13 @@
 #ifndef _user_task_h_
 #define _user_task_h_
 
-#include "../clock.h"
+struct ParamRequest
+{
+   int delay_interval;
+   int num_delays;
+};
 
-extern Clock clock;
-
-void Task1();
-void TaskRegister();
-void TaskQuery();
-void TaskStressTest();
-
-void PerformanceTask();
-
-bool SendTask(int r_tid, int msglen, char *reply, int replylen);
-
-void ReceiveTask();
-void FirstUserTask_K3();
-void AwaitTestTask_K3();
-void idle_task();
-
+void FirstUserTask();
+void ClientTask();
+void IdleTask();
 #endif

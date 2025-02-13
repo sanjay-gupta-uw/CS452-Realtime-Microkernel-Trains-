@@ -32,7 +32,7 @@ extern "C" void *memcpy(void *dest, const void *src, size_t n)
 
 Kernel::Kernel()
 {
-   uart_printf(CONSOLE, "Kernel Constructor1\r\n");
+   // uart_printf(CONSOLE, "Kernel Constructor1\r\n");
    // initialize free_tid
    for (int i = 0; i < MAX_TASKS; i++)
    {
@@ -40,7 +40,7 @@ Kernel::Kernel()
    }
 
    active_task = nullptr; // initilize active task
-   uart_printf(CONSOLE, "TIDs: ");
+   // uart_printf(CONSOLE, "TIDs: ");
    for (int i = 0; i < MAX_TASKS; i++)
    {
       task_table[i].tid = i;
@@ -55,13 +55,13 @@ Kernel::Kernel()
 Kernel::Kernel(void (*function)()) : Kernel()
 {
    // initilize default task with medium priority
-   int tid = Create(MEDIUM, function);
-   uart_printf(CONSOLE, "FUNCTION: 0x%x\r\n", function);
-   uart_printf(CONSOLE, "BootStrap Task ID: %d\r\n", tid);
+   int tid = Create(PRIORITY::P2, function);
+   // uart_printf(CONSOLE, "FUNCTION: 0x%x\r\n", function);
+   // uart_printf(CONSOLE, "BootStrap Task ID: %d\r\n", tid);
 
    // initialize INTERRUPTS
    InitGIC();
-   uart_printf(CONSOLE, "Finished Initializing GIC\r\n");
+   // uart_printf(CONSOLE, "Finished Initializing GIC\r\n");
 }
 
 Kernel::~Kernel()
@@ -87,7 +87,7 @@ inline void Kernel::RepushActiveTask()
 int Kernel::Create(int priority, void (*function)())
 {
    // check if priority is valid
-   if (priority < HIGH || priority > IDLE)
+   if (priority < PRIORITY::P0 || priority > PRIORITY::IDLE)
    {
       return -2;
    }
@@ -203,7 +203,7 @@ void Kernel::Receive()
    if (active_task->inbox.Pop(&sender_tid) == -1)
    {
       active_task->setState(RECEIVE_BLOCKED); // RECEIVER BLOCKS
-      uart_printf(CONSOLE, "RECEIVER BLOCKED\r\n");
+      // uart_printf(CONSOLE, "RECEIVER BLOCKED: {%d}\r\n", active_task->tid);
       return;
    }
    // ensure sender is in send block
@@ -248,10 +248,10 @@ void Kernel::Reply()
 
 void Kernel::AwaitEvent(int eventType)
 {
-   uart_printf(CONSOLE, "AWAITING EVENT: %d\r\n", eventType);
+   // uart_printf(CONSOLE, "AWAITING EVENT: %d\r\n", eventType);
    if (eventType == TIMER_TICK)
    {
-      clock.ReArmTimer(1000); // Rearm timer for next interval
+      clock.ReArmTimer(TEN_MS); // Rearm timer for next interval
       active_task->SetRetval(0);
       active_task->setState(EVENT_BLOCKED);
       event_queues[eventType].Push(active_task);
@@ -268,16 +268,16 @@ void Kernel::IRQ_Handler()
    uint32_t irq_id = D_REG(GICC_BASE, GICC_IAR);
 
    irq_id &= 0x3FF; // Mask to extract last 10 bits (interrupt ID)
-   uart_printf(CONSOLE, "IRQ HANDLER: Received ID: %d\r\n", irq_id);
+   // uart_printf(CONSOLE, "IRQ HANDLER: Received ID: %d\r\n", irq_id);
 
    switch (irq_id)
    {
-   case TIMER_TICK:
+   case TIMER_C1:
    {
       clock.DisarmTimer();
 
       TaskDescriptor *task;
-      while (event_queues[irq_id].Pop(&task) != -1)
+      while (event_queues[TIMER_TICK].Pop(&task) != -1)
       {
          task->setState(READY);
          ready_queue.Push(task->tid, task->priority);
@@ -288,6 +288,8 @@ void Kernel::IRQ_Handler()
       uart_printf(CONSOLE, "PANIC: UNDEFINED IRQ ID\r\n");
       break;
    }
+
+   RepushActiveTask();
 
    D_REG(GICC_BASE, GICC_EOIR) = irq_id; // Write EOI to signal end of interrupt
 }
@@ -412,12 +414,12 @@ void Kernel::Handler(int N)
       break;
 
    case SVC_AWAITEVENT:
-      uart_printf(CONSOLE, "(AWAITEVENT) Triggered by {%d}\r\n", active_task->getTid());
+      // uart_printf(CONSOLE, "(AWAITEVENT) Triggered by {%d}\r\n", active_task->getTid());
       AwaitEvent(active_task->context.x[0]);
       break;
 
    case IRQ:
-      uart_printf(CONSOLE, "(IRQ) Triggered \r\n");
+      // uart_printf(CONSOLE, "(IRQ) Triggered \r\n");
       IRQ_Handler();
       break;
 

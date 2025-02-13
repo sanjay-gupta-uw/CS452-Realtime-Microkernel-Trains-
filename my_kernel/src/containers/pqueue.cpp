@@ -48,6 +48,18 @@ int PQueue<T>::Pop(T *item)
 }
 
 template <typename T>
+int PQueue<T>::Peek(T *item, int *priority)
+{
+   if (isEmpty())
+   {
+      return -1; // Indicate that the queue is empty
+   }
+   *item = heap[0].data; // Store the top item in the provided pointer
+   *priority = heap[0].priority;
+   return 0; // Success
+}
+
+template <typename T>
 bool PQueue<T>::isFull() const
 {
    return size == HEAP_SIZE;
