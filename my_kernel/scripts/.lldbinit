@@ -1,0 +1,2 @@
+command script import lldb_commands.py
+command script add -f lldb_commands.setup mysetup

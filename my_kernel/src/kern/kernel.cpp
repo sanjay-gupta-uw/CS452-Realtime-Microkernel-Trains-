@@ -34,7 +34,7 @@ Kernel::Kernel()
 {
    // uart_printf(CONSOLE, "Kernel Constructor1\r\n");
    // initialize free_tid
-   for (int i = 0; i < MAX_TASKS; i++)
+   for (int i = 1; i <= MAX_TASKS; i++)
    {
       free_tid.Push(i);
    }
