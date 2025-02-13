@@ -15,17 +15,10 @@ void Task1() {
         EXIT();
     }
 
-    // Start the Clock Notifier
-    int clockNotifierTid = CREATE(HIGH, ClockNotifier);
-    if (clockNotifierTid < 0) {
-        uart_printf(CONSOLE, "Error starting Clock Notifier\n");
-        EXIT();
-    }
-
     // Create Clock Client Tasks with varying priorities and delays
     int delays[] = {10, 23, 33, 71};
     int counts[] = {20, 9, 6, 3};
-    int priorities[] = {3, 4, 5, 6};  // Higher number, lower priority
+    int priorities[] = {3, 4, 5, 6}; 
 
     for (int i = 0; i < 4; i++) {
         int clientTid = CREATE(priorities[i], [i, clockServerTid]() {
