@@ -1,7 +1,7 @@
 # make --version
-# XDIR:=/u/cs452/public/xdev
+XDIR:=/u/cs452/public/xdev
 # XDIR:=/opt/aarch64-none-elf
-XDIR:=/Applications/ArmGNUToolchain/14.2.rel1/aarch64-none-elf
+# XDIR:=/Applications/ArmGNUToolchain/14.2.rel1/aarch64-none-elf
 ARCH=cortex-a72
 TRIPLE=aarch64-none-elf
 XBINDIR:=$(XDIR)/bin
