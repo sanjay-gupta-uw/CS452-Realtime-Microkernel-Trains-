@@ -249,11 +249,47 @@ void Kernel::Reply()
 void Kernel::AwaitEvent(int eventType)
 {
    uart_printf(CONSOLE, "AWAITING EVENT: %d\r\n", eventType);
-   active_task->setState(EVENT_BLOCKED);
    if (eventType == TIMER_TICK)
    {
       clock.ReArmTimer(1000); // Rearm timer for next interval
+      active_task->SetRetval(0);
+      active_task->setState(EVENT_BLOCKED);
+      event_queues[eventType].Push(active_task);
    }
+   else
+   {
+      uart_printf(CONSOLE, "PANIC: INVALID EVENT TYPE, RETURNING -1\r\n");
+      active_task->SetRetval(-1); // set return value to -1
+   }
+}
+
+void Kernel::IRQ_Handler()
+{
+   uint32_t irq_id = D_REG(GICC_BASE, GICC_IAR);
+
+   irq_id &= 0x3FF; // Mask to extract last 10 bits (interrupt ID)
+   uart_printf(CONSOLE, "IRQ HANDLER: Received ID: %d\r\n", irq_id);
+
+   switch (irq_id)
+   {
+   case TIMER_TICK:
+   {
+      clock.DisarmTimer();
+
+      TaskDescriptor *task;
+      while (event_queues[irq_id].Pop(&task) != -1)
+      {
+         task->setState(READY);
+         ready_queue.Push(task->tid, task->priority);
+      }
+      break;
+   }
+   default:
+      uart_printf(CONSOLE, "PANIC: UNDEFINED IRQ ID\r\n");
+      break;
+   }
+
+   D_REG(GICC_BASE, GICC_EOIR) = irq_id; // Write EOI to signal end of interrupt
 }
 
 TaskDescriptor *

@@ -434,6 +434,11 @@ void AwaitTestTask_K3()
     int tid = MYTID();
     uart_printf(CONSOLE, "K3 AwaitTestTask: Starting with TID=%d.\r\n", tid);
     int ret = AWAITEVENT(TIMER_TICK);
+    uart_printf(CONSOLE, "K3 AwaitTestTask: AWAITEVENT returned %d.\r\n", ret);
+
+    int invalid = AWAITEVENT(10);
+    uart_printf(CONSOLE, "INVALID EVENT should be -1: %d\r\n", invalid);
+
     uart_printf(CONSOLE, "EXITING AWAIT TASK");
     EXIT();
 }

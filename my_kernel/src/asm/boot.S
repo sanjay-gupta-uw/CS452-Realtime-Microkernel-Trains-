@@ -158,3 +158,9 @@ vectors:
     b _dummyHandler4  // VBAR_ELx + 0x780
     .balign 0x80
  
+
+ .global fetch_sp
+fetch_sp:
+    mov x0, sp
+    ret
+    

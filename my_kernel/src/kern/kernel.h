@@ -9,6 +9,7 @@
 
 #include "task.h"
 #include "memory.h"
+#include "constants.h"
 
 class Kernel
 {
@@ -29,6 +30,9 @@ private:
    PQueue<int> ready_queue; // ready queue is a priority queue of task ids
                             // PQueue<TaskDescriptor *> ready_queue;
 
+   // Array of Queues for each event type
+   Queue<TaskDescriptor *> event_queues[NUM_INTERRUPT_EVENTS];
+
    int Create(int priority, void (*function)()); // use free_tid to get a tid, create a new task, and push it to ready_queue
    int MyTid();
    int MyParentTid();
@@ -44,6 +48,8 @@ private:
    void enable_dcache();
    void enable_bcache();
    void AwaitEvent(int eventType);
+
+   void IRQ_Handler();
 
    int tasks_awaiting_event;
 };

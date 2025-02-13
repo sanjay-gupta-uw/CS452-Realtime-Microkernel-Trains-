@@ -6,6 +6,8 @@ typedef enum
    TIMER_TICK,
 } InterruptEvents;
 
+#define NUM_INTERRUPT_EVENTS 1
+
 // priority levels
 typedef enum
 {
