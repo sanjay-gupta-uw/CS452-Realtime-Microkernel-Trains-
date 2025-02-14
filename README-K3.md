@@ -1,11 +1,8 @@
 ## 1.0 Overview
 
-This program is written for K2 and implements the desired functionality:
+This program is written for K3 and implements the desired functionality:
 
-- FirstUserTask runs and creates a name server, rps server, and rps clients
-- RPSClients communication with server to play games
-  OR
-- Change PERF=1 in Makefile and run performance test.
+- FirstUserTask (FUT) runs and creates a name server, clock server, clock-notifier and client tasks that requests paramaters from FUT and delays according to the paramaters passed back.
 
 ## 2.0 Program Operation
 
@@ -19,12 +16,12 @@ To compile the code, navigate from the root directory to my_kernel
 followed by
 `make`
 
-This should produce `"iotest.elf"` and `"iotest.img"`.
+This should produce `"iotest.elf"` and `"iotest.img"`. 
 
 Now navigate to the scripts directory
 `cd scripts`
 
-In order to upload the compiled image to a rasberry pi and issue the following command:
+In order to upload the compiled image to a rasberry pi, issue the following command:
 
 `./upload.sh ../iotest.img <d8:3a:dd:1b:36:9e>`
 (replace with desired MAC address).
