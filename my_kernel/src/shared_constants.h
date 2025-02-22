@@ -3,39 +3,40 @@
 
 typedef enum
 {
-   TIMER_TICK,
+    TIMER_TICK,
+    UART_RX,
+    UART_TX,
+    NUM_EVENTS
 } InterruptEvents;
-
-#define NUM_INTERRUPT_EVENTS 1
 
 // priority levels
 typedef enum
 {
-   P0,
-   P1,
-   P2,
-   P3,
-   P4,
-   P5,
-   P6,
-   IDLE
+    P0,
+    P1,
+    P2,
+    P3,
+    P4,
+    P5,
+    P6,
+    IDLE
 } PRIORITY;
 
 typedef enum
 {
-   SVC_CREATE,
-   SVC_MYTID,
-   SVC_MYPARENTID,
-   SVC_YIELD,
-   SVC_EXIT,
-   SVC_SEND,
-   SVC_RECEIVE,
-   SVC_REPLY,
-   SVC_ICACHE,
-   SVC_DCACHE,
-   SVC_BCACHE,
-   SVC_AWAITEVENT,
-   IRQ,
+    SVC_CREATE,
+    SVC_MYTID,
+    SVC_MYPARENTID,
+    SVC_YIELD,
+    SVC_EXIT,
+    SVC_SEND,
+    SVC_RECEIVE,
+    SVC_REPLY,
+    SVC_ICACHE,
+    SVC_DCACHE,
+    SVC_BCACHE,
+    SVC_AWAITEVENT,
+    IRQ,
 } Syscall;
 
 #endif

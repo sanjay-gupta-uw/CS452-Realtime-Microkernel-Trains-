@@ -1,3 +1,5 @@
+//  shared_constant.h for the syscall numbers
+
 .global CREATE
 .balign 16
 CREATE:

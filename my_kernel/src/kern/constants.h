@@ -25,8 +25,11 @@
 #define D_REG(base, offset) (*(volatile uint32_t *)((base) + (offset)))
 
 // *************************** TIMER CONSTANTS ***************************
+#define TEN_MS 10000
 #define SYS_TMR_BASE (MMIO_BASE + 0x3000)
 #define TIMER_C1 97
-#define TEN_MS 10000
+
+// *************************** UART CONSTANTS ***************************
+#define UART_IRQ 153
 
 #endif
