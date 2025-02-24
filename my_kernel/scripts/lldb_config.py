@@ -9,10 +9,9 @@ def setup(debugger, command, result, internal_dict):
 
     # Continue execution and set breakpoints
     # debugger.HandleCommand("breakpoint set -r 'Handler'")
-    debugger.HandleCommand("breakpoint set -r 'FirstUserTask_K3'")
-    debugger.HandleCommand("breakpoint set -r 'GENERATE_SGI'")
-    debugger.HandleCommand("breakpoint set -r 'irq_to_kernel_asm'")
-    debugger.HandleCommand("breakpoint set -r 'InitGIC'")
+    # debugger.HandleCommand("breakpoint set -r 'irq_to_kernel_asm'")
+    # debugger.HandleCommand("breakpoint set -r 'InitGIC'")
+    debugger.HandleCommand("breakpoint set -r 'DEBUG'")
 
 
 def start(debugger, command, result, internal_dict):
