@@ -1,0 +1,78 @@
+#include "../include/usertask.h"
+#include "../../kern/syscall.h"
+#include "../include/name_server.h"
+#include "../include/io_server.h"
+#include "../../shared_constants.h"
+#include "../../rpi.h"
+
+void FirstUserTask()
+{
+    uart_printf(CONSOLE, "First User Task: Starting System Services.\r\n");
+    // CREATE IDLE TASK
+    // int idleTid = CREATE(PRIORITY::IDLE, IdleTask);
+
+    int nameServerTid = CREATE(PRIORITY::P0, NameServer); // Start the Name Server
+    if (nameServerTid < 0)
+    {
+        uart_printf(CONSOLE, "Error starting Name Server\r\n");
+        EXIT();
+    }
+
+    int ioServerTid = CREATE(PRIORITY::P0, startIOServer); // Start the IO Server
+    if (ioServerTid < 0)
+    {
+        uart_printf(CONSOLE, "Error starting IO Server\r\n");
+        EXIT();
+    }
+
+    // uart_printf(CONSOLE, "First User Task: Spawning Client Task.\r\n");
+
+    // create sample clients
+    int clientTid = CREATE(PRIORITY::P1, ClientTask);
+    if (clientTid < 0)
+    {
+        uart_printf(CONSOLE, "Error starting Client Task\r\n");
+        EXIT();
+    }
+
+    EXIT();
+}
+
+// CONSOLE CLIENT
+void ClientTask()
+{
+    int myTid = MYTID();
+    // uart_printf(CONSOLE, "Client Task: My Tid is %d.\r\n", myTid);
+
+    int ioServerTid = WHOIS("IOServer");
+    if (ioServerTid < 0)
+    {
+        uart_printf(CONSOLE, "Error finding IO Server\r\n");
+        EXIT();
+    }
+    // uart_printf(CONSOLE, "Client Task: Found IO Server.\r\n");
+
+    // try printing with IO_SERVER
+    // int ret = IO_SERVER::Putc(ioServerTid, CONSOLE, '%');
+
+    for (;;)
+    {
+        int ch = uart_getc_non_blocking(CONSOLE);
+        if (ch != NO_CHAR)
+        {
+            uart_printf(CONSOLE, "Received char %c\r\n", ch);
+        }
+        // uart_printf(CONSOLE, "Kernel Loop\n");
+        // clock.Delay(1000);
+    }
+    EXIT();
+}
+
+void IdleTask()
+{
+    for (;;)
+    {
+        asm volatile("wfi");
+    }
+    EXIT();
+}

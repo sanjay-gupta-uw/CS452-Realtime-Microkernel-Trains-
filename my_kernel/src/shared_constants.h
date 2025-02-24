@@ -4,8 +4,10 @@
 typedef enum
 {
     TIMER_TICK,
+    UART_RX_TIMEOUT,
     UART_RX,
     UART_TX,
+    UART_CTS,
     NUM_EVENTS
 } InterruptEvents;
 

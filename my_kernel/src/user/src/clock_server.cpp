@@ -1,9 +1,9 @@
-#include "clock_server.h"
-#include "name_server.h"
-#include "../containers/pqueue.h"
-#include "../shared_constants.h"
-#include "../rpi.h"
-#include "../kern/syscall.h"
+#include "../include/clock_server.h"
+#include "../include/name_server.h"
+#include "../../containers/pqueue.h"
+#include "../../shared_constants.h"
+#include "../../rpi.h"
+#include "../../kern/syscall.h"
 
 static int CLOCK_SERVER_TID = -1;
 

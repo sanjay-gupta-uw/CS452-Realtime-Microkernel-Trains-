@@ -1,8 +1,8 @@
-#include "rps_client.h"
-#include "rps_server.h"
-#include "name_server.h"
-#include "../kern/syscall.h"
-#include "../rpi.h"
+#include "../include/rps_client.h"
+#include "../include/rps_server.h"
+#include "../include/name_server.h"
+#include "../../kern/syscall.h"
+#include "../../rpi.h"
 #include <cstring>
 
 void RpsClient(GameMove *moves, int num_moves)

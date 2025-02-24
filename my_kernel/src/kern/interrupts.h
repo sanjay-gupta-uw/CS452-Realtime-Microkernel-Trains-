@@ -1,9 +1,6 @@
 #ifndef _interrupts_h
 #define _interrupts_h
 
-#define TIMER_C1 97
-#define TIMER_C3 99
-
 /*
 file:///Users/sanjaygupta/Downloads/IHI0048B_b_gic_architecture_specification%20(2).pdf
 (p24 - 2.2 The Distributor)

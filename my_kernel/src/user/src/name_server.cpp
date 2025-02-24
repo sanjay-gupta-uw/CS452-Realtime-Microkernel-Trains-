@@ -1,6 +1,6 @@
-#include "name_server.h"
-#include "../kern/syscall.h"
-#include "../rpi.h"
+#include "../include/name_server.h"
+#include "../../kern/syscall.h"
+#include "../../rpi.h"
 #include <cstring>
 #include <cstdlib>
 

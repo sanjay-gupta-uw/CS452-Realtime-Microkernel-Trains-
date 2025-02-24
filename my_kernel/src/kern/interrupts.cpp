@@ -37,14 +37,20 @@ void disable_irq()
 
 void InitGIC()
 {
+    // INITIALIZE GIC
     enable_gic_distributor();   // Enable the GIC distributor
     enable_gic_cpu_interface(); // Enable the GIC CPU interface
 
+    // Init Timer
     set_peripheral_target(TIMER_C1);
     enable_peripheral_interrupt(TIMER_C1);
 
+    // Init UART ->  main ensures UART0/3 is enabled
     set_peripheral_target(UART_IRQ);
     enable_peripheral_interrupt(UART_IRQ);
+
+    // MASK INTERRUPTS
+    UART_REG(CONSOLE, UART_IMSC) = RX_INTERRUPT_MASK | TX_INTERRUPT_MASK | RTM_INTERRUPT_MASK | CTS_INTERRUPT_MASK;
 
     enable_irq();
 }

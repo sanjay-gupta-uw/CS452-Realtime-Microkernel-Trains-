@@ -7,6 +7,11 @@
 
 #include "../clock.h"
 extern Clock clock;
+extern "C" void DEBUG()
+{
+    uart_putc(CONSOLE, '\r');
+    uart_putc(CONSOLE, '\n');
+}
 
 // define our own memset to avoid SIMD instructions emitted from the compiler
 extern "C" void *memset(void *s, int c, size_t n)
@@ -49,7 +54,19 @@ Kernel::Kernel()
 
     tasks_awaiting_event = 0;
 
-    // initilize default task
+    // disable irqs to uart
+    uart_printf(CONSOLE, "UART_IMSC: 0x%x\r\n", UART_REG(CONSOLE, UART_IMSC));
+    UART_IMSC_DISABLE(CONSOLE, RX_INTERRUPT_MASK | TX_INTERRUPT_MASK | RTM_INTERRUPT_MASK);
+    uart_printf(CONSOLE, "UART_IMSC: 0x%x\r\n", UART_REG(CONSOLE, UART_IMSC));
+    uart_printf(CONSOLE, "UART_MIS: 0x%x\r\n", UART_REG(CONSOLE, UART_MIS));
+    // UART_IMSC_DISABLE(CONSOLE, 0x7FF); // disable all interrupts
+
+    // UART_CLEAR_INTERRUPT(CONSOLE, RX_INTERRUPT_MASK | TX_INTERRUPT_MASK | RTM_INTERRUPT_MASK);
+
+    // print register:
+    // uart_printf(CONSOLE, "UART_IMSC: 0x%x\r\n", UART_REG(CONSOLE, UART_IMSC));
+    // 0x70
+    // 0000 0000 0111 0000
 }
 
 Kernel::Kernel(void (*function)()) : Kernel()
@@ -83,6 +100,41 @@ inline void Kernel::RepushActiveTask()
         }
     }
 }
+
+int Kernel::CopyMessage(TaskDescriptor *sender_td, TaskDescriptor *receiver_td, bool is_reply)
+{
+    // NOTE THAT THE ONLY DIFFERENCE FOR REPLY IS THAT WE USE x[3], x[4] instead of x[1], x[2] for sender
+
+    // copy message from sender to receiver
+    int requested_tid = static_cast<int>(sender_td->context.x[0]);
+
+    if (receiver_td->tid != requested_tid)
+    {
+        uart_printf(CONSOLE, "PANIC: SENDER TID MISMATCH\r\n");
+        return -1; // Define enum for this to use by usertasks
+    }
+
+    const char *src = reinterpret_cast<const char *>(sender_td->context.x[1]);
+    int srclen = static_cast<int>(sender_td->context.x[2]);
+
+    char *dest = reinterpret_cast<char *>(receiver_td->context.x[is_reply ? 3 : 1]);
+    int destlen = static_cast<int>(receiver_td->context.x[is_reply ? 4 : 2]);
+
+    destlen = (destlen < srclen) ? destlen : srclen;
+    memcpy(dest, src, destlen);
+
+    if (!is_reply)
+    {
+        // set tid of sender in receiver's context
+        int *tid_loc = reinterpret_cast<int *>(receiver_td->context.x[0]);
+        *tid_loc = sender_td->tid;
+    }
+
+    receiver_td->SetRetval(srclen);
+    sender_td->SetRetval(destlen);
+    return destlen;
+}
+
 // returns -1 if invalid priority, -2 if no free tid, tid if success
 int Kernel::Create(int priority, void (*function)())
 {
@@ -248,65 +300,53 @@ void Kernel::Reply()
 
 void Kernel::AwaitEvent(int eventType)
 {
-    // uart_printf(CONSOLE, "AWAITING EVENT: %d\r\n", eventType);
+    uart_printf(CONSOLE, "AWAITING EVENT: %d\r\n", eventType);
+    uart_printf(CONSOLE, "UART_IMSC: 0x%x\r\n", UART_REG(CONSOLE, UART_IMSC));
+    uart_printf(CONSOLE, "UART_MIS: 0x%x\r\n", UART_REG(CONSOLE, UART_MIS));
+
     switch (eventType)
     {
     case TIMER_TICK:
+    {
         clock.ReArmTimer(TEN_MS); // Rearm timer for next interval
         active_task->SetRetval(0);
         active_task->setState(EVENT_BLOCKED);
         event_queues[TIMER_TICK].Push(active_task);
-        break;
+    }
+    break;
+    case UART_RX_TIMEOUT: // console interrupt
+    {
+        uart_printf(CONSOLE, "AWAITING UART RX TIMEOUT\r\n");
+        DEBUG();
 
-    case UART_IRQ:
-        uart_printf(CONSOLE, "AWAITING UART IRQ\r\n");
-        // active_task->SetRetval(0);
-        // active_task->setState(EVENT_BLOCKED);
-        // event_queues[UART_IRQ].Push(active_task);
-        break;
+        UART_IMSC_ENABLE(CONSOLE, RTM_INTERRUPT_MASK); // enable receive timeout interrupt
 
+        active_task->SetRetval(0);
+        active_task->setState(EVENT_BLOCKED);
+        event_queues[UART_RX_TIMEOUT].Push(active_task);
+    }
+    break;
+    // case UART_RX:
+    // case UART_TX:
+    // case UART_CTS:
+
+    //     break;
+
+    //     // case UART_IRQ:
+    //     //     uart_printf(CONSOLE, "AWAITING UART IRQ\r\n");
+    //     //     // ENABLE LEVEL INTERRUPT using IMSC register
+    //     //     // UART_REG(CONSOLE, UART_IMSC) = 0x10;
+
+    //     //     // active_task->SetRetval(0);
+    //     //     // active_task->setState(EVENT_BLOCKED);
+    //     //     // event_queues[UART_IRQ].Push(active_task);
+    //     break;
+    //     // (FALLTHROIUGH)
     default:
-        uart_printf(CONSOLE, "PANIC: INVALID EVENT TYPE, RETURNING -1\r\n");
+        uart_printf(CONSOLE, "PANIC: %d IS INVALID EVENT TYPE, RETURNING -1\r\n", eventType);
         active_task->SetRetval(-1); // set return value to -1
         break;
     }
-}
-
-void Kernel::IRQ_Handler()
-{
-    uint32_t irq_id = D_REG(GICC_BASE, GICC_IAR);
-
-    irq_id &= 0x3FF; // Mask to extract last 10 bits (interrupt ID)
-    // uart_printf(CONSOLE, "IRQ HANDLER: Received ID: %d\r\n", irq_id);
-
-    switch (irq_id)
-    {
-    case TIMER_C1: // timERTICK?
-    {
-        clock.DisarmTimer();
-
-        TaskDescriptor *task;
-        while (event_queues[TIMER_TICK].Pop(&task) != -1)
-        {
-            task->setState(READY);
-            ready_queue.Push(task->tid, task->priority);
-        }
-        break;
-    }
-    case UART_IRQ:
-    {
-        uart_printf(CONSOLE, "UART IRQ HANDLER\r\n");
-
-        break;
-    }
-    default:
-        uart_printf(CONSOLE, "PANIC: UNDEFINED IRQ ID\r\n");
-        break;
-    }
-
-    RepushActiveTask();
-
-    D_REG(GICC_BASE, GICC_EOIR) = irq_id; // Write EOI to signal end of interrupt
 }
 
 TaskDescriptor *
@@ -429,7 +469,7 @@ void Kernel::Handler(int N)
         break;
 
     case SVC_AWAITEVENT:
-        // uart_printf(CONSOLE, "(AWAITEVENT) Triggered by {%d}\r\n", active_task->getTid());
+        uart_printf(CONSOLE, "(AWAITEVENT) Triggered by {%d}\r\n", active_task->getTid());
         AwaitEvent(active_task->context.x[0]);
         break;
 
@@ -443,38 +483,73 @@ void Kernel::Handler(int N)
     }
 }
 
-int Kernel::CopyMessage(TaskDescriptor *sender_td, TaskDescriptor *receiver_td, bool is_reply)
+void Kernel::IRQ_Handler()
 {
-    // NOTE THAT THE ONLY DIFFERENCE FOR REPLY IS THAT WE USE x[3], x[4] instead of x[1], x[2] for sender
+    uint32_t irq_id = D_REG(GICC_BASE, GICC_IAR); // Read the interrupt ID from the GICC_IAR register
+    irq_id &= 0x3FF;                              // Mask to extract last 10 bits (interrupt ID)
 
-    // copy message from sender to receiver
-    int requested_tid = static_cast<int>(sender_td->context.x[0]);
-
-    if (receiver_td->tid != requested_tid)
+    // uart_printf(CONSOLE, "IRQ HANDLER: Received ID: %d\r\n", irq_id);
+    switch (irq_id)
     {
-        uart_printf(CONSOLE, "PANIC: SENDER TID MISMATCH\r\n");
-        return -1; // Define enum for this to use by usertasks
-    }
-
-    const char *src = reinterpret_cast<const char *>(sender_td->context.x[1]);
-    int srclen = static_cast<int>(sender_td->context.x[2]);
-
-    char *dest = reinterpret_cast<char *>(receiver_td->context.x[is_reply ? 3 : 1]);
-    int destlen = static_cast<int>(receiver_td->context.x[is_reply ? 4 : 2]);
-
-    destlen = (destlen < srclen) ? destlen : srclen;
-    memcpy(dest, src, destlen);
-
-    if (!is_reply)
+    case TIMER_C1: // timERTICK?
     {
-        // set tid of sender in receiver's context
-        int *tid_loc = reinterpret_cast<int *>(receiver_td->context.x[0]);
-        *tid_loc = sender_td->tid;
-    }
+        clock.DisarmTimer();
 
-    receiver_td->SetRetval(srclen);
-    sender_td->SetRetval(destlen);
-    return destlen;
+        TaskDescriptor *task;
+        while (event_queues[TIMER_TICK].Pop(&task) != -1)
+        {
+            task->setState(READY);
+            ready_queue.Push(task->tid, task->priority);
+        }
+        break;
+    }
+    case UART_IRQ:
+    {
+        // uart_printf(CONSOLE, "UART IRQ TRIGGERED\r\n");
+        // read UART_MIS register to find out which interrupt is triggered
+        uint32_t uart_mis = UART_REG(CONSOLE, UART_MIS);
+
+        // PRINTED UART_MIS: 0x10
+        TaskDescriptor *task;
+        if ((uart_mis & RTM_INTERRUPT_MASK) == RTM_INTERRUPT_MASK)
+        {
+
+            UART_IMSC_DISABLE(CONSOLE, RTM_INTERRUPT_MASK);
+            UART_CLEAR_INTERRUPT(CONSOLE, RTM_INTERRUPT_MASK);
+
+            while (event_queues[UART_RX_TIMEOUT].Pop(&task) != -1)
+            {
+                task->setState(READY);
+                ready_queue.Push(task->tid, task->priority);
+            }
+        }
+        if ((uart_mis & RX_INTERRUPT_MASK) == RX_INTERRUPT_MASK)
+        {
+            uart_printf(CONSOLE, "UART RX INTERRUPT TRIGGERED\r\n");
+            // clear
+        }
+        if ((uart_mis & TX_INTERRUPT_MASK) == TX_INTERRUPT_MASK)
+        {
+            uart_printf(CONSOLE, "UART TX INTERRUPT TRIGGERED\r\n");
+            // clear
+            for (;;)
+                ;
+        }
+
+        uart_printf(CONSOLE, "UART_MIS: 0x%x\r\n", uart_mis);
+        // uart_printf(CONSOLE, "UART_MIS (RE_READ): 0x%x\r\n", UART_REG(CONSOLE, UART_MIS));
+        break;
+    }
+    case SPURIOUS_INTERRUPT:
+        uart_printf(CONSOLE, "PANIC: SPURIOUS INTERRUPT\r\n");
+        break;
+    default:
+        uart_printf(CONSOLE, "PANIC: UNDEFINED IRQ ID\r\n");
+        break;
+    }
+    RepushActiveTask();
+
+    D_REG(GICC_BASE, GICC_EOIR) = irq_id; // must write the interrupt ID to GICC_EOIR to signal end of interrupt
 }
 
 // *********************************************

@@ -1,6 +1,6 @@
 #ifndef _constants_h_
 #define _constants_h_
-
+#include <cstddef>
 // *************************** INTERRUPT OFFSETS ***************************
 // GICD
 #define GICD_CTLR 0x0000
@@ -31,5 +31,28 @@
 
 // *************************** UART CONSTANTS ***************************
 #define UART_IRQ 153
+
+#define UART_IMSC 0x38
+#define UART_MIS 0x40
+#define UART_ICR 0x44
+
+#define RX_INTERRUPT_MASK 0x10
+#define TX_INTERRUPT_MASK 0x20
+#define RTM_INTERRUPT_MASK 0x40 // receive timeout
+#define CTS_INTERRUPT_MASK 0x02
+
+static char *const UART0_BASE = (char *)(MMIO_BASE + 0x201000);
+static char *const UART3_BASE = (char *)(MMIO_BASE + 0x201600);
+
+static char *const line_uarts[] = {NULL, UART0_BASE, UART3_BASE};
+#define UART_REG(line, offset) (*(volatile uint32_t *)(line_uarts[line] + offset))
+
+// mask is 1 at specific bit, 0 at other bits
+#define UART_IMSC_ENABLE(line, mask) (UART_REG(line, UART_IMSC) &= ~mask)   // enable should set specific bit to 0
+#define UART_IMSC_DISABLE(line, mask) (UART_REG(line, UART_IMSC) |= mask)   // disable should set specific bit to 1
+#define UART_CLEAR_INTERRUPT(line, mask) (UART_REG(line, UART_ICR) |= mask) // clear should set specific bit to 1
+
+// SPURIOS INTERRUPT
+#define SPURIOUS_INTERRUPT 1023
 
 #endif
