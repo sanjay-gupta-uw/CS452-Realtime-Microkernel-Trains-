@@ -70,6 +70,7 @@ static char *const line_uarts[] = {NULL, UART0_BASE, UART3_BASE};
 
 // UART register offsets
 static const uint32_t UART_DR = 0x00;   // data register
+static const uint32_t UART_RSR = 0x04;  // receive status register
 static const uint32_t UART_FR = 0x18;   // flag register
 static const uint32_t UART_IBRD = 0x24; // integer baud rate divisor
 static const uint32_t UART_FBRD = 0x28; // fractional baud rate divisor
@@ -160,9 +161,23 @@ unsigned char uart_getc(size_t line)
     while (UART_REG(line, UART_FR) & UART_FR_RXFE)
     {
         // wait for data
-        uart_printf(CONSOLE, "SPINNING DETECTED\r\n");
+        // uart_printf(CONSOLE, "SPINNING DETECTED\r\n");
     }
     ch = UART_REG(line, UART_DR);
+    return ch;
+}
+
+unsigned char uart_receive_c(size_t line)
+{
+    unsigned char ch;
+    // check
+    ch = UART_REG(line, UART_DR);
+    // obtain status UARTRSR
+    auto status = UART_REG(line, UART_RSR); // cannot be read until data is read from the DR
+    if (status & 0xF != 0)
+    {
+        UART_REG(line, UART_RSR) = 1; // clear the error
+    }
     return ch;
 }
 

@@ -97,10 +97,23 @@ extern "C" int kmain()
     TaskDescriptor *current_task = nullptr;
 
     // scheduler pops the highest priority task into td
-    while ((current_task = kernel.Scheduler()))
+    uart_printf(CONSOLE, "Starting Kernel\r\n");
+    // while (kernel.)
+    while ((current_task = kernel.Scheduler()) || kernel.areTasksWaiting())
     {
-        uart_printf(CONSOLE, "ACTIVE: {%d}\r\n", current_task->getTid());
+        // for (;;)
+        // {
+        //     uart_printf(CONSOLE, "EXTRACTING CHARS\r\n");
+        //     auto ch = uart_getc(CONSOLE);
+        //     uart_putc(CONSOLE, ch);
+        // }
 
+        // uart_printf(CONSOLE, "ACTIVE: {%d}\r\n", current_task->getTid());
+        if (current_task == nullptr) // replace with idle task instead..
+        {
+            // uart_printf(CONSOLE, "NO MORE READY TASKS\r\n");
+            continue;
+        }
         int esr_el1 = kernel.DispatchTask(&kernel_context, current_task);
 
         // apply mask to ESR to get SVC number

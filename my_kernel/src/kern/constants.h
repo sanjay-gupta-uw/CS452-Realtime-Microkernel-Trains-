@@ -35,6 +35,8 @@
 #define UART_IMSC 0x38
 #define UART_MIS 0x40
 #define UART_ICR 0x44
+#define UART_LCRH 0x2C
+#define UART_IFLS 0x34
 
 #define RX_INTERRUPT_MASK 0x10
 #define TX_INTERRUPT_MASK 0x20
@@ -47,9 +49,10 @@ static char *const UART3_BASE = (char *)(MMIO_BASE + 0x201600);
 static char *const line_uarts[] = {NULL, UART0_BASE, UART3_BASE};
 #define UART_REG(line, offset) (*(volatile uint32_t *)(line_uarts[line] + offset))
 
-// mask is 1 at specific bit, 0 at other bits
-#define UART_IMSC_ENABLE(line, mask) (UART_REG(line, UART_IMSC) &= ~mask)   // enable should set specific bit to 0
-#define UART_IMSC_DISABLE(line, mask) (UART_REG(line, UART_IMSC) |= mask)   // disable should set specific bit to 1
+// mask is 1 at specific bit, 0 at other bits, 1 enables interrupt, 0 disables interrupt
+#define UART_IMSC_ENABLE(line, mask) (UART_REG(line, UART_IMSC) |= mask)   // enable should set specific bit to 1
+#define UART_IMSC_DISABLE(line, mask) (UART_REG(line, UART_IMSC) &= ~mask) // disable should set specific bit to 0
+
 #define UART_CLEAR_INTERRUPT(line, mask) (UART_REG(line, UART_ICR) |= mask) // clear should set specific bit to 1
 
 // SPURIOS INTERRUPT

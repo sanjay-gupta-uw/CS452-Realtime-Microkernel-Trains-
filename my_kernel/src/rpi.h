@@ -15,6 +15,7 @@ unsigned char uart_getc(size_t line);
 
 int uart_getc_non_blocking(size_t line);
 
+unsigned char uart_receive_c(size_t line);
 // read a character from UART line
 void uart_putc(size_t line, char c);                            // write a character to UART line
 void uart_putl(size_t line, const char *buf, size_t blen);      // write a buffer to UART line

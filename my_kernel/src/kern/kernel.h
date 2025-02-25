@@ -20,6 +20,7 @@ public:
     TaskDescriptor *Scheduler();
     int DispatchTask(volatile Context *kernel, TaskDescriptor *scheduled_task);
     void Handler(int N);
+    bool areTasksWaiting();
 
 private:
     MemoryManager mem_manager;
@@ -28,7 +29,7 @@ private:
     TaskDescriptor task_table[MAX_TASKS];
     RingBuffer<int> free_tid;
     PQueue<int> ready_queue; // ready queue is a priority queue of task ids
-                             // PQueue<TaskDescriptor *> ready_queue;
+    // PQueue<TaskDescriptor *> ready_queue;
 
     // Array of Queues for each event type
     Queue<TaskDescriptor *> event_queues[InterruptEvents::NUM_EVENTS];

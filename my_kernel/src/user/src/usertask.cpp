@@ -25,9 +25,8 @@ void FirstUserTask()
         EXIT();
     }
 
-    // uart_printf(CONSOLE, "First User Task: Spawning Client Task.\r\n");
-
     // create sample clients
+    // uart_printf(CONSOLE, "First User Task: Spawning Client Task.\r\n");
     int clientTid = CREATE(PRIORITY::P1, ClientTask);
     if (clientTid < 0)
     {
@@ -50,21 +49,13 @@ void ClientTask()
         uart_printf(CONSOLE, "Error finding IO Server\r\n");
         EXIT();
     }
-    // uart_printf(CONSOLE, "Client Task: Found IO Server.\r\n");
 
-    // try printing with IO_SERVER
-    // int ret = IO_SERVER::Putc(ioServerTid, CONSOLE, '%');
-
+    // using this instead of idle for testing
     for (;;)
     {
-        int ch = uart_getc_non_blocking(CONSOLE);
-        if (ch != NO_CHAR)
-        {
-            uart_printf(CONSOLE, "Received char %c\r\n", ch);
-        }
-        // uart_printf(CONSOLE, "Kernel Loop\n");
-        // clock.Delay(1000);
+        YIELD();
     }
+
     EXIT();
 }
 

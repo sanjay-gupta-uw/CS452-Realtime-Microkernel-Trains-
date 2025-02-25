@@ -29,11 +29,17 @@ namespace IO_SERVER
 
     void IOServer::spawnNotifiers()
     {
-        rx_notifier_tid = CREATE(PRIORITY::P1, notifierRX);
-        if (rx_notifier_tid < 0)
+        rtm_notifier_tid = CREATE(PRIORITY::P1, notifierRTM);
+        if (rtm_notifier_tid < 0)
         {
-            uart_printf(CONSOLE, "Error starting RX Notifier\n");
+            uart_printf(CONSOLE, "Error starting RTM Notifier\n");
         }
+
+        // rx_notifier_tid = CREATE(PRIORITY::P1, notifierRX);
+        // if (rx_notifier_tid < 0)
+        // {
+        //     uart_printf(CONSOLE, "Error starting RX Notifier\n");
+        // }
 
         // tx_notifier_tid = CREATE(PRIORITY::P1, notifierTX);
         // if (tx_notifier_tid < 0)
@@ -71,11 +77,18 @@ namespace IO_SERVER
             case IO_REQUEST_TYPE::PUTC:
             {
 
-                uart_printf(CONSOLE, "IO_SERVER::Putc\r\n");
+                // uart_printf(CONSOLE, "IO_SERVER::Putc\r\n");
                 ReplyWithMessage(sender_tid, REPLY_TYPE::UNIMPLEMENTED);
                 // need to check CLS flag and state machine
                 uart_putc(CONSOLE, req.ch);
-                uart_printf(CONSOLE, "\r\n");
+                // uart_printf(CONSOLE, "\r\n");
+                // REPLY(sender_tid, (char *)&retval, sizeof(retval));
+                break;
+            }
+            case IO_REQUEST_TYPE::RTM_NOTIFIER:
+            {
+                uart_printf(CONSOLE, "IO_SERVER::RTM_NOTIFIER\r\n");
+                // need to check CLS flag and state machine
                 // REPLY(sender_tid, (char *)&retval, sizeof(retval));
                 break;
             }
@@ -140,13 +153,45 @@ namespace IO_SERVER
 
     // notify that user has entered a character
     // this works because flag is set based on receive buffer, which triggers interrupt
-    void notifierRX()
+    void notifierRTM()
     {
-        uart_printf(CONSOLE, "RX Notifier started\r\n");
+        uart_printf(CONSOLE, "RTM Notifier started\r\n");
         // check for status
         // action or
         // wait for interrupt
         // repeat
+        while (true)
+        {
+            // The receive timeout interrupt is asserted when the receive FIFO is not empty,
+            //  and no more data is received during a 32-bit period.
+            uart_printf(CONSOLE, "ENABLING RTM INTERRUPT\r\n");
+            int retval = AWAITEVENT(InterruptEvents::UART_RX_TIMEOUT);
+            if (retval < 0)
+            {
+                uart_printf(CONSOLE, "PANIC, RTM_NOTIFIER AWAITEVENT returned error %d\n", retval);
+            }
+            uart_printf(CONSOLE, "RTM NOTIFIER AWOKEN\r\n");
+            char ch = uart_getc_non_blocking(CONSOLE);
+            uart_printf(CONSOLE, "RTM NOTIFIED WITH: %c\n", ch);
+            // int ch = uart_getc_non_blocking(CONSOLE);
+            // if (ch != NO_CHAR)
+            // {
+            //     uart_printf(CONSOLE, "Received char %c\n", ch);
+            // }
+            // // this will be triggered when user types in command line since it will add to the receive buffer
+            // uart_printf(CONSOLE, "RTM NOTIFIER AWAITEVENT\r\n");
+
+            // IO_REQUEST req{IO_REQUEST_TYPE::RTM_NOTIFIER, CONSOLE, 0};
+            // int reply;
+
+            // SEND(IO_SERVER_TID, (char *)&req, sizeof(req), (char *)&reply, sizeof(reply));
+        }
+    }
+
+    void notifierRX()
+    {
+        uart_printf(CONSOLE, "RX Notifier started\r\n");
+
         while (true)
         {
             int ch = uart_getc_non_blocking(CONSOLE);
@@ -154,11 +199,15 @@ namespace IO_SERVER
             {
                 uart_printf(CONSOLE, "Received char %c\n", ch);
             }
-            // this will be triggered when user types in command line since it will add to the receive buffer
-            AWAITEVENT(InterruptEvents::UART_RX_TIMEOUT);
-            IO_REQUEST req{IO_REQUEST_TYPE::RX_NOTIFIER, CONSOLE, 0};
 
+            int retval = AWAITEVENT(InterruptEvents::UART_RX);
+            if (retval < 0)
+            {
+                uart_printf(CONSOLE, "PANIC, RX_NOTIFIER AWAITEVENT returned error %d\n", retval);
+            }
+            IO_REQUEST req{IO_REQUEST_TYPE::RX_NOTIFIER, CONSOLE, 0};
             int reply;
+
             SEND(IO_SERVER_TID, (char *)&req, sizeof(req), (char *)&reply, sizeof(reply));
         }
     }
@@ -169,18 +218,20 @@ namespace IO_SERVER
         // action or
         // wait for interrupt
         // repeat
-        while (true)
-        {
-            AWAITEVENT(InterruptEvents::UART_TX);
-            IO_REQUEST req{IO_REQUEST_TYPE::TX_NOTIFIER, CONSOLE, 0};
-            int reply;
-            SEND(IO_SERVER_TID, (char *)&req, sizeof(req), (char *)&reply, sizeof(reply));
+        // while (true)
+        // {
+        //     AWAITEVENT(InterruptEvents::UART_TX);
+        //     IO_REQUEST req{IO_REQUEST_TYPE::TX_NOTIFIER, CONSOLE, 0};
+        //     int reply;
+        //     SEND(IO_SERVER_TID, (char *)&req, sizeof(req), (char *)&reply, sizeof(reply));
 
-            if (reply < 0)
-            {
-                uart_printf(CONSOLE, "PANIC, TX_NOTIFIER returned error %d\n", reply);
-            }
-        }
+        //     if (reply < 0)
+        //     {
+        //         uart_printf(CONSOLE, "PANIC, TX_NOTIFIER returned error %d\n", reply);
+        //     }
+        // }
+
+        EXIT();
     }
 }
 

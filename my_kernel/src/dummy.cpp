@@ -7,48 +7,48 @@ extern "C" size_t fetch_sp();
 
 extern "C" void _dummyHandler1()
 {
-   // Get the system call number
-   uart_printf(CONSOLE, "Dummy Handler 1\n");
-   size_t sp = fetch_sp();
-   uart_printf(CONSOLE, "SP: %x\n", sp);
+    // Get the system call number
+    uart_printf(CONSOLE, "Dummy Handler 1\r\n");
+    size_t sp = fetch_sp();
+    uart_printf(CONSOLE, "SP: %x\r\n", sp);
 
-   for (;;)
-   {
-   }
+    for (;;)
+    {
+    }
 }
 
-extern "C" void _dummyHandler2()
+extern "C" void _dummyHandler2(int x)
 {
-   // Get the system call number
-   uart_printf(CONSOLE, "Dummy Handler 2\n");
-   size_t sp = fetch_sp();
-   uart_printf(CONSOLE, "SP: %x\n", sp);
+    // Get the system call number
+    uart_printf(CONSOLE, "Dummy Handler 2 {%d}\r\n", x);
+    size_t sp = fetch_sp();
+    uart_printf(CONSOLE, "SP: %x\r\n", sp);
 
-   for (;;)
-   {
-   }
+    for (;;)
+    {
+    }
 }
 
 extern "C" void _dummyHandler3()
 {
-   // Get the system call number
-   uart_printf(CONSOLE, "Dummy Handler 3\r\n");
-   size_t sp = fetch_sp();
-   uart_printf(CONSOLE, "SP: %x\r\n", sp);
+    // Get the system call number
+    uart_printf(CONSOLE, "Dummy Handler 3\r\n");
+    size_t sp = fetch_sp();
+    uart_printf(CONSOLE, "SP: %x\r\n", sp);
 
-   for (;;)
-   {
-   }
+    for (;;)
+    {
+    }
 }
 
 extern "C" void _dummyHandler4()
 {
-   // Get the system call number
-   uart_printf(CONSOLE, "Dummy Handler 4");
-   size_t sp = fetch_sp();
-   uart_printf(CONSOLE, "SP: %x\n", sp);
+    // Get the system call number
+    uart_printf(CONSOLE, "Dummy Handler 4");
+    size_t sp = fetch_sp();
+    uart_printf(CONSOLE, "SP: %x\r\n", sp);
 
-   for (;;)
-   {
-   }
+    for (;;)
+    {
+    }
 }

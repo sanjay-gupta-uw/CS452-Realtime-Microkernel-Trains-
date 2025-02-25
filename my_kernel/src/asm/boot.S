@@ -124,12 +124,16 @@ vectors:
     // ---------------------
     // Current EL, SP_ELx
     // ---------------------
+    mov x0, #1
     b _dummyHandler2  // VBAR_ELx + 0x200
     .balign 0x80
+    mov x0, #2
     b _dummyHandler2   // VBAR_ELx + 0x280
     .balign 0x80
+    mov x0, #3
     b _dummyHandler2   // VBAR_ELx + 0x300
     .balign 0x80
+    mov x0, #4
     b _dummyHandler2  // VBAR_ELx + 0x380
     .balign 0x80
 

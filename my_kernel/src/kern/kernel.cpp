@@ -53,20 +53,6 @@ Kernel::Kernel()
     }
 
     tasks_awaiting_event = 0;
-
-    // disable irqs to uart
-    uart_printf(CONSOLE, "UART_IMSC: 0x%x\r\n", UART_REG(CONSOLE, UART_IMSC));
-    UART_IMSC_DISABLE(CONSOLE, RX_INTERRUPT_MASK | TX_INTERRUPT_MASK | RTM_INTERRUPT_MASK);
-    uart_printf(CONSOLE, "UART_IMSC: 0x%x\r\n", UART_REG(CONSOLE, UART_IMSC));
-    uart_printf(CONSOLE, "UART_MIS: 0x%x\r\n", UART_REG(CONSOLE, UART_MIS));
-    // UART_IMSC_DISABLE(CONSOLE, 0x7FF); // disable all interrupts
-
-    // UART_CLEAR_INTERRUPT(CONSOLE, RX_INTERRUPT_MASK | TX_INTERRUPT_MASK | RTM_INTERRUPT_MASK);
-
-    // print register:
-    // uart_printf(CONSOLE, "UART_IMSC: 0x%x\r\n", UART_REG(CONSOLE, UART_IMSC));
-    // 0x70
-    // 0000 0000 0111 0000
 }
 
 Kernel::Kernel(void (*function)()) : Kernel()
@@ -78,7 +64,18 @@ Kernel::Kernel(void (*function)()) : Kernel()
 
     // initialize INTERRUPTS
     InitGIC();
-    // uart_printf(CONSOLE, "Finished Initializing GIC\r\n");
+    // disable irqs to uart
+    // set first 11 bits to 1
+    UART_IMSC_DISABLE(CONSOLE, 0x7FF);
+    // enable fifo
+    UART_REG(CONSOLE, UART_LCRH) |= (1 << 4);
+
+    // set trigger level to 1/8
+    // since using RTM, trigger level doesnt matter really...?
+    // int mask = 0x38;
+    // UART_REG(CONSOLE, UART_IFLS) &= ~mask;
+    // 0011 1000
+    //  0x38
 }
 
 Kernel::~Kernel()
@@ -300,9 +297,9 @@ void Kernel::Reply()
 
 void Kernel::AwaitEvent(int eventType)
 {
-    uart_printf(CONSOLE, "AWAITING EVENT: %d\r\n", eventType);
-    uart_printf(CONSOLE, "UART_IMSC: 0x%x\r\n", UART_REG(CONSOLE, UART_IMSC));
-    uart_printf(CONSOLE, "UART_MIS: 0x%x\r\n", UART_REG(CONSOLE, UART_MIS));
+    // uart_printf(CONSOLE, "AWAITING EVENT: %d\r\n", eventType);
+    // uart_printf(CONSOLE, "UART_IMSC: 0x%x\r\n", UART_REG(CONSOLE, UART_IMSC));
+    // uart_printf(CONSOLE, "UART_MIS: 0x%x\r\n", UART_REG(CONSOLE, UART_MIS));
 
     switch (eventType)
     {
@@ -317,16 +314,19 @@ void Kernel::AwaitEvent(int eventType)
     case UART_RX_TIMEOUT: // console interrupt
     {
         uart_printf(CONSOLE, "AWAITING UART RX TIMEOUT\r\n");
-        DEBUG();
+        // DEBUG();
 
-        UART_IMSC_ENABLE(CONSOLE, RTM_INTERRUPT_MASK); // enable receive timeout interrupt
+        UART_IMSC_ENABLE(CONSOLE, (RTM_INTERRUPT_MASK)); // enable receive timeout interrupt
+        // print the IMSC register
+        uart_printf(CONSOLE, "UART_IMSC: 0x%x\r\n", UART_REG(CONSOLE, UART_IMSC));
 
-        active_task->SetRetval(0);
+        // 0x62
+
+        active_task->SetRetval(-1);
         active_task->setState(EVENT_BLOCKED);
         event_queues[UART_RX_TIMEOUT].Push(active_task);
     }
     break;
-    // case UART_RX:
     // case UART_TX:
     // case UART_CTS:
 
@@ -505,38 +505,44 @@ void Kernel::IRQ_Handler()
     }
     case UART_IRQ:
     {
-        // uart_printf(CONSOLE, "UART IRQ TRIGGERED\r\n");
-        // read UART_MIS register to find out which interrupt is triggered
-        uint32_t uart_mis = UART_REG(CONSOLE, UART_MIS);
-
-        // PRINTED UART_MIS: 0x10
         TaskDescriptor *task;
+
+        uint32_t uart_mis = UART_REG(CONSOLE, UART_MIS); // read UART_MIS register to find out which interrupt is triggered
+        uart_printf(CONSOLE, "IRQ HANDLER: UART_MIS: 0x%x\r\n", uart_mis);
         if ((uart_mis & RTM_INTERRUPT_MASK) == RTM_INTERRUPT_MASK)
         {
 
             UART_IMSC_DISABLE(CONSOLE, RTM_INTERRUPT_MASK);
             UART_CLEAR_INTERRUPT(CONSOLE, RTM_INTERRUPT_MASK);
 
+            uart_printf(CONSOLE, "UART RX TIMEOUT INTERRUPT TRIGGERED\r\n");
+
             while (event_queues[UART_RX_TIMEOUT].Pop(&task) != -1)
             {
                 task->setState(READY);
+                task->SetRetval(0);
                 ready_queue.Push(task->tid, task->priority);
             }
         }
         if ((uart_mis & RX_INTERRUPT_MASK) == RX_INTERRUPT_MASK)
         {
+            UART_IMSC_DISABLE(CONSOLE, RX_INTERRUPT_MASK);
+            UART_CLEAR_INTERRUPT(CONSOLE, RX_INTERRUPT_MASK);
+
             uart_printf(CONSOLE, "UART RX INTERRUPT TRIGGERED\r\n");
-            // clear
+            while (event_queues[UART_RX].Pop(&task) != -1)
+            {
+                task->setState(READY);
+                task->SetRetval(0);
+                ready_queue.Push(task->tid, task->priority);
+            }
         }
         if ((uart_mis & TX_INTERRUPT_MASK) == TX_INTERRUPT_MASK)
         {
             uart_printf(CONSOLE, "UART TX INTERRUPT TRIGGERED\r\n");
-            // clear
-            for (;;)
-                ;
         }
+        // uart_mis = UART_REG(MARKLIN, UART_MIS);
 
-        uart_printf(CONSOLE, "UART_MIS: 0x%x\r\n", uart_mis);
         // uart_printf(CONSOLE, "UART_MIS (RE_READ): 0x%x\r\n", UART_REG(CONSOLE, UART_MIS));
         break;
     }
@@ -618,4 +624,16 @@ void Kernel::enable_bcache()
         : "x0");
 
     RepushActiveTask();
+}
+
+bool Kernel::areTasksWaiting()
+{
+    for (int i = 0; i < InterruptEvents::NUM_EVENTS; i++)
+    {
+        if (!event_queues[i].IsEmpty())
+        {
+            return true;
+        }
+    }
+    return false;
 }
