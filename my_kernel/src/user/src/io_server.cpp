@@ -95,10 +95,6 @@ namespace IO_SERVER
             break;
             case IO_REQUEST_TYPE::PUTC:
             {
-                // if (tx_state == TX_HIGH)
-                // {
-                //     write_to_uart();
-                // }
                 reply.type = REPLY_TYPE::FAILURE; // incase it's full
                 if (!transmit_buffer.IsFull())    // this will ignore characters if "overwhelmed"
                 {
@@ -257,9 +253,9 @@ namespace IO_SERVER
             SEND(IO_SERVER_TID, (char *)&req, sizeof(req), (char *)&reply, sizeof(reply));
         }
     }
-}
 
-void startIOServer()
-{
-    IO_SERVER::IOServer ioServer;
+    void startIOServer()
+    {
+        IO_SERVER::IOServer ioServer;
+    }
 }

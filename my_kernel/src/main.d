@@ -1,0 +1,28 @@
+src/main.o: src/main.cpp src/clock.h src/util.h src/rpi.h src/command.h \
+ src/dummy.h src/ui.h src/user/include/usertask.h src/marklin/switch.h \
+ src/marklin/../util.h src/marklin/train.h src/containers/ringbuffer.h \
+ src/kern/kernel.h src/kern/../shared_constants.h \
+ src/kern/../containers/ringbuffer.h src/kern/../containers/queue.h \
+ src/kern/../containers/pqueue.h src/kern/task.h src/kern/task_structs.h \
+ src/kern/memory.h src/kern/constants.h src/kern/memory.h
+src/clock.h:
+src/util.h:
+src/rpi.h:
+src/command.h:
+src/dummy.h:
+src/ui.h:
+src/user/include/usertask.h:
+src/marklin/switch.h:
+src/marklin/../util.h:
+src/marklin/train.h:
+src/containers/ringbuffer.h:
+src/kern/kernel.h:
+src/kern/../shared_constants.h:
+src/kern/../containers/ringbuffer.h:
+src/kern/../containers/queue.h:
+src/kern/../containers/pqueue.h:
+src/kern/task.h:
+src/kern/task_structs.h:
+src/kern/memory.h:
+src/kern/constants.h:
+src/kern/memory.h:

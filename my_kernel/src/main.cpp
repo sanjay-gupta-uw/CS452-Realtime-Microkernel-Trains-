@@ -108,6 +108,16 @@ extern "C" int kmain()
             continue;
         }
         // uart_printf(CONSOLE, "ACTIVE: {%d}\r\n", current_task->getTid());
+        // int fifo_status = UART_REG(MARKLIN, UART_FR);
+        // if (fifo_status & UART_FR_TXFE_MASK)
+        // {
+        //     uart_printf(CONSOLE, "KMAIN::FIFO EMPTY\r\n");
+        //     // spin_debug();
+        // }
+        // else
+        // {
+        //     uart_printf(CONSOLE, "KMAIN::FIFO NOT EMPTY\r\n");
+        // }
         int esr_el1 = kernel.DispatchTask(&kernel_context, current_task);
 
         // apply mask to ESR to get SVC number

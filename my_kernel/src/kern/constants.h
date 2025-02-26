@@ -32,6 +32,11 @@
 // *************************** UART CONSTANTS ***************************
 #define UART_IRQ 153
 
+#define UART_FR 0x18
+#define UART_FR_CTS_MASK 0x01
+#define UART_FR_RXFE_MASK 0x10
+#define UART_FR_TXFE_MASK 0x80
+
 #define UART_IMSC 0x38
 #define UART_MIS 0x40
 #define UART_ICR 0x44

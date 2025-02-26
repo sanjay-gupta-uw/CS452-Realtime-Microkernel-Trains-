@@ -1,44 +1,62 @@
-#ifndef _io_server_h_
-#define _io_server_h_
+#ifndef _marklin_io_h_
+#define _marklin_io_h_
 
 #include "../../containers/queue.h"
 
-namespace IO_SERVER
+namespace MARKLIN_IO_SERVER
 {
 #define UNDEFINED_CHAR '-'
-#define TX_HIGH 1 // buffer is not full
-#define TX_LOW 0  // buffer is full/above threshold
+
+    // state machine for CTS quirk
+    enum class STATE_MACHINE
+    {
+        MARKLIN_READY,
+        TRANSMITTING,
+        MARKLIN_PROCESSING,
+    };
+    enum class PIN_STATE
+    {
+        LOW,
+        HIGH
+    };
 
     // REDEFINED QUEUE SIZE TO 32 -> change queue to accept size as a parameter?
     // #define RECEIVE_SIZE 32 // 32 chars/bytes
-    class IOServer
+    class MarklinIOServer
     {
     public:
-        IOServer();
-        ~IOServer();
+        MarklinIOServer();
+        ~MarklinIOServer();
 
         // interface for the IO server
 
     private:
-        int rtm_notifier_tid;
         int rx_notifier_tid;
         int tx_notifier_tid;
+        int cts_notifier_tid;
 
         void run();
         void spawnNotifiers();
         void write_to_uart();
+        void handle_transmission();
 
         Queue<unsigned char> receive_buffer;
-        Queue<unsigned char> transmit_buffer;
+        Queue<unsigned char> transmit_buffer; // this should be the bytes for commands
 
         Queue<int> rx_waiting_tasks;
+        // pin states for CTS and TX
+        PIN_STATE cts_state;
+        // PIN_STATE tx_state;
+
+        Queue<int> pending_tramissions;
+
+        STATE_MACHINE tx_state_machine;
     };
 
     enum class IO_REQUEST_TYPE
     {
         GETC,
         PUTC,
-        RTM_NOTIFIER, // RECEIVE TIMEOUT NOTIFIER
         RX_NOTIFIER,
         TX_NOTIFIER,
         CTS_NOTIFIER
@@ -61,21 +79,22 @@ namespace IO_SERVER
     {
         IO_REQUEST_TYPE type;
         int channel;
-        unsigned char ch;
+        int data;
     };
 
     int Getc(int tid, int channel);
     int Putc(int tid, int channel, unsigned char ch);
 
-    void notifier_rxto();
+    void notifier_rx();
     void notifier_tx();
+    void notifier_cts();
 
 // mapping of reply type to string
 #define REPLY_TYPE_STR(type)                                                               \
     ((type == REPLY_TYPE::SUCCESS) ? "SUCCESS" : (type == REPLY_TYPE::FAILURE) ? "FAILURE" \
                                                                                : "UNIMPLEMENTED")
 
-    void startIOServer();
+    void startMarklinIOServer();
 }
 
-#endif // _io_server_h_
+#endif // _marklin_io_h_

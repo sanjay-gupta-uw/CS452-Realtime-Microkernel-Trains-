@@ -9,5 +9,6 @@ struct ParamRequest
 
 void FirstUserTask();
 void ClientTask();
+void MarklinTask();
 void IdleTask();
 #endif

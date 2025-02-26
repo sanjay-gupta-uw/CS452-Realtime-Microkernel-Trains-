@@ -81,6 +81,7 @@ static const uint32_t UART_CR = 0x30;   // control register
 
 // flag register masks
 // 0x10 -> 0001 0000 -> set bit 4
+static const uint32_t UART_FR_CTS = 0x01;  // clear to send
 static const uint32_t UART_FR_RXFE = 0x10; // receive FIFO empty
 static const uint32_t UART_FR_TXFF = 0x20; // transmit FIFO full
 static const uint32_t UART_FR_RXFF = 0x40; // receive FIFO full
@@ -231,6 +232,8 @@ static void pad_and_print(size_t line, const char *str, int width)
 
 extern "C" void uart_printf(size_t line, const char *fmt, ...)
 {
+    // disable for time being
+    // return;
     va_list va;
     char ch, buf[12];
     int width = 0; // Width for padding
@@ -306,4 +309,11 @@ extern "C" void uart_printf(size_t line, const char *fmt, ...)
         }
     }
     va_end(va);
+}
+
+void spin_debug()
+{
+    uart_printf(CONSOLE, "SPINNING TO DEBUG\r\n");
+    while (1)
+        ;
 }

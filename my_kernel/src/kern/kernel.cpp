@@ -67,9 +67,11 @@ Kernel::Kernel(void (*function)()) : Kernel()
     // disable irqs to uart
     // set first 11 bits to 1
     UART_IMSC_DISABLE(CONSOLE, 0x7FF);
+    UART_IMSC_DISABLE(MARKLIN, 0x7FF);
 
     // disable fifo
     UART_REG(CONSOLE, UART_LCRH) &= ~(1 << 4);
+    UART_REG(MARKLIN, UART_LCRH) &= ~(1 << 4);
 
     // set trigger level to 1/8
     // since using RTM, trigger level doesnt matter really...?
@@ -333,25 +335,40 @@ void Kernel::AwaitEvent(int eventType)
         // uart_printf(CONSOLE, "AWAITING UART TX\r\n");
         // ENABLE LEVEL INTERRUPT using IMSC register
         UART_IMSC_ENABLE(CONSOLE, (TX_INTERRUPT_MASK));
-        active_task->SetRetval(0);
+        active_task->SetRetval(-1);
         active_task->setState(EVENT_BLOCKED);
         event_queues[UART_TX].Push(active_task);
     }
     break;
-    // case UART_CTS:
-
-    //     break;
-
-    //     // case UART_IRQ:
-    //     //     uart_printf(CONSOLE, "AWAITING UART IRQ\r\n");
-    //     //     // ENABLE LEVEL INTERRUPT using IMSC register
-    //     //     // UART_REG(CONSOLE, UART_IMSC) = 0x10;
-
-    //     //     // active_task->SetRetval(0);
-    //     //     // active_task->setState(EVENT_BLOCKED);
-    //     //     // event_queues[UART_IRQ].Push(active_task);
-    //     break;
-    //     // (FALLTHROIUGH)
+    case UART_MARKLIN_RX:
+    {
+        UART_IMSC_ENABLE(MARKLIN, (RX_INTERRUPT_MASK));
+        active_task->SetRetval(-1);
+        active_task->setState(EVENT_BLOCKED);
+        event_queues[UART_MARKLIN_RX].Push(active_task);
+    }
+    break;
+    case UART_MARKLIN_TX:
+    {
+        uart_printf(CONSOLE, "AWAIT (BEFORE INTERRUPT ENABLE), UART_IMSC: 0x%x\r\n", UART_REG(MARKLIN, UART_IMSC));
+        UART_IMSC_ENABLE(MARKLIN, (TX_INTERRUPT_MASK));
+        // ensure it's set
+        uart_printf(CONSOLE, "AWAIT TX, UART_IMSC: 0x%x\r\n", UART_REG(MARKLIN, UART_IMSC));
+        active_task->SetRetval(-1);
+        active_task->setState(EVENT_BLOCKED);
+        event_queues[UART_MARKLIN_TX].Push(active_task);
+    }
+    break;
+    case UART_MARKLIN_CTS:
+    {
+        UART_IMSC_ENABLE(MARKLIN, (CTS_INTERRUPT_MASK));
+        // ensure it's set
+        uart_printf(CONSOLE, "AWAIT CTS, UART_IMSC: 0x%x\r\n", UART_REG(MARKLIN, UART_IMSC));
+        active_task->SetRetval(-1);
+        active_task->setState(EVENT_BLOCKED);
+        event_queues[UART_MARKLIN_CTS].Push(active_task);
+    }
+    break;
     default:
         uart_printf(CONSOLE, "PANIC: %d IS INVALID EVENT TYPE, RETURNING -1\r\n", eventType);
         active_task->SetRetval(-1); // set return value to -1
@@ -519,7 +536,7 @@ void Kernel::IRQ_Handler()
 
         uint32_t uart_mis = UART_REG(CONSOLE, UART_MIS); // read UART_MIS register to find out which interrupt is triggered
         // uart_printf(CONSOLE, "IRQ HANDLER: UART_MIS: 0x%x\r\n", uart_mis);
-        if ((uart_mis & RTM_INTERRUPT_MASK) == RTM_INTERRUPT_MASK)
+        if (uart_mis & RTM_INTERRUPT_MASK)
         {
 
             UART_IMSC_DISABLE(CONSOLE, RTM_INTERRUPT_MASK);
@@ -534,7 +551,7 @@ void Kernel::IRQ_Handler()
                 ready_queue.Push(task->tid, task->priority);
             }
         }
-        if ((uart_mis & TX_INTERRUPT_MASK) == TX_INTERRUPT_MASK)
+        if (uart_mis & TX_INTERRUPT_MASK)
         {
             UART_IMSC_DISABLE(CONSOLE, TX_INTERRUPT_MASK);
             UART_CLEAR_INTERRUPT(CONSOLE, TX_INTERRUPT_MASK);
@@ -545,6 +562,57 @@ void Kernel::IRQ_Handler()
             {
                 task->setState(READY);
                 task->SetRetval(0);
+                ready_queue.Push(task->tid, task->priority);
+            }
+        }
+
+        // read MARKLIN UART
+        uart_mis = UART_REG(MARKLIN, UART_MIS);
+        uart_printf(CONSOLE, "IRQ HANDLER MARKLIN UART_MIS: 0x%x\r\n", uart_mis);
+        if (uart_mis & RX_INTERRUPT_MASK)
+        {
+            UART_IMSC_DISABLE(MARKLIN, RX_INTERRUPT_MASK);
+            UART_CLEAR_INTERRUPT(MARKLIN, RX_INTERRUPT_MASK);
+
+            // uart_printf(CONSOLE, "MARKLIN UART RX INTERRUPT TRIGGERED\r\n");
+
+            while (event_queues[UART_MARKLIN_RX].Pop(&task) != -1)
+            {
+                task->setState(READY);
+                task->SetRetval(0);
+                ready_queue.Push(task->tid, task->priority);
+            }
+        }
+
+        if (uart_mis & TX_INTERRUPT_MASK)
+        {
+            UART_IMSC_DISABLE(MARKLIN, TX_INTERRUPT_MASK);
+            UART_CLEAR_INTERRUPT(MARKLIN, TX_INTERRUPT_MASK);
+
+            // uart_printf(CONSOLE, "MARKLIN UART TX INTERRUPT TRIGGERED\r\n");
+            // spin_debug();
+
+            while (event_queues[UART_MARKLIN_TX].Pop(&task) != -1)
+            {
+                task->setState(READY);
+                task->SetRetval(0);
+                ready_queue.Push(task->tid, task->priority);
+            }
+        }
+
+        if (uart_mis & CTS_INTERRUPT_MASK)
+        {
+            UART_IMSC_DISABLE(MARKLIN, CTS_INTERRUPT_MASK);
+            UART_CLEAR_INTERRUPT(MARKLIN, CTS_INTERRUPT_MASK);
+
+            // uint32_t FR = UART_REG(MARKLIN, UART_FR);
+            // uart_printf(CONSOLE, "Inverted CTS: %d\r\n", !(FR & UART_FR_CTS_MASK));
+            // spin_debug();
+
+            while (event_queues[UART_MARKLIN_CTS].Pop(&task) != -1)
+            {
+                task->setState(READY);
+                task->SetRetval(!(UART_REG(MARKLIN, UART_FR) & UART_FR_CTS_MASK));
                 ready_queue.Push(task->tid, task->priority);
             }
         }
