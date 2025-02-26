@@ -43,6 +43,15 @@
 #define RTM_INTERRUPT_MASK 0x40 // receive timeout
 #define CTS_INTERRUPT_MASK 0x02
 
+// array of interrupt masks
+// synced with shared_constants.h
+static const uint32_t interrupt_masks[] = {
+    RTM_INTERRUPT_MASK,
+    RX_INTERRUPT_MASK,
+    TX_INTERRUPT_MASK,
+    CTS_INTERRUPT_MASK,
+};
+
 static char *const UART0_BASE = (char *)(MMIO_BASE + 0x201000);
 static char *const UART3_BASE = (char *)(MMIO_BASE + 0x201600);
 

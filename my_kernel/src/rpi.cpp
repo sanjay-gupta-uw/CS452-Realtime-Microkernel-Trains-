@@ -167,6 +167,18 @@ unsigned char uart_getc(size_t line)
     return ch;
 }
 
+// declare in header file
+bool uart_transmit_c(size_t line)
+{
+    // // check if transmit FIFO is full
+    // if (UART_REG(line, UART_FR) & UART_FR_TXFF)
+    // {
+    //     return false;
+    // }
+    // return true;
+}
+
+// should only call when there is data to read (after awaiting event)
 unsigned char uart_receive_c(size_t line)
 {
     unsigned char ch;

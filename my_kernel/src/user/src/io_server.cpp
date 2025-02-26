@@ -9,8 +9,16 @@ namespace IO_SERVER
 {
     int IO_SERVER_TID = -1;
 
-    static void ReplyWithMessage(int tid, REPLY_TYPE reply)
+    static void ReplyWithMessage(int tid, IO_REPLY reply)
     {
+        REPLY(tid, (char *)&reply, sizeof(reply));
+    }
+
+    static void GETC_SUCCESS_REPLY(int tid, char ch)
+    {
+        IO_REPLY reply;
+        reply.type = REPLY_TYPE::SUCCESS;
+        reply.ch = ch;
         REPLY(tid, (char *)&reply, sizeof(reply));
     }
 
@@ -29,19 +37,13 @@ namespace IO_SERVER
 
     void IOServer::spawnNotifiers()
     {
-        rtm_notifier_tid = CREATE(PRIORITY::P1, notifierRTM);
+        rtm_notifier_tid = CREATE(PRIORITY::P1, notifier_rxto);
         if (rtm_notifier_tid < 0)
         {
             uart_printf(CONSOLE, "Error starting RTM Notifier\n");
         }
 
-        // rx_notifier_tid = CREATE(PRIORITY::P1, notifierRX);
-        // if (rx_notifier_tid < 0)
-        // {
-        //     uart_printf(CONSOLE, "Error starting RX Notifier\n");
-        // }
-
-        // tx_notifier_tid = CREATE(PRIORITY::P1, notifierTX);
+        // tx_notifier_tid = CREATE(PRIORITY::P1, notifier_tx);
         // if (tx_notifier_tid < 0)
         // {
         //     uart_printf(CONSOLE, "Error starting TX Notifier\n");
@@ -59,58 +61,80 @@ namespace IO_SERVER
             {
                 uart_printf(CONSOLE, "PANIC, IO_SERVER RECEIVE returned error %d\n", retval);
             }
-            uart_printf(CONSOLE, "IO_SERVER::Received request from %d\r\n", sender_tid);
+            // uart_printf(CONSOLE, "IO_SERVER::Received request from %d\r\n", sender_tid);
+
+            IO_REPLY reply;
+            reply.type = REPLY_TYPE::UNIMPLEMENTED;
+            reply.ch = UNDEFINED_CHAR;
 
             switch (req.type)
             {
             case IO_REQUEST_TYPE::GETC:
             {
-                uart_printf(CONSOLE, "IO_SERVER::Getc\r\n");
-                ReplyWithMessage(sender_tid, REPLY_TYPE::UNIMPLEMENTED);
-                // unsigned char ch = uart_getc(CONSOLE);
-                // uart_printf(CONSOLE, "Received char %c\n", ch);
-
-                // need to get char from fifo
-
+                uart_printf(CONSOLE, "IO_SERVER::GETC\r\n");
+                if (!receive_buffer.IsEmpty())
+                {
+                    // need to reply with CH
+                    unsigned char ch;
+                    receive_buffer.Pop(&ch);
+                    GETC_SUCCESS_REPLY(sender_tid, ch);
+                }
+                else
+                {
+                    uart_printf(CONSOLE, "IO_SERVER::GETC: {tid: %d} waiting for character\r\n", sender_tid);
+                    rx_waiting_tasks.Push(sender_tid);
+                }
                 break;
             }
             case IO_REQUEST_TYPE::PUTC:
             {
+                reply.type = REPLY_TYPE::FAILURE; // incase it's full
+                if (!transmit_buffer.IsFull())    // this will ignore characters if "overwhelmed"
+                {
+                    transmit_buffer.Push(req.ch);
+                    reply.type = REPLY_TYPE::SUCCESS;
+                }
 
-                // uart_printf(CONSOLE, "IO_SERVER::Putc\r\n");
-                ReplyWithMessage(sender_tid, REPLY_TYPE::UNIMPLEMENTED);
-                // need to check CLS flag and state machine
-                uart_putc(CONSOLE, req.ch);
-                // uart_printf(CONSOLE, "\r\n");
-                // REPLY(sender_tid, (char *)&retval, sizeof(retval));
+                ReplyWithMessage(sender_tid, reply); // sends UNIMPLEMENTED
                 break;
             }
             case IO_REQUEST_TYPE::RTM_NOTIFIER:
             {
-                uart_printf(CONSOLE, "IO_SERVER::RTM_NOTIFIER\r\n");
-                // need to check CLS flag and state machine
-                // REPLY(sender_tid, (char *)&retval, sizeof(retval));
-                break;
-            }
+                uart_printf(CONSOLE, "IO_SERVER::RTM_NOTIFIER FIRED, RECEIVING CHAR\r\n");
+                // need to get char from fifo
+                unsigned char ch = uart_receive_c(CONSOLE);
+                if (!receive_buffer.IsFull()) // this will ignore characters if "overwhelmed"
+                {
+                    receive_buffer.Push(ch);
+                }
 
-            case IO_REQUEST_TYPE::RX_NOTIFIER:
-            {
-                uart_printf(CONSOLE, "IO_SERVER::RX_NOTIFIER\r\n");
-                //
+                if (!rx_waiting_tasks.IsEmpty())
+                {
+                    int waiting_task;
+                    rx_waiting_tasks.Pop(&waiting_task);
+                    uart_printf(CONSOLE, "IO_SERVER::RTM_NOTIFIER: {tid: %d} received character %c\r\n", waiting_task, ch);
+                    receive_buffer.Pop(&ch);
+                    GETC_SUCCESS_REPLY(waiting_task, ch);
+                }
+                reply.type = REPLY_TYPE::SUCCESS;
+                ReplyWithMessage(sender_tid, reply); // wake up notifier
                 break;
             }
 
             case IO_REQUEST_TYPE::TX_NOTIFIER:
             {
+                for (;;)
+                    ;
                 uart_printf(CONSOLE, "IO_SERVER::TX_NOTIFIER\r\n");
-                //
-                break;
-            }
-
-            case IO_REQUEST_TYPE::CTS_NOTIFIER:
-            {
-                uart_printf(CONSOLE, "IO_SERVER::CTS_NOTIFIER\r\n");
-                //
+                // uart_printf(CONSOLE, "IO_SERVER::TX_NOTIFIER\r\n");
+                while (!transmit_buffer.IsEmpty())
+                {
+                    unsigned char ch;
+                    transmit_buffer.Pop(&ch);
+                    uart_putc(CONSOLE, ch);
+                }
+                reply.type = REPLY_TYPE::SUCCESS;
+                ReplyWithMessage(sender_tid, reply); // wake up notifier
                 break;
             }
 
@@ -128,110 +152,69 @@ namespace IO_SERVER
         }
 
         IO_REQUEST req{IO_REQUEST_TYPE::GETC, channel, 0};
-        int ch;
-        SEND(IO_SERVER_TID, (char *)&req, sizeof(req), (char *)&ch, sizeof(ch));
-        uart_printf(CONSOLE, "IO_SERVER::Getc returned %s\r\n", REPLY_TYPE_STR((REPLY_TYPE)ch));
+        IO_REPLY reply;
+        SEND(IO_SERVER_TID, (char *)&req, sizeof(req), (char *)&reply, sizeof(reply));
 
-        return ch;
+        return reply.type == REPLY_TYPE::SUCCESS ? reply.ch : -1;
     }
 
     int Putc(int tid, int channel, unsigned char ch)
     {
-        uart_printf(CONSOLE, "IO_SERVER::Putc\r\n");
+        // uart_printf(CONSOLE, "IO_SERVER::Putc\r\n");
         if (tid != IO_SERVER_TID) // check if tid if valid uart server
         {
             return -1;
         }
 
         IO_REQUEST req{IO_REQUEST_TYPE::PUTC, channel, ch};
-        int reply;
+        IO_REPLY reply;
         SEND(IO_SERVER_TID, (char *)&req, sizeof(req), (char *)&reply, sizeof(reply));
-        uart_printf(CONSOLE, "IO_SERVER::Putc returned %s\r\n", REPLY_TYPE_STR((REPLY_TYPE)reply));
+        // uart_printf(CONSOLE, "IO_SERVER::Putc returned %s\r\n", REPLY_TYPE_STR((REPLY_TYPE)reply));
 
-        return reply;
+        return reply.type == REPLY_TYPE::SUCCESS ? 0 : -1;
     }
 
     // notify that user has entered a character
     // this works because flag is set based on receive buffer, which triggers interrupt
-    void notifierRTM()
+    void notifier_rxto() // receive timeout
     {
         uart_printf(CONSOLE, "RTM Notifier started\r\n");
-        // check for status
-        // action or
-        // wait for interrupt
-        // repeat
         while (true)
         {
-            // The receive timeout interrupt is asserted when the receive FIFO is not empty,
-            //  and no more data is received during a 32-bit period.
-            uart_printf(CONSOLE, "ENABLING RTM INTERRUPT\r\n");
+            // uart_printf(CONSOLE, "ENABLING RTM INTERRUPT\r\n");
             int retval = AWAITEVENT(InterruptEvents::UART_RX_TIMEOUT);
             if (retval < 0)
             {
                 uart_printf(CONSOLE, "PANIC, RTM_NOTIFIER AWAITEVENT returned error %d\n", retval);
             }
-            uart_printf(CONSOLE, "RTM NOTIFIER AWOKEN\r\n");
-            char ch = uart_getc_non_blocking(CONSOLE);
-            uart_printf(CONSOLE, "RTM NOTIFIED WITH: %c\n", ch);
-            // int ch = uart_getc_non_blocking(CONSOLE);
-            // if (ch != NO_CHAR)
-            // {
-            //     uart_printf(CONSOLE, "Received char %c\n", ch);
-            // }
-            // // this will be triggered when user types in command line since it will add to the receive buffer
-            // uart_printf(CONSOLE, "RTM NOTIFIER AWAITEVENT\r\n");
+            // uart_printf(CONSOLE, "RTM NOTIFIER AWOKEN\r\n");
+            // char ch = uart_getc_non_blocking(CONSOLE);
 
-            // IO_REQUEST req{IO_REQUEST_TYPE::RTM_NOTIFIER, CONSOLE, 0};
-            // int reply;
-
-            // SEND(IO_SERVER_TID, (char *)&req, sizeof(req), (char *)&reply, sizeof(reply));
-        }
-    }
-
-    void notifierRX()
-    {
-        uart_printf(CONSOLE, "RX Notifier started\r\n");
-
-        while (true)
-        {
-            int ch = uart_getc_non_blocking(CONSOLE);
-            if (ch != NO_CHAR)
-            {
-                uart_printf(CONSOLE, "Received char %c\n", ch);
-            }
-
-            int retval = AWAITEVENT(InterruptEvents::UART_RX);
-            if (retval < 0)
-            {
-                uart_printf(CONSOLE, "PANIC, RX_NOTIFIER AWAITEVENT returned error %d\n", retval);
-            }
-            IO_REQUEST req{IO_REQUEST_TYPE::RX_NOTIFIER, CONSOLE, 0};
+            IO_REQUEST req{IO_REQUEST_TYPE::RTM_NOTIFIER, CONSOLE, 0};
             int reply;
 
             SEND(IO_SERVER_TID, (char *)&req, sizeof(req), (char *)&reply, sizeof(reply));
         }
     }
 
-    void notifierTX()
+    void notifier_tx()
     {
-        // check for status
-        // action or
-        // wait for interrupt
-        // repeat
-        // while (true)
-        // {
-        //     AWAITEVENT(InterruptEvents::UART_TX);
-        //     IO_REQUEST req{IO_REQUEST_TYPE::TX_NOTIFIER, CONSOLE, 0};
-        //     int reply;
-        //     SEND(IO_SERVER_TID, (char *)&req, sizeof(req), (char *)&reply, sizeof(reply));
+        uart_printf(CONSOLE, "TX Notifier started\r\n");
 
-        //     if (reply < 0)
-        //     {
-        //         uart_printf(CONSOLE, "PANIC, TX_NOTIFIER returned error %d\n", reply);
-        //     }
-        // }
+        while (true)
+        {
+            // this will be awoken when there is space in the transmit buffer (if fifo is enabled)
+            int retval = AWAITEVENT(InterruptEvents::UART_TX);
+            uart_printf(CONSOLE, "TX NOTIFIER AWOKEN\r\n");
+            if (retval < 0)
+            {
+                uart_printf(CONSOLE, "PANIC, TX_NOTIFIER AWAITEVENT returned error %d\n", retval);
+            }
+            IO_REQUEST req{IO_REQUEST_TYPE::TX_NOTIFIER, CONSOLE, 0};
+            int reply;
 
-        EXIT();
+            SEND(IO_SERVER_TID, (char *)&req, sizeof(req), (char *)&reply, sizeof(reply));
+        }
     }
 }
 

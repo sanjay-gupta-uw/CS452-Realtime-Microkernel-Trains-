@@ -5,6 +5,23 @@
 #include "../../shared_constants.h"
 #include "../../rpi.h"
 
+extern "C" void Print(char *str)
+{
+    int ioServerTid = WHOIS("IOServer");
+    for (int i = 0; str[i] != '\0'; i++)
+    {
+        int retval = IO_SERVER::Putc(ioServerTid, CONSOLE, str[i]);
+        if (retval < 0)
+        {
+            uart_printf(CONSOLE, "Error printing character %c to IO Server\r\n", str[i]);
+            uart_printf(CONSOLE, "SPINNING FROM PRINT\r\n");
+            for (;;)
+                ;
+            EXIT();
+        }
+    }
+}
+
 void FirstUserTask()
 {
     uart_printf(CONSOLE, "First User Task: Starting System Services.\r\n");
@@ -51,11 +68,23 @@ void ClientTask()
     }
 
     // using this instead of idle for testing
-    for (;;)
-    {
-        YIELD();
-    }
+    // uart_printf(CONSOLE, "Client Task: requesting character from IO Server.\r\n");
 
+    // test putc
+    // char *str = "Hello from Client Task!\r\n";
+    // Print(str);
+
+    int ch = IO_SERVER::Getc(ioServerTid, CONSOLE);
+    if (ch < 0)
+    {
+        uart_printf(CONSOLE, "Error getting character from IO Server\r\n");
+        EXIT();
+    }
+    else
+    {
+        uart_printf(CONSOLE, "Client Task: Received character %c from IO Server.\r\n", ch);
+    }
+    uart_printf(CONSOLE, "Client Task: Exiting.\r\n");
     EXIT();
 }
 

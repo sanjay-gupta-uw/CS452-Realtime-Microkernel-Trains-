@@ -64,11 +64,10 @@ Kernel::Kernel(void (*function)()) : Kernel()
 
     // initialize INTERRUPTS
     InitGIC();
-    // disable irqs to uart
-    // set first 11 bits to 1
+    UART_CLEAR_INTERRUPT(CONSOLE, 0x7FF);
     UART_IMSC_DISABLE(CONSOLE, 0x7FF);
-    // enable fifo
-    UART_REG(CONSOLE, UART_LCRH) |= (1 << 4);
+
+    UART_REG(CONSOLE, UART_LCRH) |= (1 << 4); // enable fifo
 
     // set trigger level to 1/8
     // since using RTM, trigger level doesnt matter really...?
@@ -297,56 +296,40 @@ void Kernel::Reply()
 
 void Kernel::AwaitEvent(int eventType)
 {
-    // uart_printf(CONSOLE, "AWAITING EVENT: %d\r\n", eventType);
-    // uart_printf(CONSOLE, "UART_IMSC: 0x%x\r\n", UART_REG(CONSOLE, UART_IMSC));
-    // uart_printf(CONSOLE, "UART_MIS: 0x%x\r\n", UART_REG(CONSOLE, UART_MIS));
+
+    if (eventType >= InterruptEvents::NUM_EVENTS)
+    {
+        uart_printf(CONSOLE, "PANIC: EVENT TYPE {%d} EXCEEDS LIMIT\r\n", eventType);
+        return;
+    }
 
     switch (eventType)
     {
     case TIMER_TICK:
     {
         clock.ReArmTimer(TEN_MS); // Rearm timer for next interval
-        active_task->SetRetval(0);
-        active_task->setState(EVENT_BLOCKED);
-        event_queues[TIMER_TICK].Push(active_task);
     }
     break;
     case UART_RX_TIMEOUT: // console interrupt
-    {
-        uart_printf(CONSOLE, "AWAITING UART RX TIMEOUT\r\n");
-        // DEBUG();
+        // case UART_TX:
+        {
+            uart_printf(CONSOLE, "AWAITING UART RX TIMEOUT\r\n");
+            // DEBUG();
+            // need to also pass console/marklin here (DEFINE SEPARATE SIGNALS INSTEAD)
+            UART_IMSC_ENABLE(CONSOLE, interrupt_masks[eventType]);
 
-        UART_IMSC_ENABLE(CONSOLE, (RTM_INTERRUPT_MASK)); // enable receive timeout interrupt
-        // print the IMSC register
-        uart_printf(CONSOLE, "UART_IMSC: 0x%x\r\n", UART_REG(CONSOLE, UART_IMSC));
-
-        // 0x62
-
-        active_task->SetRetval(-1);
-        active_task->setState(EVENT_BLOCKED);
-        event_queues[UART_RX_TIMEOUT].Push(active_task);
-    }
-    break;
-    // case UART_TX:
-    // case UART_CTS:
-
-    //     break;
-
-    //     // case UART_IRQ:
-    //     //     uart_printf(CONSOLE, "AWAITING UART IRQ\r\n");
-    //     //     // ENABLE LEVEL INTERRUPT using IMSC register
-    //     //     // UART_REG(CONSOLE, UART_IMSC) = 0x10;
-
-    //     //     // active_task->SetRetval(0);
-    //     //     // active_task->setState(EVENT_BLOCKED);
-    //     //     // event_queues[UART_IRQ].Push(active_task);
-    //     break;
-    //     // (FALLTHROIUGH)
+            uart_printf(CONSOLE, "UART_IMSC: 0x%x\r\n", UART_REG(CONSOLE, UART_IMSC));
+            // print the IMSC register
+        }
+        break;
     default:
-        uart_printf(CONSOLE, "PANIC: %d IS INVALID EVENT TYPE, RETURNING -1\r\n", eventType);
-        active_task->SetRetval(-1); // set return value to -1
+        uart_printf(CONSOLE, "PANIC: %d IS UNIMPLEMENTED\r\n", eventType);
         break;
     }
+
+    active_task->SetRetval(-1);
+    active_task->setState(EVENT_BLOCKED);
+    event_queues[eventType].Push(active_task);
 }
 
 TaskDescriptor *
@@ -488,7 +471,7 @@ void Kernel::IRQ_Handler()
     uint32_t irq_id = D_REG(GICC_BASE, GICC_IAR); // Read the interrupt ID from the GICC_IAR register
     irq_id &= 0x3FF;                              // Mask to extract last 10 bits (interrupt ID)
 
-    // uart_printf(CONSOLE, "IRQ HANDLER: Received ID: %d\r\n", irq_id);
+    uart_printf(CONSOLE, "IRQ HANDLER: Received ID: %d\r\n", irq_id);
     switch (irq_id)
     {
     case TIMER_C1: // timERTICK?
@@ -505,47 +488,33 @@ void Kernel::IRQ_Handler()
     }
     case UART_IRQ:
     {
-        TaskDescriptor *task;
+        // const int enabled_size = 2;
+        const int enabled_size = 1;
+        int interrupt_idx[enabled_size] = {UART_RX_TIMEOUT}; //, UART_TX};
 
         uint32_t uart_mis = UART_REG(CONSOLE, UART_MIS); // read UART_MIS register to find out which interrupt is triggered
         uart_printf(CONSOLE, "IRQ HANDLER: UART_MIS: 0x%x\r\n", uart_mis);
-        if ((uart_mis & RTM_INTERRUPT_MASK) == RTM_INTERRUPT_MASK)
+
+        for (int i = 0; i < enabled_size; i++)
         {
-
-            UART_IMSC_DISABLE(CONSOLE, RTM_INTERRUPT_MASK);
-            UART_CLEAR_INTERRUPT(CONSOLE, RTM_INTERRUPT_MASK);
-
-            uart_printf(CONSOLE, "UART RX TIMEOUT INTERRUPT TRIGGERED\r\n");
-
-            while (event_queues[UART_RX_TIMEOUT].Pop(&task) != -1)
+            int mask = interrupt_masks[interrupt_idx[i]];
+            if ((uart_mis & mask) == mask)
             {
-                task->setState(READY);
-                task->SetRetval(0);
-                ready_queue.Push(task->tid, task->priority);
+                UART_IMSC_DISABLE(CONSOLE, mask);
+                UART_CLEAR_INTERRUPT(CONSOLE, mask);
+
+                uart_printf(CONSOLE, "IRQ HANDLER: UART INTERRUPT {%d} TRIGGERED\r\n", interrupt_idx[i]);
+                TaskDescriptor *task;
+                while (event_queues[interrupt_idx[i]].Pop(&task) != -1)
+                {
+                    task->setState(READY);
+                    task->SetRetval(0);
+                    ready_queue.Push(task->tid, task->priority);
+                }
             }
         }
-        if ((uart_mis & RX_INTERRUPT_MASK) == RX_INTERRUPT_MASK)
-        {
-            UART_IMSC_DISABLE(CONSOLE, RX_INTERRUPT_MASK);
-            UART_CLEAR_INTERRUPT(CONSOLE, RX_INTERRUPT_MASK);
-
-            uart_printf(CONSOLE, "UART RX INTERRUPT TRIGGERED\r\n");
-            while (event_queues[UART_RX].Pop(&task) != -1)
-            {
-                task->setState(READY);
-                task->SetRetval(0);
-                ready_queue.Push(task->tid, task->priority);
-            }
-        }
-        if ((uart_mis & TX_INTERRUPT_MASK) == TX_INTERRUPT_MASK)
-        {
-            uart_printf(CONSOLE, "UART TX INTERRUPT TRIGGERED\r\n");
-        }
-        // uart_mis = UART_REG(MARKLIN, UART_MIS);
-
-        // uart_printf(CONSOLE, "UART_MIS (RE_READ): 0x%x\r\n", UART_REG(CONSOLE, UART_MIS));
-        break;
     }
+    break;
     case SPURIOUS_INTERRUPT:
         uart_printf(CONSOLE, "PANIC: SPURIOUS INTERRUPT\r\n");
         break;
