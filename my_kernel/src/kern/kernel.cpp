@@ -313,12 +313,12 @@ void Kernel::AwaitEvent(int eventType)
     break;
     case UART_RX_TIMEOUT: // console interrupt
     {
-        uart_printf(CONSOLE, "AWAITING UART RX TIMEOUT\r\n");
+        // uart_printf(CONSOLE, "AWAITING UART RX TIMEOUT\r\n");
         // DEBUG();
 
         UART_IMSC_ENABLE(CONSOLE, (RTM_INTERRUPT_MASK)); // enable receive timeout interrupt
         // print the IMSC register
-        uart_printf(CONSOLE, "UART_IMSC: 0x%x\r\n", UART_REG(CONSOLE, UART_IMSC));
+        // uart_printf(CONSOLE, "UART_IMSC: 0x%x\r\n", UART_REG(CONSOLE, UART_IMSC));
 
         // 0x62
 
@@ -469,7 +469,7 @@ void Kernel::Handler(int N)
         break;
 
     case SVC_AWAITEVENT:
-        uart_printf(CONSOLE, "(AWAITEVENT) Triggered by {%d}\r\n", active_task->getTid());
+        // uart_printf(CONSOLE, "(AWAITEVENT) Triggered by {%d}\r\n", active_task->getTid());
         AwaitEvent(active_task->context.x[0]);
         break;
 
@@ -508,14 +508,14 @@ void Kernel::IRQ_Handler()
         TaskDescriptor *task;
 
         uint32_t uart_mis = UART_REG(CONSOLE, UART_MIS); // read UART_MIS register to find out which interrupt is triggered
-        uart_printf(CONSOLE, "IRQ HANDLER: UART_MIS: 0x%x\r\n", uart_mis);
+        // uart_printf(CONSOLE, "IRQ HANDLER: UART_MIS: 0x%x\r\n", uart_mis);
         if ((uart_mis & RTM_INTERRUPT_MASK) == RTM_INTERRUPT_MASK)
         {
 
             UART_IMSC_DISABLE(CONSOLE, RTM_INTERRUPT_MASK);
             UART_CLEAR_INTERRUPT(CONSOLE, RTM_INTERRUPT_MASK);
 
-            uart_printf(CONSOLE, "UART RX TIMEOUT INTERRUPT TRIGGERED\r\n");
+            // uart_printf(CONSOLE, "UART RX TIMEOUT INTERRUPT TRIGGERED\r\n");
 
             while (event_queues[UART_RX_TIMEOUT].Pop(&task) != -1)
             {

@@ -9,7 +9,7 @@ void FirstUserTask()
 {
     uart_printf(CONSOLE, "First User Task: Starting System Services.\r\n");
     // CREATE IDLE TASK
-    // int idleTid = CREATE(PRIORITY::IDLE, IdleTask);
+    int idleTid = CREATE(PRIORITY::IDLE, IdleTask);
 
     int nameServerTid = CREATE(PRIORITY::P0, NameServer); // Start the Name Server
     if (nameServerTid < 0)
@@ -49,6 +49,12 @@ void ClientTask()
         uart_printf(CONSOLE, "Error finding IO Server\r\n");
         EXIT();
     }
+    int ch = -1;
+    while (true)
+    {
+        ch = IO_SERVER::Getc(ioServerTid, CONSOLE);
+        uart_printf(CONSOLE, "%c", ch);
+    }
 
     // using this instead of idle for testing
     for (;;)
@@ -63,7 +69,8 @@ void IdleTask()
 {
     for (;;)
     {
-        asm volatile("wfi");
+        // asm volatile("wfi");
+        YIELD();
     }
     EXIT();
 }

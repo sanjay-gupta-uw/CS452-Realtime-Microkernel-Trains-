@@ -101,19 +101,13 @@ extern "C" int kmain()
     // while (kernel.)
     while ((current_task = kernel.Scheduler()) || kernel.areTasksWaiting())
     {
-        // for (;;)
-        // {
-        //     uart_printf(CONSOLE, "EXTRACTING CHARS\r\n");
-        //     auto ch = uart_getc(CONSOLE);
-        //     uart_putc(CONSOLE, ch);
-        // }
 
-        // uart_printf(CONSOLE, "ACTIVE: {%d}\r\n", current_task->getTid());
         if (current_task == nullptr) // replace with idle task instead..
         {
             // uart_printf(CONSOLE, "NO MORE READY TASKS\r\n");
             continue;
         }
+        // uart_printf(CONSOLE, "ACTIVE: {%d}\r\n", current_task->getTid());
         int esr_el1 = kernel.DispatchTask(&kernel_context, current_task);
 
         // apply mask to ESR to get SVC number
