@@ -7,7 +7,9 @@
 
 namespace IO_SERVER
 {
-    int IO_SERVER_TID = -1;
+    int IO_SERVER_TID;
+    int tx_state;
+    int count;
 
     static void ReplyWithMessage(int tid, IO_REPLY reply)
     {
@@ -27,6 +29,8 @@ namespace IO_SERVER
         // potentially create separate IO Servers for marklin/console
         REGISTERAS("IOServer");
         IO_SERVER_TID = MYTID();
+        tx_state = TX_LOW;
+        count = 0;
         spawnNotifiers();
         run();
     }
@@ -37,17 +41,18 @@ namespace IO_SERVER
 
     void IOServer::spawnNotifiers()
     {
+        // ensure this runs before tx_notifier
         rtm_notifier_tid = CREATE(PRIORITY::P1, notifier_rxto);
         if (rtm_notifier_tid < 0)
         {
             uart_printf(CONSOLE, "Error starting RTM Notifier\n");
         }
 
-        // tx_notifier_tid = CREATE(PRIORITY::P1, notifier_tx);
-        // if (tx_notifier_tid < 0)
-        // {
-        //     uart_printf(CONSOLE, "Error starting TX Notifier\n");
-        // }
+        tx_notifier_tid = CREATE(PRIORITY::P2, notifier_tx);
+        if (tx_notifier_tid < 0)
+        {
+            uart_printf(CONSOLE, "Error starting TX Notifier\n");
+        }
     }
 
     void IOServer::run()
@@ -90,11 +95,29 @@ namespace IO_SERVER
             break;
             case IO_REQUEST_TYPE::PUTC:
             {
+                // if (tx_state == TX_HIGH)
+                // {
+                //     write_to_uart();
+                // }
                 reply.type = REPLY_TYPE::FAILURE; // incase it's full
                 if (!transmit_buffer.IsFull())    // this will ignore characters if "overwhelmed"
                 {
                     transmit_buffer.Push(req.ch);
                     reply.type = REPLY_TYPE::SUCCESS;
+                    count++;
+                }
+                else
+                {
+                    uart_printf(CONSOLE, "IO_SERVER::PUTC: PANIC, Transmit buffer is full\r\n");
+                }
+
+                if (tx_state == TX_HIGH)
+                {
+                    write_to_uart();
+                }
+                if (reply.type == REPLY_TYPE::FAILURE)
+                {
+                    uart_printf(CONSOLE, "IO_SERVER::PUTC COUNT: %d\r\n", count);
                 }
 
                 ReplyWithMessage(sender_tid, reply); // sends UNIMPLEMENTED
@@ -125,16 +148,9 @@ namespace IO_SERVER
 
             case IO_REQUEST_TYPE::TX_NOTIFIER:
             {
-                // for (;;)
-                //     ;
-                uart_printf(CONSOLE, "IO_SERVER::TX_NOTIFIER\r\n");
                 // uart_printf(CONSOLE, "IO_SERVER::TX_NOTIFIER\r\n");
-                while (!transmit_buffer.IsEmpty())
-                {
-                    unsigned char ch;
-                    transmit_buffer.Pop(&ch);
-                    uart_putc(CONSOLE, ch);
-                }
+                write_to_uart();
+                // uart_printf(CONSOLE, "IO_SERVER::TX_NOTIFIER: Transmit buffer is empty\r\n");
                 reply.type = REPLY_TYPE::SUCCESS;
                 ReplyWithMessage(sender_tid, reply); // wake up notifier
             }
@@ -143,6 +159,22 @@ namespace IO_SERVER
             default:
                 break;
             }
+        }
+    }
+
+    void IOServer::write_to_uart()
+    {
+        if (!transmit_buffer.IsEmpty())
+        {
+            while (!transmit_buffer.IsEmpty())
+            {
+                unsigned char ch = UNDEFINED_CHAR;
+                transmit_buffer.Pop(&ch);
+                uart_putc(CONSOLE, ch);
+                // uart_printf(CONSOLE, "\r\n");
+                // uart_printf(CONSOLE, "IO_SERVER::TX_NOTIFIER: Sent character %c\r\n", ch);
+            }
+            tx_state = TX_LOW;
         }
     }
 
@@ -192,7 +224,6 @@ namespace IO_SERVER
                 uart_printf(CONSOLE, "PANIC, RTM_NOTIFIER AWAITEVENT returned error %d\n", retval);
             }
             // uart_printf(CONSOLE, "RTM NOTIFIER AWOKEN\r\n");
-            // char ch = uart_getc_non_blocking(CONSOLE);
 
             IO_REQUEST req{IO_REQUEST_TYPE::RTM_NOTIFIER, CONSOLE, 0};
             int reply;
@@ -209,11 +240,17 @@ namespace IO_SERVER
         {
             // this will be awoken when there is space in the transmit buffer (if fifo is enabled)
             int retval = AWAITEVENT(InterruptEvents::UART_TX);
-            uart_printf(CONSOLE, "TX NOTIFIER AWOKEN\r\n");
+
+            tx_state = TX_HIGH;
+
             if (retval < 0)
             {
                 uart_printf(CONSOLE, "PANIC, TX_NOTIFIER AWAITEVENT returned error %d\n", retval);
             }
+            // uart_printf(CONSOLE, "TX NOTIFIER AWOKEN, STALLING TO DEBUG\r\n");
+            // for (;;)
+            //     ;
+
             IO_REQUEST req{IO_REQUEST_TYPE::TX_NOTIFIER, CONSOLE, 0};
             int reply;
 

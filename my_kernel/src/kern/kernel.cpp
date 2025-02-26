@@ -67,8 +67,9 @@ Kernel::Kernel(void (*function)()) : Kernel()
     // disable irqs to uart
     // set first 11 bits to 1
     UART_IMSC_DISABLE(CONSOLE, 0x7FF);
-    // enable fifo
-    UART_REG(CONSOLE, UART_LCRH) |= (1 << 4);
+
+    // disable fifo
+    UART_REG(CONSOLE, UART_LCRH) &= ~(1 << 4);
 
     // set trigger level to 1/8
     // since using RTM, trigger level doesnt matter really...?
@@ -327,7 +328,16 @@ void Kernel::AwaitEvent(int eventType)
         event_queues[UART_RX_TIMEOUT].Push(active_task);
     }
     break;
-    // case UART_TX:
+    case UART_TX:
+    {
+        // uart_printf(CONSOLE, "AWAITING UART TX\r\n");
+        // ENABLE LEVEL INTERRUPT using IMSC register
+        UART_IMSC_ENABLE(CONSOLE, (TX_INTERRUPT_MASK));
+        active_task->SetRetval(0);
+        active_task->setState(EVENT_BLOCKED);
+        event_queues[UART_TX].Push(active_task);
+    }
+    break;
     // case UART_CTS:
 
     //     break;
@@ -524,26 +534,20 @@ void Kernel::IRQ_Handler()
                 ready_queue.Push(task->tid, task->priority);
             }
         }
-        if ((uart_mis & RX_INTERRUPT_MASK) == RX_INTERRUPT_MASK)
+        if ((uart_mis & TX_INTERRUPT_MASK) == TX_INTERRUPT_MASK)
         {
-            UART_IMSC_DISABLE(CONSOLE, RX_INTERRUPT_MASK);
-            UART_CLEAR_INTERRUPT(CONSOLE, RX_INTERRUPT_MASK);
+            UART_IMSC_DISABLE(CONSOLE, TX_INTERRUPT_MASK);
+            UART_CLEAR_INTERRUPT(CONSOLE, TX_INTERRUPT_MASK);
 
-            uart_printf(CONSOLE, "UART RX INTERRUPT TRIGGERED\r\n");
-            while (event_queues[UART_RX].Pop(&task) != -1)
+            // uart_printf(CONSOLE, "UART TX INTERRUPT TRIGGERED\r\n");
+
+            while (event_queues[UART_TX].Pop(&task) != -1)
             {
                 task->setState(READY);
                 task->SetRetval(0);
                 ready_queue.Push(task->tid, task->priority);
             }
         }
-        if ((uart_mis & TX_INTERRUPT_MASK) == TX_INTERRUPT_MASK)
-        {
-            uart_printf(CONSOLE, "UART TX INTERRUPT TRIGGERED\r\n");
-        }
-        // uart_mis = UART_REG(MARKLIN, UART_MIS);
-
-        // uart_printf(CONSOLE, "UART_MIS (RE_READ): 0x%x\r\n", UART_REG(CONSOLE, UART_MIS));
         break;
     }
     case SPURIOUS_INTERRUPT:

@@ -41,4 +41,14 @@ typedef enum
     IRQ,
 } Syscall;
 
+// void color_black() { uart_puts(CONSOLE, "\033[30m"); }
+// void color_red() { uart_puts(CONSOLE, "\033[31m"); }
+// void color_green() { uart_puts(CONSOLE, "\033[32m"); }
+// void color_yellow() { uart_puts(CONSOLE, "\033[33m"); }
+// void color_blue() { uart_puts(CONSOLE, "\033[34m"); }
+// void color_magenta() { uart_puts(CONSOLE, "\033[35m"); }
+// void color_cyan() { uart_puts(CONSOLE, "\033[36m"); }
+// void color_white() { uart_puts(CONSOLE, "\033[37m"); }
+// save colours as strings
+
 #endif

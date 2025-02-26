@@ -6,6 +6,9 @@
 namespace IO_SERVER
 {
 #define UNDEFINED_CHAR '-'
+#define TX_HIGH 1 // buffer is not full
+#define TX_LOW 0  // buffer is full/above threshold
+
     // REDEFINED QUEUE SIZE TO 32 -> change queue to accept size as a parameter?
     // #define RECEIVE_SIZE 32 // 32 chars/bytes
     class IOServer
@@ -23,6 +26,7 @@ namespace IO_SERVER
 
         void run();
         void spawnNotifiers();
+        void write_to_uart();
 
         Queue<unsigned char> receive_buffer;
         Queue<unsigned char> transmit_buffer;
@@ -46,6 +50,7 @@ namespace IO_SERVER
         FAILURE,
         UNIMPLEMENTED
     };
+
     struct IO_REPLY
     {
         REPLY_TYPE type;
