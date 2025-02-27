@@ -47,20 +47,20 @@ namespace MARKLIN_IO_SERVER
         // rx_notifier_tid = CREATE(PRIORITY::P2, notifier_rx);
         // if (rx_notifier_tid < 0)
         // {
-        //     uart_printf(CONSOLE, "Error starting RTM Notifier\n");
+        //     // uart_printf(CONSOLE, "Error starting RTM Notifier\n");
         // }
 
         tx_notifier_tid = CREATE(PRIORITY::P2, notifier_tx);
         if (tx_notifier_tid < 0)
         {
-            uart_printf(CONSOLE, "Error starting TX Notifier\n");
+            // uart_printf(CONSOLE, "Error starting TX Notifier\n");
         }
         // pending_tramissions.Push(tx_notifier_tid); // initial transmission
 
         cts_notifier_tid = CREATE(PRIORITY::P2, notifier_cts);
         if (cts_notifier_tid < 0)
         {
-            uart_printf(CONSOLE, "Error starting CTS Notifier\n");
+            // uart_printf(CONSOLE, "Error starting CTS Notifier\n");
         }
     }
 
@@ -70,14 +70,14 @@ namespace MARKLIN_IO_SERVER
         IO_REQUEST req;
         while (true)
         {
-            // uart_printf(CONSOLE, "MarklinIO_server::Waiting for request\r\n");
+            // // uart_printf(CONSOLE, "MarklinIO_server::Waiting for request\r\n");
             int retval = RECEIVE(&sender_tid, (char *)&req, sizeof(req));
-            // uart_printf(CONSOLE, "MarklinIO_server::Received request from %d\r\n", sender_tid);
+            // // uart_printf(CONSOLE, "MarklinIO_server::Received request from %d\r\n", sender_tid);
             if (retval < 0)
             {
-                uart_printf(CONSOLE, "PANIC, IO_SERVER RECEIVE returned error %d\n", retval);
+                // uart_printf(CONSOLE, "PANIC, IO_SERVER RECEIVE returned error %d\n", retval);
             }
-            // uart_printf(CONSOLE, "MarklinIO_server::Received request from %d\r\n", sender_tid);
+            // // uart_printf(CONSOLE, "MarklinIO_server::Received request from %d\r\n", sender_tid);
 
             IO_REPLY reply;
             reply.type = REPLY_TYPE::UNIMPLEMENTED;
@@ -87,7 +87,7 @@ namespace MARKLIN_IO_SERVER
             {
             case IO_REQUEST_TYPE::GETC:
             {
-                // uart_printf(CONSOLE, "MarklinIO_server::GETC\r\n");
+                // // uart_printf(CONSOLE, "MarklinIO_server::GETC\r\n");
                 if (!receive_buffer.IsEmpty())
                 {
                     // need to reply with CH
@@ -97,7 +97,7 @@ namespace MARKLIN_IO_SERVER
                 }
                 else
                 {
-                    // uart_printf(CONSOLE, "MarklinIO_server::GETC: {tid: %d} waiting for character\r\n", sender_tid);
+                    // // uart_printf(CONSOLE, "MarklinIO_server::GETC: {tid: %d} waiting for character\r\n", sender_tid);
                     rx_waiting_tasks.Push(sender_tid);
                 }
             }
@@ -112,15 +112,15 @@ namespace MARKLIN_IO_SERVER
                     count++;
                 }
 
-                // uart_printf(CONSOLE, "MarklinIO_server::PUTC: %c\r\n", req.data);
-                // uart_printf(CONSOLE, "CURRENT STATE: %d\r\n", tx_state_machine);
+                // // uart_printf(CONSOLE, "MarklinIO_server::PUTC: %c\r\n", req.data);
+                // // uart_printf(CONSOLE, "CURRENT STATE: %d\r\n", tx_state_machine);
                 if (tx_state_machine == STATE_MACHINE::MARKLIN_READY)
                 {
                     handle_transmission();
                 }
                 // else
                 // {
-                //     // uart_printf(CONSOLE, "MarklinIO_server::PUTC: PANIC, Transmit buffer is full\r\n");
+                //     // // uart_printf(CONSOLE, "MarklinIO_server::PUTC: PANIC, Transmit buffer is full\r\n");
                 // }
 
                 ReplyWithMessage(sender_tid, reply); // sends UNIMPLEMENTED
@@ -134,7 +134,7 @@ namespace MARKLIN_IO_SERVER
 
             case IO_REQUEST_TYPE::TX_NOTIFIER:
             {
-                // uart_printf(CONSOLE, "MarklinIO_server::TX_NOTIFIER\r\n");
+                // // uart_printf(CONSOLE, "MarklinIO_server::TX_NOTIFIER\r\n");
                 pending_tramissions.Push(sender_tid);
                 handle_transmission();
 
@@ -145,7 +145,7 @@ namespace MARKLIN_IO_SERVER
 
             case IO_REQUEST_TYPE::CTS_NOTIFIER:
             {
-                uart_printf(CONSOLE, "MarklinIO_server::CTS_NOTIFIER\r\n");
+                // uart_printf(CONSOLE, "MarklinIO_server::CTS_NOTIFIER\r\n");
                 cts_state = (PIN_STATE)(req.data);
                 handle_transmission();
                 reply.type = REPLY_TYPE::SUCCESS;
@@ -161,10 +161,10 @@ namespace MARKLIN_IO_SERVER
 
     void MarklinIOServer::handle_transmission()
     {
-        // uart_printf(CONSOLE, "HANDLE_TRANSMISSION\r\n");
+        // // uart_printf(CONSOLE, "HANDLE_TRANSMISSION\r\n");
         if (cts_state == PIN_STATE::HIGH)
         {
-            // uart_printf(CONSOLE, "CTS HIGH\r\n");
+            // // uart_printf(CONSOLE, "CTS HIGH\r\n");
             if (tx_state_machine == STATE_MACHINE::MARKLIN_PROCESSING)
             {
                 tx_state_machine = STATE_MACHINE::MARKLIN_READY;
@@ -179,26 +179,26 @@ namespace MARKLIN_IO_SERVER
             }
             else
             {
-                // uart_printf(CONSOLE, "CTS HIGH, NO TRANSMISSION\r\n");
+                // // uart_printf(CONSOLE, "CTS HIGH, NO TRANSMISSION\r\n");
                 tx_state_machine = STATE_MACHINE::MARKLIN_READY;
             }
         }
         // cts must be low
         else if (tx_state_machine == STATE_MACHINE::TRANSMITTING)
         {
-            // uart_printf(CONSOLE, "CTS LOW, IS CURRENTLY TRANSMITTING?\r\n");
+            // // uart_printf(CONSOLE, "CTS LOW, IS CURRENTLY TRANSMITTING?\r\n");
             tx_state_machine = STATE_MACHINE::MARKLIN_PROCESSING;
         }
         else
         {
-            // uart_printf(CONSOLE, "CTS LOW, NOT CURRENTLY TRANSMITTING\r\n");
+            // // uart_printf(CONSOLE, "CTS LOW, NOT CURRENTLY TRANSMITTING\r\n");
         }
     }
 
     // can only send byte
     void MarklinIOServer::write_to_uart()
     {
-        // uart_printf(CONSOLE, "MarklinIO_server::write_to_uart\r\n");
+        // // uart_printf(CONSOLE, "MarklinIO_server::write_to_uart\r\n");
         unsigned char ch = UNDEFINED_CHAR;
         transmit_buffer.Pop(&ch);
         // uart_putc(MARKLIN, (uint8_t)data);
@@ -214,16 +214,16 @@ namespace MARKLIN_IO_SERVER
 
         IO_REQUEST req{IO_REQUEST_TYPE::GETC, channel, 0};
         IO_REPLY reply;
-        // uart_printf(CONSOLE, "GETC: Sending request to IOServer\r\n");
+        // // uart_printf(CONSOLE, "GETC: Sending request to IOServer\r\n");
         SEND(IO_SERVER_TID, (char *)&req, sizeof(req), (char *)&reply, sizeof(reply));
-        // uart_printf(CONSOLE, "GETC: IOServer finished processing request\r\n");
+        // // uart_printf(CONSOLE, "GETC: IOServer finished processing request\r\n");
 
         return reply.type == REPLY_TYPE::SUCCESS ? reply.ch : -1;
     }
 
     int Putc(int tid, int channel, unsigned char ch)
     {
-        // uart_printf(CONSOLE, "MarklinIO_server::Putc\r\n");
+        // // uart_printf(CONSOLE, "MarklinIO_server::Putc\r\n");
         if (tid != IO_SERVER_TID) // check if tid if valid uart server
         {
             return -1;
@@ -232,24 +232,24 @@ namespace MARKLIN_IO_SERVER
         IO_REQUEST req{IO_REQUEST_TYPE::PUTC, channel, ch};
         IO_REPLY reply;
         SEND(IO_SERVER_TID, (char *)&req, sizeof(req), (char *)&reply, sizeof(reply));
-        // uart_printf(CONSOLE, "MarklinIO_server::Putc returned %s\r\n", REPLY_TYPE_STR((REPLY_TYPE)reply));
+        // // uart_printf(CONSOLE, "MarklinIO_server::Putc returned %s\r\n", REPLY_TYPE_STR((REPLY_TYPE)reply));
 
         return reply.type == REPLY_TYPE::SUCCESS ? 0 : -1;
     }
 
     void notifier_rx() // receive
     {
-        uart_printf(CONSOLE, "M-RX Notifier started\r\n");
+        // uart_printf(CONSOLE, "M-RX Notifier started\r\n");
         while (true)
         {
-            // uart_printf(CONSOLE, "ENABLING RTM INTERRUPT\r\n");
+            // // uart_printf(CONSOLE, "ENABLING RTM INTERRUPT\r\n");
             int retval = AWAITEVENT(InterruptEvents::UART_MARKLIN_RX);
             if (retval < 0)
             {
-                uart_printf(CONSOLE, "PANIC, MARKLIN RX_NOTIFIER AWAITEVENT returned error %d\n", retval);
+                // uart_printf(CONSOLE, "PANIC, MARKLIN RX_NOTIFIER AWAITEVENT returned error %d\n", retval);
                 spin_debug();
             }
-            // uart_printf(CONSOLE, "RTM NOTIFIER AWOKEN\r\n");
+            // // uart_printf(CONSOLE, "RTM NOTIFIER AWOKEN\r\n");
 
             // don't need to pass marklin in these
             IO_REQUEST req{IO_REQUEST_TYPE::RX_NOTIFIER, MARKLIN, 0};
@@ -261,7 +261,7 @@ namespace MARKLIN_IO_SERVER
 
     void notifier_tx()
     {
-        uart_printf(CONSOLE, "M-TX Notifier started\r\n");
+        // uart_printf(CONSOLE, "M-TX Notifier started\r\n");
 
         while (true)
         {
@@ -272,10 +272,10 @@ namespace MARKLIN_IO_SERVER
 
             if (retval < 0)
             {
-                uart_printf(CONSOLE, "PANIC, TX_NOTIFIER AWAITEVENT returned error %d\n", retval);
+                // uart_printf(CONSOLE, "PANIC, TX_NOTIFIER AWAITEVENT returned error %d\n", retval);
                 spin_debug();
             }
-            uart_printf(CONSOLE, "TX NOTIFIER AWOKEN\r\n");
+            // uart_printf(CONSOLE, "TX NOTIFIER AWOKEN\r\n");
             // spin_debug();
 
             IO_REQUEST req{IO_REQUEST_TYPE::TX_NOTIFIER, MARKLIN, 0};
@@ -288,18 +288,18 @@ namespace MARKLIN_IO_SERVER
     void notifier_cts()
     {
         // THIS WILL FIRE WHEN ASSERTED/DEASSERTED
-        uart_printf(CONSOLE, "M-CTS Notifier started\r\n");
+        // uart_printf(CONSOLE, "M-CTS Notifier started\r\n");
 
         while (true)
         {
             // FOR THIS EVENT, CTS ASSERTED/DEASSERTED returned (TODO)
             // should be 0 if low, 1 if high (translated in kernel)
             int CTS_SIGNAL = AWAITEVENT(InterruptEvents::UART_MARKLIN_CTS);
-            uart_printf(CONSOLE, "CTS NOTIFIER AWOKEN, CTS: %d\r\n", CTS_SIGNAL);
+            // uart_printf(CONSOLE, "CTS NOTIFIER AWOKEN, CTS: %d\r\n", CTS_SIGNAL);
 
             if (CTS_SIGNAL < 0)
             {
-                uart_printf(CONSOLE, "PANIC, CTS_NOTIFIER AWAITEVENT returned error %d\n", CTS_SIGNAL);
+                // uart_printf(CONSOLE, "PANIC, CTS_NOTIFIER AWAITEVENT returned error %d\n", CTS_SIGNAL);
                 spin_debug();
             }
 
@@ -307,7 +307,7 @@ namespace MARKLIN_IO_SERVER
             int reply;
 
             SEND(IO_SERVER_TID, (char *)&req, sizeof(req), (char *)&reply, sizeof(reply));
-            uart_printf(CONSOLE, "CTS NOTIFIER UNBLOCKED\r\n");
+            // uart_printf(CONSOLE, "CTS NOTIFIER UNBLOCKED\r\n");
         }
     }
 

@@ -1,35 +1,36 @@
-#include "ui.h"
+// #include "ui.h"
 
-#include "clock.h"
-#include "command.h"
-#include "marklin/switch.h"
-// #include "sensor.h"
-// #include "util.h"
+// #include "clock.h"
+// // #include "command.h"
+// // #include "marklin/switch.h"
 
-UI::UI()
-{
-   clear_screen(CONSOLE);
-   clock.Display((NUM_COLS - CLOCK_LENGTH) / 2);
+// // #include "sensor.h"
+// // #include "util.h"
 
-   // Switches
-   switches.InitDisplay(SWITCH_LOCATION);
+// UI::UI()
+// {
+//     // clear_screen(CONSOLE);
+//     clock.Display((NUM_COLS - CLOCK_LENGTH) / 2);
 
-   // Sensors
-   // init_sensor_display(SENSOR_LOCATION);
+//     // Switches
+//     switches.InitDisplay(SWITCH_LOCATION);
 
-   // uart_puts(CONSOLE, "Press 'q' to reboot\r\n");
-}
+//     // Sensors
+//     // init_sensor_display(SENSOR_LOCATION);
 
-// void update_ui(RingBuffer *rb)
-void UI::Update()
-{
-   // move cursor to top middle for clock
-   clock.Display((NUM_COLS - CLOCK_LENGTH) / 2);
+//     // uart_puts(CONSOLE, "Press 'q' to reboot\r\n");
+// }
 
-   //    sensor_display(SENSOR_LOCATION + 3, rb);
-   switches.Display(SWITCH_LOCATION + 5);
-   cmd_prompt.Display(CMD_LOCATION);
+// // void update_ui(RingBuffer *rb)
+// void UI::Update()
+// {
+//     // move cursor to top middle for clock
+//     clock.Display((NUM_COLS - CLOCK_LENGTH) / 2);
 
-   reset_formatting(CONSOLE);
-   // move_cursor(CM)
-}
+//     //    sensor_display(SENSOR_LOCATION + 3, rb);
+//     switches.Display(SWITCH_LOCATION + 5);
+//     cmd_prompt.Display(CMD_LOCATION);
+
+//     reset_formatting(CONSOLE);
+//     // move_cursor(CM)
+// }

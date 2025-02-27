@@ -1,6 +1,8 @@
 #ifndef _user_task_h_
 #define _user_task_h_
 
+// extern "C" void Print(char *str);
+
 struct ParamRequest
 {
     int delay_interval;

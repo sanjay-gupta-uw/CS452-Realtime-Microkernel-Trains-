@@ -232,8 +232,7 @@ static void pad_and_print(size_t line, const char *str, int width)
 
 extern "C" void uart_printf(size_t line, const char *fmt, ...)
 {
-    // disable for time being
-    // return;
+    // return; // disable uart_printf
     va_list va;
     char ch, buf[12];
     int width = 0; // Width for padding

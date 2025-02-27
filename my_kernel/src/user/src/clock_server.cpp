@@ -17,7 +17,7 @@ public:
         int notifierTid = CREATE(PRIORITY::P1, ClockNotifier);
         if (notifierTid < 0)
         {
-            uart_printf(CONSOLE, "Error starting Clock Notifier\n");
+            // uart_printf(CONSOLE, "Error starting Clock Notifier\n");
         }
 
         run();
@@ -77,7 +77,7 @@ private:
         while (!waitingTasks.isEmpty() && waitingTasks.Peek(&waiting_tid, &trigger_time) == 0 && (uint32_t)trigger_time <= TOTAL_TICKS)
         {
             waitingTasks.Pop(&waiting_tid);
-            // uart_printf(CONSOLE, "ClockServer: Waking up task %d\n", waiting_tid);
+            // // uart_printf(CONSOLE, "ClockServer: Waking up task %d\n", waiting_tid);
             REPLY(waiting_tid, "U R FREE", 8);
         }
         REPLY(sender_tid, nullptr, 0); // FREE THE CLOCK NOTIFIER
@@ -115,7 +115,7 @@ int DELAY(int tid, int ticks)
     SEND(CLOCK_SERVER_TID, (char *)&req, sizeof(req), (char *)&reply, sizeof(reply));
     if (reply < 0)
     {
-        uart_printf(CONSOLE, "PANIC, DELAY returned error %d\n", reply);
+        // uart_printf(CONSOLE, "PANIC, DELAY returned error %d\n", reply);
     }
     return TIME(tid); // return current Time()
 }
@@ -135,7 +135,7 @@ int DELAY_UNTIL(int tid, int ticks)
     SEND(CLOCK_SERVER_TID, (char *)&req, sizeof(req), (char *)&reply, sizeof(reply));
     if (reply < 0)
     {
-        uart_printf(CONSOLE, "PANIC, DELAY_UNTIL returned error %d\n", reply);
+        // uart_printf(CONSOLE, "PANIC, DELAY_UNTIL returned error %d\n", reply);
     }
     return TIME(tid); // return current Time()
 }
@@ -151,10 +151,10 @@ void ClockNotifier()
     int clockServerTid = WHOIS("ClockServer");
     while (true)
     {
-        // uart_printf(CONSOLE, "ClockNotifier: Waiting for a tick\n");
+        // // uart_printf(CONSOLE, "ClockNotifier: Waiting for a tick\n");
         AWAITEVENT(TIMER_TICK);
         ClockRequest tickReq = {ClockRequestType::TICK, 0}; // No ticks needed for a notification
-        // uart_printf(CONSOLE, "ClockNotifier: Sending a tick to the clock server\n");
+        // // uart_printf(CONSOLE, "ClockNotifier: Sending a tick to the clock server\n");
         SEND(clockServerTid, (char *)&tickReq, sizeof(tickReq), nullptr, 0); // Notify the clock server with a TICK
     }
 }

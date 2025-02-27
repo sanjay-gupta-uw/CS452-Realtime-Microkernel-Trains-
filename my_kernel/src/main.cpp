@@ -1,13 +1,13 @@
 #include <stdbool.h>
 
 #include "clock.h"
-#include "command.h" // for command prompt
+// #include "command.h" // for command prompt
 #include "dummy.h"
 #include "rpi.h"
 #include "ui.h"
 #include "user/include/usertask.h"
-#include "marklin/switch.h"
-#include "marklin/train.h"
+// #include "marklin/switch.h"
+// #include "marklin/train.h"
 
 #include "containers/ringbuffer.h"
 
@@ -34,9 +34,9 @@ static uint32_t TOTAL_TIME = 0;
 
 // ENSURE THESE GET INITIALIZED
 Clock clock;
-Switches switches;
-Trains trains;
-CommandPrompt cmd_prompt;
+// Switches switches;
+// Trains trains;
+// CommandPrompt cmd_prompt;
 
 void call_global_constructors()
 {
@@ -61,7 +61,7 @@ extern "C" void _start(); // expose this to LLDB
 
 extern "C" void printASM(int x0)
 {
-    uart_printf(CONSOLE, "X0: 0x%x \n", x0);
+    // uart_printf(CONSOLE, "X0: 0x%x \n", x0);
 }
 
 extern "C" int kmain()
@@ -84,7 +84,7 @@ extern "C" int kmain()
     clear_screen(CONSOLE);
     reset_formatting(CONSOLE);
     move_cursor(CONSOLE, IDLE_ROW + 1, 0);
-    uart_printf(CONSOLE, "Welcome to the Train Controller\r\n");
+    // uart_printf(CONSOLE, "Welcome to the Train Controller\r\n");
 
 #if defined(MMU)
     setup_mmu();
@@ -97,35 +97,35 @@ extern "C" int kmain()
     TaskDescriptor *current_task = nullptr;
 
     // scheduler pops the highest priority task into td
-    uart_printf(CONSOLE, "Starting Kernel\r\n");
+    // uart_printf(CONSOLE, "Starting Kernel\r\n");
     // while (kernel.)
     while ((current_task = kernel.Scheduler()) || kernel.areTasksWaiting())
     {
 
         if (current_task == nullptr) // replace with idle task instead..
         {
-            // uart_printf(CONSOLE, "NO MORE READY TASKS\r\n");
+            // // uart_printf(CONSOLE, "NO MORE READY TASKS\r\n");
             continue;
         }
-        // uart_printf(CONSOLE, "ACTIVE: {%d}\r\n", current_task->getTid());
+        // // uart_printf(CONSOLE, "ACTIVE: {%d}\r\n", current_task->getTid());
         // int fifo_status = UART_REG(MARKLIN, UART_FR);
         // if (fifo_status & UART_FR_TXFE_MASK)
         // {
-        //     uart_printf(CONSOLE, "KMAIN::FIFO EMPTY\r\n");
+        //     // uart_printf(CONSOLE, "KMAIN::FIFO EMPTY\r\n");
         //     // spin_debug();
         // }
         // else
         // {
-        //     uart_printf(CONSOLE, "KMAIN::FIFO NOT EMPTY\r\n");
+        //     // uart_printf(CONSOLE, "KMAIN::FIFO NOT EMPTY\r\n");
         // }
         int esr_el1 = kernel.DispatchTask(&kernel_context, current_task);
 
         // apply mask to ESR to get SVC number
         int N = esr_el1 & 0xFFFF;
-        // uart_printf(CONSOLE, "ACTIVE: {%d}, ESR: {%d}, N: {%d}\r\n", current_task->getTid(), esr_el1, N);
+        // // uart_printf(CONSOLE, "ACTIVE: {%d}, ESR: {%d}, N: {%d}\r\n", current_task->getTid(), esr_el1, N);
         if (esr_el1 < 0)
         {
-            uart_printf(CONSOLE, "UNEXPECTED ERROR\r\n");
+            // uart_printf(CONSOLE, "UNEXPECTED ERROR\r\n");
             for (;;)
             {
             }
@@ -133,7 +133,7 @@ extern "C" int kmain()
         kernel.Handler(N);
     }
 
-    uart_printf(CONSOLE, "NO MORE READY TASKS\r\n");
+    // uart_printf(CONSOLE, "NO MORE READY TASKS\r\n");
     for (;;)
         ;
     return 0;

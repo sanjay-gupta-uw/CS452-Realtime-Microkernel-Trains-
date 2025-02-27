@@ -27,7 +27,7 @@ static void set_peripheral_target(int m)
 void enable_irq()
 {
     asm volatile("msr daifclr, #2");
-    // uart_printf(CONSOLE, "IRQs enabled\r\n");
+    // // uart_printf(CONSOLE, "IRQs enabled\r\n");
 }
 
 void disable_irq()

@@ -568,7 +568,7 @@ void Kernel::IRQ_Handler()
 
         // read MARKLIN UART
         uart_mis = UART_REG(MARKLIN, UART_MIS);
-        uart_printf(CONSOLE, "IRQ HANDLER MARKLIN UART_MIS: 0x%x\r\n", uart_mis);
+        // uart_printf(CONSOLE, "IRQ HANDLER MARKLIN UART_MIS: 0x%x\r\n", uart_mis);
         if (uart_mis & RX_INTERRUPT_MASK)
         {
             UART_IMSC_DISABLE(MARKLIN, RX_INTERRUPT_MASK);

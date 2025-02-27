@@ -1,17 +1,17 @@
 #include "ringbuffer.h"
-#include "../command.h"
+// #include "../command.h"
 #include "../kern/task.h"
 
 template class RingBuffer<int>;
-template class RingBuffer<Command>;
+// template class RingBuffer<Command>;
 // template class RingBuffer<TaskDescriptor>;
 
 template <typename T>
 RingBuffer<T>::RingBuffer()
 {
-   head = 0;
-   tail = 0;
-   size = 0;
+    head = 0;
+    tail = 0;
+    size = 0;
 }
 
 template <typename T>
@@ -23,47 +23,47 @@ RingBuffer<T>::~RingBuffer()
 template <typename T>
 int RingBuffer<T>::Push(const T &item)
 {
-   if (size == RING_BUFFER_MAX_SIZE)
-   {
-      // Buffer is full
-      return -1;
-   }
+    if (size == RING_BUFFER_MAX_SIZE)
+    {
+        // Buffer is full
+        return -1;
+    }
 
-   buffer[head] = item;                      // Copy the value into the buffer
-   head = (head + 1) % RING_BUFFER_MAX_SIZE; // Advance the head (circular)
-   size++;                                   // Increase the size
+    buffer[head] = item;                      // Copy the value into the buffer
+    head = (head + 1) % RING_BUFFER_MAX_SIZE; // Advance the head (circular)
+    size++;                                   // Increase the size
 
-   return 0; // Success
+    return 0; // Success
 }
 
 // Pop an item from the buffer: 0 if success, -1 if buffer is empty
 template <typename T>
 int RingBuffer<T>::Pop(T *item)
 {
-   if (size == 0)
-   {
-      // Buffer is empty
-      return -1;
-   }
+    if (size == 0)
+    {
+        // Buffer is empty
+        return -1;
+    }
 
-   *item = buffer[tail];
+    *item = buffer[tail];
 
-   tail = (tail + 1) % RING_BUFFER_MAX_SIZE; // Advance the tail (circular)
-   size--;                                   // Decrease the size
+    tail = (tail + 1) % RING_BUFFER_MAX_SIZE; // Advance the tail (circular)
+    size--;                                   // Decrease the size
 
-   return 0; // Success
+    return 0; // Success
 }
 
 // Check if the buffer is empty
 template <typename T>
 bool RingBuffer<T>::IsEmpty()
 {
-   return size == 0;
+    return size == 0;
 }
 
 // Check if the buffer is full
 template <typename T>
 bool RingBuffer<T>::IsFull()
 {
-   return size == RING_BUFFER_MAX_SIZE;
+    return size == RING_BUFFER_MAX_SIZE;
 }

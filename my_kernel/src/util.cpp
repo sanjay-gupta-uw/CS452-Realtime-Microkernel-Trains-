@@ -15,7 +15,7 @@ int a2d(char ch)
 // ascii string to unsigned int, with base
 uint32_t a2ui(char **src, unsigned int base)
 {
-    // uart_printf(CONSOLE, "a2ui: ch=%c, base=%d, nump=%d\r\n", ch, base, *nump);
+    // // uart_printf(CONSOLE, "a2ui: ch=%c, base=%d, nump=%d\r\n", ch, base, *nump);
     unsigned int num;
     int digit;
     char *p;
@@ -26,7 +26,7 @@ uint32_t a2ui(char **src, unsigned int base)
     char ch = *p;
     while ((digit = a2d(ch)) >= 0)
     {
-        // uart_printf(CONSOLE, "a2ui: digit=%d\r\n", digit);
+        // // uart_printf(CONSOLE, "a2ui: digit=%d\r\n", digit);
         if ((unsigned int)digit > base)
             break;
         num = num * base + digit;

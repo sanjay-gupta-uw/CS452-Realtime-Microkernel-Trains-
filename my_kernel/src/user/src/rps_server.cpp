@@ -30,7 +30,7 @@ void resolveGame(int player_index);
 
 void RpsServer()
 {
-    uart_printf(CONSOLE, "RPS Server running...\r\n");
+    // uart_printf(CONSOLE, "RPS Server running...\r\n");
     REGISTERAS("RPSServer");
 
     for (int i = 0; i < MAX_PLAYERS; ++i)
@@ -41,12 +41,12 @@ void RpsServer()
 
     while (true)
     {
-        uart_printf(CONSOLE, "RPS Server waiting for requests...\r\n");
+        // uart_printf(CONSOLE, "RPS Server waiting for requests...\r\n");
         int sender_tid;
         GameRequest req;
         int sendLen = RECEIVE(&sender_tid, (char *)&req, sizeof(req));
-        // uart_printf(CONSOLE, "RPS Server received request from TID %d of length %d\r\n", sender_tid, sendLen);
-        // uart_printf(CONSOLE, "Request type: %d, move: %d\r\n", req.type, req.move);
+        // // uart_printf(CONSOLE, "RPS Server received request from TID %d of length %d\r\n", sender_tid, sendLen);
+        // // uart_printf(CONSOLE, "Request type: %d, move: %d\r\n", req.type, req.move);
 
         int index = -1;
         for (int i = 0; i < MAX_PLAYERS; ++i)
@@ -68,7 +68,7 @@ void RpsServer()
                 freePlayers.Pop(&player);
                 *player = {sender_tid, -1, true, false, nullptr, false};
                 player_count++;
-                uart_printf(CONSOLE, "Player %d signed up.\r\n", player->tid);
+                // uart_printf(CONSOLE, "Player %d signed up.\r\n", player->tid);
 
                 readyQueue.Push(player);
                 matchPlayers(); // Check if two players can be paired
@@ -81,7 +81,7 @@ void RpsServer()
         case PLAY:
             if (index != -1 && players[index].active && players[index].inGame)
             {
-                uart_printf(CONSOLE, "PLEASE PRESS SPACE TO CONSUME MOVE\r\n");
+                // uart_printf(CONSOLE, "PLEASE PRESS SPACE TO CONSUME MOVE\r\n");
                 // wait for space key to handle input
                 while (uart_getc(CONSOLE) != ' ')
                     ;
@@ -97,7 +97,7 @@ void RpsServer()
 
                 quit_player->markDead = true;
                 resolveGame(index); // Resolve game if mid-match
-                uart_printf(CONSOLE, "Player %d quit.\r\n", quit_player->tid);
+                // uart_printf(CONSOLE, "Player %d quit.\r\n", quit_player->tid);
                 // matchPlayers();     // Attempt to match remaining players
             }
             break;
@@ -159,7 +159,7 @@ void matchPlayers()
             REPLY(p2->tid, "PAIRED", 7);
 
             // activePlayers.Push(p1);
-            uart_printf(CONSOLE, "Players %d and %d are paired for a game.\r\n", p1->tid, p2->tid);
+            // uart_printf(CONSOLE, "Players %d and %d are paired for a game.\r\n", p1->tid, p2->tid);
         }
         else
         {
@@ -176,7 +176,7 @@ void handlePlay(int index, int choice)
     if (player->opponent_player != nullptr && player->active && player->inGame)
     {
         player->choice = choice;
-        uart_printf(CONSOLE, "Player %d played %s.\r\n", players[index].tid, getMoveName(choice));
+        // uart_printf(CONSOLE, "Player %d played %s.\r\n", players[index].tid, getMoveName(choice));
 
         if (player->opponent_player->choice != -1)
         {
@@ -185,7 +185,7 @@ void handlePlay(int index, int choice)
     }
     else
     {
-        uart_printf(CONSOLE, "Potential logic error in HandlePlay function.\r\n");
+        // uart_printf(CONSOLE, "Potential logic error in HandlePlay function.\r\n");
     }
 }
 
@@ -193,7 +193,7 @@ static void reclaimPlayer(int index)
 {
     Player *p1 = &players[index];
     Player *p2 = p1->opponent_player;
-    uart_printf(CONSOLE, "Reclaiming partner player %d .\r\n", p2->tid);
+    // uart_printf(CONSOLE, "Reclaiming partner player %d .\r\n", p2->tid);
 
     p1->choice = p2->choice = -1;
     p1->inGame = p2->inGame = false;
@@ -213,7 +213,7 @@ void resolveGame(int player_index)
 
     if (p1->markDead)
     {
-        uart_printf(CONSOLE, "P1 marked dead, Game unresolved for Player %d: Waiting for an opponent.\r\n", p1->tid);
+        // uart_printf(CONSOLE, "P1 marked dead, Game unresolved for Player %d: Waiting for an opponent.\r\n", p1->tid);
         reclaimPlayer(player_index);
         return;
     }
@@ -251,11 +251,11 @@ void resolveGame(int player_index)
 
     for (int i = 0; i < 2; ++i)
     {
-        uart_printf(CONSOLE, "Desc %d: %s\r\n", i, desc[i]);
+        // uart_printf(CONSOLE, "Desc %d: %s\r\n", i, desc[i]);
     }
 
-    uart_printf(CONSOLE, "Game result: Player %d %s\r\n", p1->tid, desc[0]);
-    uart_printf(CONSOLE, "Game result: Player %d %s\r\n", p2->tid, desc[1]);
+    // uart_printf(CONSOLE, "Game result: Player %d %s\r\n", p1->tid, desc[0]);
+    // uart_printf(CONSOLE, "Game result: Player %d %s\r\n", p2->tid, desc[1]);
 
     REPLY(p1->tid, desc[0], strlen(desc[0]) + 1);
     REPLY(p2->tid, desc[1], strlen(desc[1]) + 1);

@@ -4,28 +4,14 @@
 #include "../include/io_server.h"
 #include "../include/marklin_io.h"
 #include "../../shared_constants.h"
-#include "../../rpi.h"
+// #include "../../rpi.h"
+#include "../include/ui.h"
 
-extern "C" void Print(char *str)
-{
-    int ioServerTid = WHOIS("IOServer");
-    for (int i = 0; str[i] != '\0'; i++)
-    {
-        int retval = IO_SERVER::Putc(ioServerTid, CONSOLE, str[i]);
-        if (retval < 0)
-        {
-            uart_printf(CONSOLE, "\r\nError printing character %c to IO Server\r\n", str[i]);
-            uart_printf(CONSOLE, "SPINNING FROM PRINT\r\n");
-            for (;;)
-                ;
-            EXIT();
-        }
-    }
-}
+static int IO_SERVER_TID = -1;
 
 void FirstUserTask()
 {
-    uart_printf(CONSOLE, "First User Task: Starting System Services.\r\n");
+    // uart_printf(CONSOLE, "First User Task: Starting System Services.\r\n");
     // CREATE IDLE TASK
     int idleTid = CREATE(PRIORITY::IDLE, IdleTask);
 
@@ -36,35 +22,34 @@ void FirstUserTask()
         EXIT();
     }
 
-    // int ioServerTid = CREATE(PRIORITY::P0, IO_SERVER::startIOServer); // Start the IO Server
-    // if (ioServerTid < 0)
+    int ioServerTid = CREATE(PRIORITY::P0, IO_SERVER::startIOServer); // Start the IO Server
+    IO_SERVER_TID = ioServerTid;
+    if (ioServerTid < 0)
+    {
+        uart_printf(CONSOLE, "Error starting IO Server\r\n");
+        EXIT();
+    }
+
+    // int marklinIoServerTid = CREATE(PRIORITY::P0, MARKLIN_IO_SERVER::startMarklinIOServer); // Start the Marklin IO Server
+    // if (marklinIoServerTid < 0)
     // {
-    //     uart_printf(CONSOLE, "Error starting IO Server\r\n");
+    //     uart_printf(CONSOLE, "Error starting Marklin IO Server\r\n");
     //     EXIT();
     // }
 
-    int marklinIoServerTid = CREATE(PRIORITY::P0, MARKLIN_IO_SERVER::startMarklinIOServer); // Start the Marklin IO Server
-    if (marklinIoServerTid < 0)
-    {
-        uart_printf(CONSOLE, "Error starting Marklin IO Server\r\n");
-        EXIT();
-    }
-
     // create sample clients
-    // uart_printf(CONSOLE, "First User Task: Spawning Client Task.\r\n");
-    // int clientTid = CREATE(PRIORITY::P4, ClientTask);
-    int marklinTID = CREATE(PRIORITY::P4, MarklinTask);
-    if (marklinTID < 0)
-    {
-        uart_printf(CONSOLE, "Error starting Marklin Client Task\r\n");
-        EXIT();
-    }
     int clientTid = CREATE(PRIORITY::P4, ClientTask);
     if (clientTid < 0)
     {
         uart_printf(CONSOLE, "Error starting Client Task\r\n");
         EXIT();
     }
+    // int marklinTID = CREATE(PRIORITY::P4, MarklinTask);
+    // if (marklinTID < 0)
+    // {
+    //     uart_printf(CONSOLE, "Error starting Marklin Client Task\r\n");
+    //     EXIT();
+    // }
 
     EXIT();
 }
@@ -74,6 +59,7 @@ void ClientTask()
 {
     int myTid = MYTID();
     // uart_printf(CONSOLE, "Client Task: My Tid is %d.\r\n", myTid);
+    // uart_puts(CONSOLE, "Client Task: Starting IO Test.\r\n");
 
     int ioServerTid = WHOIS("IOServer");
     if (ioServerTid < 0)
@@ -84,19 +70,36 @@ void ClientTask()
     int ret = -1;
     int ch = -1;
     // test print
-    Print("Client Task: Starting IO Test.\r\n");
+    uart_putc(CONSOLE, 'A'); // must initialize uart before using
 
-    while (true)
+    for (int i = 0; i < 5; ++i)
     {
-        ch = MARKLIN_IO_SERVER::Getc(ioServerTid, CONSOLE);
-        ret = MARKLIN_IO_SERVER::Putc(ioServerTid, CONSOLE, ch);
+        IO_SERVER::Putc(ioServerTid, CONSOLE, 'B');
     }
+
+    uart_printf(CONSOLE, "\r\n");
+
+    int cmd_prompt = CREATE(PRIORITY::P4, UI_NS::start_ui);
+
+    // Print("Client Task: Starting IO Test.\r\n");
+    // use ansi to clear screen
+    // reset formatting
+    // Print("\033[0m");
+    // Print("\033[2J");
+    // Print("\033[1;31m"); // red
+    // Print("Client Task: Starting IO Test.\r\n");
+
+    // while (true)
+    // {
+    //     ch = MARKLIN_IO_SERVER::Getc(ioServerTid, CONSOLE);
+    //     ret = MARKLIN_IO_SERVER::Putc(ioServerTid, CONSOLE, ch);
+    // }
 
     // using this instead of idle for testing
-    for (;;)
-    {
-        YIELD();
-    }
+    // for (;;)
+    // {
+    //     YIELD();
+    // }
 
     EXIT();
 }
@@ -146,8 +149,7 @@ void IdleTask()
 {
     for (;;)
     {
-        // asm volatile("wfi");
-        YIELD();
+        asm volatile("wfi");
     }
     EXIT();
 }

@@ -29,12 +29,12 @@ static const uint32_t SYSTIMER_CS_M3 = 0x04; // Match 3
 
 Clock::Clock()
 {
-   TICKS = 0;
-   last_time = SYSTIMER_REG(SYSTIMER_CLO);
-   minutes = 0;
-   seconds = 0;
-   tenths = 0;
-   UPDATE_DISPLAY = true;
+    TICKS = 0;
+    last_time = SYSTIMER_REG(SYSTIMER_CLO);
+    minutes = 0;
+    seconds = 0;
+    tenths = 0;
+    UPDATE_DISPLAY = true;
 }
 
 Clock::~Clock() {}
@@ -43,83 +43,83 @@ uint32_t Clock::Time() { return SYSTIMER_REG(SYSTIMER_CLO); }
 
 void Clock::Update()
 {
-   // Get current time from system timer
-   uint32_t current_time = SYSTIMER_REG(SYSTIMER_CLO);
+    // Get current time from system timer
+    uint32_t current_time = SYSTIMER_REG(SYSTIMER_CLO);
 
-   // elapsed time since last update (in microseconds)
-   uint32_t elapsed = current_time - last_time;
+    // elapsed time since last update (in microseconds)
+    uint32_t elapsed = current_time - last_time;
 
-   // Convert elapsed time to tenths of a second and accumulate
-   uint32_t increment = elapsed / TENTH_OF_SECOND_MICRO_SECONDS;
-   if (increment > 0)
-   {
-      tenths += increment;
+    // Convert elapsed time to tenths of a second and accumulate
+    uint32_t increment = elapsed / TENTH_OF_SECOND_MICRO_SECONDS;
+    if (increment > 0)
+    {
+        tenths += increment;
 
-      // Update seconds if tenths exceed 10
-      seconds += tenths / 10;
-      tenths %= 10;
+        // Update seconds if tenths exceed 10
+        seconds += tenths / 10;
+        tenths %= 10;
 
-      // Update minutes if seconds exceed 60
-      minutes += seconds / 60;
-      seconds %= 60;
+        // Update minutes if seconds exceed 60
+        minutes += seconds / 60;
+        seconds %= 60;
 
-      // uart_printf(CONSOLE, "FILLD: minutes: %u, seconds: %u, tenths: %u\r\n", *minutes, *seconds, *tenths);
-      last_time = current_time;
+        // // uart_printf(CONSOLE, "FILLD: minutes: %u, seconds: %u, tenths: %u\r\n", *minutes, *seconds, *tenths);
+        last_time = current_time;
 
-      UPDATE_DISPLAY = true;
-   }
-   // wraparound after 71 minutes?
+        UPDATE_DISPLAY = true;
+    }
+    // wraparound after 71 minutes?
 }
 
 void Clock::Delay(uint32_t delay_ms)
 {
-   uint32_t delay_microseconds = delay_ms * 1000;    // Convert ms to microseconds
-   uint32_t start_time = SYSTIMER_REG(SYSTIMER_CLO); // Record the start time
-   uint32_t elapsed = 0;
+    uint32_t delay_microseconds = delay_ms * 1000;    // Convert ms to microseconds
+    uint32_t start_time = SYSTIMER_REG(SYSTIMER_CLO); // Record the start time
+    uint32_t elapsed = 0;
 
-   while (elapsed < delay_microseconds)
-   {
-      // Calculate elapsed time
-      uint32_t current_time = SYSTIMER_REG(SYSTIMER_CLO);
-      elapsed = current_time - start_time;
+    while (elapsed < delay_microseconds)
+    {
+        // Calculate elapsed time
+        uint32_t current_time = SYSTIMER_REG(SYSTIMER_CLO);
+        elapsed = current_time - start_time;
 
-      // Update the clock to ensure it doesn't lose ticks during the delay
-      Update();
-   }
+        // Update the clock to ensure it doesn't lose ticks during the delay
+        Update();
+    }
 }
 
 void Clock::Display(int LOCATION)
 {
-   if (!UPDATE_DISPLAY)
-      return;
+    if (!UPDATE_DISPLAY)
+        return;
 
-   move_cursor(CONSOLE, 1, LOCATION);
-   clear_to_end_line(CONSOLE);
+    move_cursor(CONSOLE, 1, LOCATION);
+    clear_to_end_line(CONSOLE);
 
-   color_magenta();
-   if (minutes < 10)
-      uart_putc(CONSOLE, '0'); // Add leading zero for minutes
-   uart_printf(CONSOLE, "%u:", minutes);
+    color_magenta();
+    if (minutes < 10)
+        uart_putc(CONSOLE, '0'); // Add leading zero for minutes
+    // uart_printf(CONSOLE, "%u:", minutes);
 
-   if (seconds < 10)
-      uart_putc(CONSOLE, '0'); // Add leading zero for seconds
-   uart_printf(CONSOLE, "%u.", seconds);
+    if (seconds < 10)
+        uart_putc(CONSOLE, '0'); // Add leading zero for seconds
+    // uart_printf(CONSOLE, "%u.", seconds);
 
-   uart_printf(CONSOLE, "%u", tenths); // Tenths don't need padding
+    // uart_printf(CONSOLE, "%u", tenths); // Tenths don't need padding
 
-   UPDATE_DISPLAY = false;
+    UPDATE_DISPLAY = false;
 }
 
 // CMP_REG should be 1/3
 void Clock::ReArmTimer(uint32_t delay_interval)
 {
-   // uart_printf(CONSOLE, "REARMING TIMER\r\n");
-   uint32_t next_match = SYSTIMER_REG(SYSTIMER_CLO) + delay_interval;
-   SYSTIMER_REG(SYSTIMER_C1) = next_match;
-   // ++TICKS;
+    // // uart_printf(CONSOLE, "REARMING TIMER\r\n");
+    uint32_t next_match = SYSTIMER_REG(SYSTIMER_CLO) + delay_interval;
+    SYSTIMER_REG(SYSTIMER_C1) = next_match;
+    // ++TICKS;
 }
 
 void Clock::DisarmTimer()
 {
-   SYSTIMER_REG(SYSTIMER_CS) = (1 << 1); // clear match bit for C1 (2nd bit)
+    SYSTIMER_REG(SYSTIMER_CS) = (1 << 1); // clear match bit for C1 (2nd bit)
 }
