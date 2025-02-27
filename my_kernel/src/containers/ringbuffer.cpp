@@ -54,6 +54,19 @@ int RingBuffer<T>::Pop(T *item)
     return 0; // Success
 }
 
+template <typename T>
+int RingBuffer<T>::Get(int index, T* value) {
+    if (size == 0 || index < 0 || index >= size) {
+        return -1;  // Invalid access
+    }
+    
+    // Calculate the index in circular buffer
+    int physical_index = (tail + index) % RING_BUFFER_MAX_SIZE;
+    *value = buffer[physical_index];
+    
+    return 0;  // Success
+}
+
 // Check if the buffer is empty
 template <typename T>
 bool RingBuffer<T>::IsEmpty()

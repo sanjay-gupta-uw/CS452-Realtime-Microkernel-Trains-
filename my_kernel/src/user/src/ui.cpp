@@ -16,12 +16,14 @@ namespace UI_NS
         switches.InitDisplay(&io, SWITCH_LOCATION);
 
         // Sensors
-        // init_sensor_display(SENSOR_LOCATION);
+        sensors.InitDisplay(&io, SENSOR_LOCATION);
 
         // uart_puts(CONSOLE, "Press 'q' to reboot\r\n");
     }
     void UI::Update()
     {
+        sensors.ReadAll(NUM_BANKS, &recent_sensors);
+        snesors.Display(&io, SWITCH_LOCATION + 3, rb);
         switches.Display(&io, SWITCH_LOCATION + 5);
     }
 
@@ -49,13 +51,12 @@ namespace UI_NS
     {
         // IO io;
         // io.clear_screen();
-        // io.Print("Starting UI\r\n");
+        io.Print("Starting UI\r\n");
         UI ui;
 
         while (true)
         {
             ui.Update();
-            // update();
         }
     }
 }

@@ -17,6 +17,7 @@ public:
 
    int Push(const T &item);
    int Pop(T *item);
+   int Get(int index, T *value);
    bool IsEmpty();
    bool IsFull();
 };

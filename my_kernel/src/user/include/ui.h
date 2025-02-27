@@ -3,7 +3,8 @@
 
 #include "../../clock.h"
 #include "../marklin/switch.h"
-// #include "../marklin/train.h"
+#include "../marklin/sensor.h"
+#include "../../container/ringbuffer.h"
 #include "../include/io.h"
 
 // extern Clock clock;
@@ -30,9 +31,11 @@ namespace UI_NS
     {
         IO io;
         Switches switches;
+        SensorManager sensors;
+        RingBuffer<int> recent_sensors; 
 
     public:
-        UI();
+        UI() : recent_sensors(MAX_RECENT_SENSORS) {};
         void Update();
     };
 
