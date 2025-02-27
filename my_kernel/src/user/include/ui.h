@@ -6,6 +6,7 @@
 #include "../marklin/sensor.h"
 #include "../../container/ringbuffer.h"
 #include "../include/io.h"
+#include "../include/merklin.io.h"
 
 // extern Clock clock;
 // extern CommandPrompt cmd_prompt;
@@ -30,6 +31,7 @@ namespace UI_NS
     class UI
     {
         IO io;
+        MARKLIN_IO_SERVER marklin;
         Switches switches;
         SensorManager sensors;
         RingBuffer<int> recent_sensors; 
