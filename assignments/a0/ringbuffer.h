@@ -15,6 +15,7 @@ typedef struct
 // Function declarations
 void init_ring_buffer(RingBuffer *rb);
 int add_to_buffer(RingBuffer *rb, const int *num);
+int get_from_buffer(const RingBuffer *rb, int index, int *num);
 int remove_from_buffer(RingBuffer *rb, int *num);
 int is_buffer_empty(const RingBuffer *rb);
 int is_buffer_full(const RingBuffer *rb);

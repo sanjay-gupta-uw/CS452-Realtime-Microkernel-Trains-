@@ -22,12 +22,23 @@ int add_to_buffer(RingBuffer *rb, const int *num)
    return 1; // Success
 }
 
+int get_from_buffer(const RingBuffer *rb, int index, int *num) {
+   if (rb->size == 0 || index < 0 || index >= rb->size) {
+       return 0;  // Invalid access
+   }
+   
+   // Calculate the index in circular buffer
+   int physical_index = (rb->tail + index) % RING_BUFFER_MAX_SIZE;
+   *num = rb->buffer[physical_index];
+   
+   return 1; // Success
+}
+
 int remove_from_buffer(RingBuffer *rb, int *num)
 {
    if (rb->size == 0)
-   {
-      // Buffer is empty
-      return 0;
+   {  
+      return 0; // Buffer is empty
    }
 
    if (num != NULL)
