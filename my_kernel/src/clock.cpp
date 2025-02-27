@@ -88,25 +88,38 @@ void Clock::Delay(uint32_t delay_ms)
     }
 }
 
-void Clock::Display(int LOCATION)
+void Clock::Display(IO *io, int X, int Y)
 {
+    // uart_printf(CONSOLE, "HERE\r\n");
     if (!UPDATE_DISPLAY)
+    {
+        uart_printf(CONSOLE, "NOT UPDATING DISPLAY\r\n");
         return;
+    }
 
-    move_cursor(CONSOLE, 1, LOCATION);
-    clear_to_end_line(CONSOLE);
-
-    color_magenta();
+    char min[3] = {'0', '0', '\0'};
     if (minutes < 10)
-        uart_putc(CONSOLE, '0'); // Add leading zero for minutes
-    // uart_printf(CONSOLE, "%u:", minutes);
+    {
+        min[1] = minutes + '0';
+    }
+    else
+    {
+        min[0] = minutes / 10 + '0';
+        min[1] = minutes % 10 + '0';
+    }
 
+    char sec[3] = {'0', '0', '\0'};
     if (seconds < 10)
-        uart_putc(CONSOLE, '0'); // Add leading zero for seconds
-    // uart_printf(CONSOLE, "%u.", seconds);
+    {
+        sec[1] = seconds + '0';
+    }
+    else
+    {
+        sec[0] = seconds / 10 + '0';
+        sec[1] = seconds % 10 + '0';
+    }
 
-    // uart_printf(CONSOLE, "%u", tenths); // Tenths don't need padding
-
+    io->Print(MOVE_CURSOR CLEAR_TO_END_LINE COLOR_YELLOW "%s:%s:%u", Y, X, min, sec, tenths);
     UPDATE_DISPLAY = false;
 }
 

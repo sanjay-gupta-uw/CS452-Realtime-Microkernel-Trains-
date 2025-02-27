@@ -28,6 +28,7 @@ namespace IO_SERVER
     {
         // potentially create separate IO Servers for marklin/console
         REGISTERAS("IOServer");
+        // spin_debug();
         IO_SERVER_TID = MYTID();
         tx_state = TX_LOW;
         count = 0;
@@ -95,28 +96,42 @@ namespace IO_SERVER
             break;
             case IO_REQUEST_TYPE::PUTC:
             {
-                reply.type = REPLY_TYPE::FAILURE; // incase it's full
-                if (!transmit_buffer.IsFull())    // this will ignore characters if "overwhelmed"
+                uart_printf(CONSOLE, "IO_SERVER::PUTC\r\n");
+                reply.type = REPLY_TYPE::FAILURE;  // incase it's full
+                if (!transmit_buffer_str.IsFull()) // this will ignore characters if "overwhelmed"
                 {
-                    transmit_buffer.Push(req.ch);
+                    transmit_buffer_str.Push((unsigned char *)(req.ch));
+                    tx_waiting_tasks.Push(sender_tid);
                     reply.type = REPLY_TYPE::SUCCESS;
-                    count++;
-                }
-                else
-                {
-                    // uart_printf(CONSOLE, "IO_SERVER::PUTC: PANIC, Transmit buffer is full\r\n");
+                    // count++;
                 }
 
                 if (tx_state == TX_HIGH)
                 {
                     write_to_uart();
                 }
-                if (reply.type == REPLY_TYPE::FAILURE)
+                // ReplyWithMessage(sender_tid, reply); // sends UNIMPLEMENTED
+            }
+            break;
+            case IO_REQUEST_TYPE::PUTS:
+            {
+                // uart_printf(CONSOLE, "IO_SERVER::PUTS\r\n");
+                unsigned char *str = req.str;
+                uart_puts(CONSOLE, reinterpret_cast<const char *>(str));
+                // spin_debug();
+                reply.type = REPLY_TYPE::FAILURE; // incase it's full
+                if (!transmit_buffer_str.IsFull())
                 {
-                    // uart_printf(CONSOLE, "IO_SERVER::PUTC COUNT: %d\r\n", count);
+                    transmit_buffer_str.Push(str);
+                    tx_waiting_tasks.Push(sender_tid);
+                    reply.type = REPLY_TYPE::SUCCESS;
                 }
 
-                ReplyWithMessage(sender_tid, reply); // sends UNIMPLEMENTED
+                if (tx_state == TX_HIGH)
+                {
+                    write_to_uart();
+                }
+                // ReplyWithMessage(sender_tid, reply); // sends UNIMPLEMENTED
             }
             break;
             case IO_REQUEST_TYPE::RTM_NOTIFIER:
@@ -127,6 +142,7 @@ namespace IO_SERVER
                 if (!receive_buffer.IsFull()) // this will ignore characters if "overwhelmed"
                 {
                     receive_buffer.Push(ch);
+                    reply.type = REPLY_TYPE::SUCCESS;
                 }
 
                 if (!rx_waiting_tasks.IsEmpty())
@@ -137,7 +153,7 @@ namespace IO_SERVER
                     receive_buffer.Pop(&ch);
                     GETC_SUCCESS_REPLY(waiting_task, ch);
                 }
-                reply.type = REPLY_TYPE::SUCCESS;
+
                 ReplyWithMessage(sender_tid, reply); // wake up notifier
             }
             break;
@@ -147,8 +163,8 @@ namespace IO_SERVER
                 // // uart_printf(CONSOLE, "IO_SERVER::TX_NOTIFIER\r\n");
                 write_to_uart();
                 // // uart_printf(CONSOLE, "IO_SERVER::TX_NOTIFIER: Transmit buffer is empty\r\n");
-                reply.type = REPLY_TYPE::SUCCESS;
-                ReplyWithMessage(sender_tid, reply); // wake up notifier
+                // reply.type = REPLY_TYPE::SUCCESS;
+                // ReplyWithMessage(sender_tid, reply); // wake up notifier
             }
             break;
 
@@ -160,29 +176,41 @@ namespace IO_SERVER
 
     void IOServer::write_to_uart()
     {
-        if (!transmit_buffer.IsEmpty())
+        if (!transmit_buffer_str.IsEmpty())
         {
-            // // uart_printf(CONSOLE, "IO_SERVER::writing to uart\r\n");
-            while (!transmit_buffer.IsEmpty())
+            // uart_printf(CONSOLE, "IO_SERVER::write_to_uart\r\n");
+            // spin_debug();
+            while (!transmit_buffer_str.IsEmpty())
             {
-                unsigned char ch = UNDEFINED_CHAR;
-                transmit_buffer.Pop(&ch);
-                uart_putc(CONSOLE, ch);
-                // // uart_printf(CONSOLE, "\r\n");
-                // // uart_printf(CONSOLE, "IO_SERVER::TX_NOTIFIER: Sent character %c\r\n", ch);
+                unsigned char *str = nullptr;
+                transmit_buffer_str.Pop(&str);
+
+                // uart_printf(CONSOLE, "IO_SERVER::write_to_uart: TRANSMITTING string %s\r\n", str);
+
+                while (*str)
+                {
+                    uart_putc(CONSOLE, *(str++));
+                }
+                int sender_tid;
+                tx_waiting_tasks.Pop(&sender_tid);
+                ReplyWithMessage(sender_tid, (IO_REPLY){REPLY_TYPE::SUCCESS, 0});
             }
             tx_state = TX_LOW;
+            // wake up tx_notifier
+            IO_REPLY reply;
+            reply.type = REPLY_TYPE::SUCCESS;
+            REPLY(tx_notifier_tid, (char *)&reply, sizeof(reply));
         }
     }
 
-    int Getc(int tid, int channel)
+    int Getc(int tid)
     {
         if (tid != IO_SERVER_TID) // check if tid if valid uart server
         {
             return -1;
         }
 
-        IO_REQUEST req{IO_REQUEST_TYPE::GETC, channel, 0};
+        IO_REQUEST req{IO_REQUEST_TYPE::GETC, 0, nullptr};
         IO_REPLY reply;
         // // uart_printf(CONSOLE, "GETC: Sending request to IOServer\r\n");
         SEND(IO_SERVER_TID, (char *)&req, sizeof(req), (char *)&reply, sizeof(reply));
@@ -191,7 +219,7 @@ namespace IO_SERVER
         return reply.type == REPLY_TYPE::SUCCESS ? reply.ch : -1;
     }
 
-    int Putc(int tid, int channel, unsigned char ch)
+    int Putc(int tid, unsigned char ch)
     {
         // // uart_printf(CONSOLE, "IO_SERVER::Putc\r\n");
         if (tid != IO_SERVER_TID) // check if tid if valid uart server
@@ -200,10 +228,28 @@ namespace IO_SERVER
             return -1;
         }
 
-        IO_REQUEST req{IO_REQUEST_TYPE::PUTC, channel, ch};
+        IO_REQUEST req{IO_REQUEST_TYPE::PUTC, ch, nullptr};
         IO_REPLY reply;
         SEND(IO_SERVER_TID, (char *)&req, sizeof(req), (char *)&reply, sizeof(reply));
         // // uart_printf(CONSOLE, "IO_SERVER::Putc returned %s\r\n", REPLY_TYPE_STR((REPLY_TYPE)reply));
+
+        return reply.type == REPLY_TYPE::SUCCESS ? 0 : -1;
+    }
+
+    int Puts(int tid, unsigned char *str)
+    {
+        // // uart_printf(CONSOLE, "IO_SERVER::Puts\r\n");
+        if (tid != IO_SERVER_TID) // check if tid if valid uart server
+        {
+            uart_printf(CONSOLE, "IO_SERVER::Puts: PANIC, Invalid tid %d\r\n", tid);
+            return -1;
+        }
+
+        IO_REQUEST req{IO_REQUEST_TYPE::PUTS, '\0', str};
+        IO_REPLY reply;
+        // uart_printf(CONSOLE, "IO_SERVER::Puts: Sending request to IOServer\r\n");
+        SEND(IO_SERVER_TID, (char *)&req, sizeof(req), (char *)&reply, sizeof(reply));
+        // // uart_printf(CONSOLE, "IO_SERVER::Puts returned %s\r\n", REPLY_TYPE_STR((REPLY_TYPE)reply));
 
         return reply.type == REPLY_TYPE::SUCCESS ? 0 : -1;
     }
@@ -223,7 +269,7 @@ namespace IO_SERVER
             }
             // // uart_printf(CONSOLE, "RTM NOTIFIER AWOKEN\r\n");
 
-            IO_REQUEST req{IO_REQUEST_TYPE::RTM_NOTIFIER, CONSOLE, 0};
+            IO_REQUEST req{IO_REQUEST_TYPE::RTM_NOTIFIER, 0, nullptr};
             int reply;
 
             SEND(IO_SERVER_TID, (char *)&req, sizeof(req), (char *)&reply, sizeof(reply));
@@ -248,7 +294,7 @@ namespace IO_SERVER
             // for (;;)
             //     ;
 
-            IO_REQUEST req{IO_REQUEST_TYPE::TX_NOTIFIER, CONSOLE, 0};
+            IO_REQUEST req{IO_REQUEST_TYPE::TX_NOTIFIER, 0, nullptr};
             int reply;
 
             SEND(IO_SERVER_TID, (char *)&req, sizeof(req), (char *)&reply, sizeof(reply));

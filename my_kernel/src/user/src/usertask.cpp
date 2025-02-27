@@ -72,34 +72,10 @@ void ClientTask()
     // test print
     uart_putc(CONSOLE, 'A'); // must initialize uart before using
 
-    for (int i = 0; i < 5; ++i)
-    {
-        IO_SERVER::Putc(ioServerTid, CONSOLE, 'B');
-    }
-
-    uart_printf(CONSOLE, "\r\n");
-
-    int cmd_prompt = CREATE(PRIORITY::P4, UI_NS::start_ui);
-
-    // Print("Client Task: Starting IO Test.\r\n");
-    // use ansi to clear screen
-    // reset formatting
-    // Print("\033[0m");
-    // Print("\033[2J");
-    // Print("\033[1;31m"); // red
-    // Print("Client Task: Starting IO Test.\r\n");
-
-    // while (true)
-    // {
-    //     ch = MARKLIN_IO_SERVER::Getc(ioServerTid, CONSOLE);
-    //     ret = MARKLIN_IO_SERVER::Putc(ioServerTid, CONSOLE, ch);
-    // }
-
-    // using this instead of idle for testing
-    // for (;;)
-    // {
-    //     YIELD();
-    // }
+    IO io;
+    io.Print(CLEAR_SCREEN);
+    int ui = CREATE(PRIORITY::P4, UI_NS::start_ui);
+    int cmd_prompt = CREATE(PRIORITY::P3, UI_CMD_NS::start_command_prompt);
 
     EXIT();
 }

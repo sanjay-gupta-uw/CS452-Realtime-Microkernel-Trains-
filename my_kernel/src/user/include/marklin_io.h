@@ -40,15 +40,15 @@ namespace MARKLIN_IO_SERVER
         void write_to_uart();
         void handle_transmission();
 
-        Queue<unsigned char> receive_buffer;
-        Queue<unsigned char> transmit_buffer; // this should be the bytes for commands
+        Queue<unsigned char, 32> receive_buffer;
+        Queue<unsigned char, 32> transmit_buffer; // this should be the bytes for commands
 
-        Queue<int> rx_waiting_tasks;
+        Queue<int, 2> rx_waiting_tasks;
         // pin states for CTS and TX
         PIN_STATE cts_state;
         // PIN_STATE tx_state;
 
-        Queue<int> pending_tramissions;
+        Queue<int, 32> pending_tramissions;
 
         STATE_MACHINE tx_state_machine;
     };

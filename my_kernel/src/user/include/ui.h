@@ -3,11 +3,11 @@
 
 #include "../../clock.h"
 #include "../marklin/switch.h"
+#include "command.hpp"
 // #include "../marklin/train.h"
 #include "../include/io.h"
 
 // extern Clock clock;
-// extern CommandPrompt cmd_prompt;
 
 namespace UI_NS
 {
@@ -16,20 +16,13 @@ namespace UI_NS
 #define NUM_ROWS 24
 #define NUM_COLS 80
 
-#define CLOCK_LENGTH 8
-
-#define IDLE_LOCATION 0
-#define CLOCK_LOCATION 2
-#define SWITCH_LOCATION 4
-
-#define SENSOR_LOCATION 30
-#define CMD_LOCATION 60
     // #define COMMAND_STATUS_LOCATION 61
 
     class UI
     {
         IO io;
         Switches switches;
+        // CommandPrompt commandPrompt;
 
     public:
         UI();

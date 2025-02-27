@@ -28,16 +28,19 @@ namespace IO_SERVER
         void spawnNotifiers();
         void write_to_uart();
 
-        Queue<unsigned char> receive_buffer;
-        Queue<unsigned char> transmit_buffer;
+        Queue<unsigned char, 40> receive_buffer;
+        // Queue<unsigned char, 32> transmit_buffer;
+        Queue<unsigned char *, 32> transmit_buffer_str;
 
-        Queue<int> rx_waiting_tasks;
+        Queue<int, 3> rx_waiting_tasks;
+        Queue<int, 32> tx_waiting_tasks;
     };
 
     enum class IO_REQUEST_TYPE
     {
         GETC,
         PUTC,
+        PUTS,
         RTM_NOTIFIER, // RECEIVE TIMEOUT NOTIFIER
         RX_NOTIFIER,
         TX_NOTIFIER,
@@ -60,12 +63,13 @@ namespace IO_SERVER
     struct IO_REQUEST
     {
         IO_REQUEST_TYPE type;
-        int channel;
         unsigned char ch;
+        unsigned char *str;
     };
 
-    int Getc(int tid, int channel);
-    int Putc(int tid, int channel, unsigned char ch);
+    int Getc(int tid);
+    int Putc(int tid, unsigned char ch);
+    int Puts(int tid, unsigned char *str);
 
     void notifier_rxto();
     void notifier_tx();

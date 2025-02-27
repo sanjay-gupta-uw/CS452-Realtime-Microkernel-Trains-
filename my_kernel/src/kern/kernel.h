@@ -32,7 +32,7 @@ private:
     // PQueue<TaskDescriptor *> ready_queue;
 
     // Array of Queues for each event type
-    Queue<TaskDescriptor *> event_queues[InterruptEvents::NUM_EVENTS];
+    Queue<TaskDescriptor *, MAX_TASKS> event_queues[InterruptEvents::NUM_EVENTS];
 
     int Create(int priority, void (*function)()); // use free_tid to get a tid, create a new task, and push it to ready_queue
     int MyTid();

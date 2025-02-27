@@ -6,7 +6,7 @@
 #include <cstring>
 #include "../../containers/queue.h"
 
-#define MAX_PLAYERS QUEUE_MAX_SIZE
+#define MAX_PLAYERS 10
 
 struct Player
 {
@@ -18,8 +18,8 @@ struct Player
     bool markDead = true;
 };
 
-Queue<Player *> freePlayers;
-Queue<Player *> readyQueue;
+Queue<Player *, 10> freePlayers;
+Queue<Player *, 10> readyQueue;
 // Queue<Player *> activePlayers;
 Player players[MAX_PLAYERS];
 int player_count = 0;

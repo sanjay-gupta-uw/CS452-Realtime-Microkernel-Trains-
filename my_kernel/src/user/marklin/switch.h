@@ -2,7 +2,7 @@
 #define _switch_h_
 
 #include <stdbool.h>
-#include "../../rpi.h"
+// #include "../../rpi.h"
 #include "../include/io.h"
 #
 // #include "../include/util.h" // this includes rpi.h
@@ -26,7 +26,7 @@ private:
     int address;
 
     void SendCommand(int data);
-    void Print(IO *io) const;
+    // void Print(IO *io) const;
 
 public:
     Switch();
