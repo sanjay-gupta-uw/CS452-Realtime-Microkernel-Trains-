@@ -2,6 +2,7 @@
 #include "../include/usertask.h"
 #include "../include/marklin_io.h"
 #include "../../shared_constants.h"
+#include "../include/io.h"
 namespace UI_NS
 {
 
@@ -11,12 +12,11 @@ namespace UI_NS
         // MARKLIN_IO_SERVER::Getc(, MARKLIN);
         // io.reset_formatting();
         // io.clear_screen();
-        io.Print(COLOR_GREEN MOVE_CURSOR "WELCOME TO THE TRAIN CONTROLLER\r\n", 0, 0);
-
-        clock.Display(&io, CLOCK_LOCATION_X, CLOCK_LOCATION_Y);
+        IO_NS::Print(COLOR_GREEN MOVE_CURSOR "WELCOME TO THE TRAIN CONTROLLER\r\n", 0, 0);
+        clock.Display();
 
         // Switches
-        switches.InitDisplay(&io, SWITCH_LOCATION);
+        // switches.InitDisplay(&io, SWITCH_LOCATION);
 
         // Sensors
         // init_sensor_display(SENSOR_LOCATION);
@@ -28,9 +28,9 @@ namespace UI_NS
     void UI::Update()
     {
         clock.Update();
-        clock.Display(&io, CLOCK_LOCATION_X, CLOCK_LOCATION_Y);
+        clock.Display();
 
-        switches.Display(&io, SWITCH_LOCATION + 5);
+        // switches.Display(&io, SWITCH_LOCATION + 5);
     }
 
     void start_ui()

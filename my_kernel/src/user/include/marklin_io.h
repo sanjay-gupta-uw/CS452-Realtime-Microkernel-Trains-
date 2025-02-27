@@ -2,6 +2,7 @@
 #define _marklin_io_h_
 
 #include "../../containers/queue.h"
+#include "marklin_structs.h"
 
 namespace MARKLIN_IO_SERVER
 {
@@ -57,6 +58,7 @@ namespace MARKLIN_IO_SERVER
     {
         GETC,
         PUTC,
+        SEND_CMD,
         RX_NOTIFIER,
         TX_NOTIFIER,
         CTS_NOTIFIER
@@ -78,12 +80,13 @@ namespace MARKLIN_IO_SERVER
     struct IO_REQUEST
     {
         IO_REQUEST_TYPE type;
-        int channel;
         int data;
+        MarklinRequest *request;
     };
 
-    int Getc(int tid, int channel);
-    int Putc(int tid, int channel, unsigned char ch);
+    int Getc(int tid);
+    int Putc(int tid, unsigned char ch);
+    int SendCmd(int tid, MarklinRequest *request);
 
     void notifier_rx();
     void notifier_tx();

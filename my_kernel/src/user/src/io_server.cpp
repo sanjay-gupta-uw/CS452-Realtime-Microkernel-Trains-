@@ -7,9 +7,9 @@
 
 namespace IO_SERVER
 {
-    int IO_SERVER_TID;
-    int tx_state;
-    int count;
+    static int IO_SERVER_TID;
+    static int tx_state;
+    static int count;
 
     static void ReplyWithMessage(int tid, IO_REPLY reply)
     {

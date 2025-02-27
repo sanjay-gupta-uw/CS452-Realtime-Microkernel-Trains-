@@ -4,11 +4,11 @@
 #include <stdbool.h>
 // #include "../../rpi.h"
 #include "../include/io.h"
-#
+#include "../include/marklin_structs.h"
 // #include "../include/util.h" // this includes rpi.h
 
-class Clock;
-extern Clock clock;
+// class Clock;
+// extern Clock clock;
 
 typedef enum
 {
@@ -46,11 +46,13 @@ public:
     Switches();
     ~Switches();
 
-    bool SetSwitch(int addr, SWITCH_STATE ALIGNMENT);
+    bool SetSwitch(MarklinRequest *request); // returns true if switch was found/request updated
     void SetAll(SWITCH_STATE ALIGNMENT);
 
-    void InitDisplay(IO *io, int LOCATION);
-    void Display(IO *io, int LOCATION);
+    void InitDisplay(int LOCATION);
+    void Display(int LOCATION);
+    void setClockServerTid(int tid);
+    void setMarklinIoServerTid(int tid);
 };
 
 #endif

@@ -1,157 +1,101 @@
 #include "train.h"
 // #include "../clock.h" // this includes util which includes rpi.h
+#include "../include/marklin_io.h"
+static int MARKLIN_IO_SERVER_TID;
 
-// ********* Train Class *********
-// initialize with invaid train number
-Train::Train()
+namespace Trains_NS
 {
-    train_num = -1;
-    train_speed = 0;
-}
+    static Train trains[5];
 
-Train::~Train()
-{
-}
-
-// use this constructor to set the train number
-Train::Train(int train_num) : train_num(train_num)
-{
-    train_speed = 0;
-}
-
-void Train::ActivateHeadlight()
-{
-    int data = 16;
-    SendCommand(data);
-}
-
-void Train::Accelerate(int speed, bool headlightOn)
-{
-    // speed == -1 means reverse with current speed
-    if (speed == -1)
-    {
-        speed = train_speed;
-    }
-    int data = speed + (headlightOn ? 16 : 0);
-    train_speed = speed;
-    SendCommand(data);
-}
-
-void Train::Reverse()
-{
-    int data = 15;
-    SendCommand(data);
-}
-
-void Train::Stop()
-{
-    train_speed = 0;
-    SendCommand(0);
-}
-
-// int is_valid_train(int train_num)
-// {
-//    for (int i = 0; i < 5; ++i)
-//    {
-//       if (trains[i].train_num == train_num)
-//          return i;
-//    }
-//    return -1;
-// }
-
-// bool is_moving(int idx)
-// {
-//    return (trains[idx].train_speed > 0);
-// }
-
-void Train::SendCommand(int data)
-{
-    //     uart_putc(MARKLIN, (uint8_t)data);
-    //     uart_putc(MARKLIN, (uint8_t)train_num);
-    //     clock.Delay(30);
-}
-
-// ********* End Train Class *********
-
-// ********* Trains Class *********
-Trains::Trains()
-{
+    // ********* Train Class *********
     // initialize with invaid train number
-    const int TRAIN_NUMS[5] = {1, 54, 55, 58, 77};
-    for (int i = 0; i < 5; ++i)
+    Train::Train()
     {
-        trains[i].train_num = TRAIN_NUMS[i];
+        train_num = -1;
+        train_speed = 0;
+        headlight_on = false;
+        MARKLIN_IO_SERVER_TID = -1;
+        isReversed = false;
     }
-}
 
-Trains::~Trains()
-{
-}
-
-int Trains::ActivateHeadlight(int train_num)
-{
-    for (int i = 0; i < 5; ++i)
+    Train::~Train()
     {
-        if (trains[i].train_num == train_num)
+    }
+
+    // use this constructor to set the train number
+    Train::Train(int train_num) : train_num(train_num)
+    {
+        train_speed = 0;
+        headlight_on = false;
+    }
+
+    void Train::HeadlightOn()
+    {
+        headlight_on = true;
+    }
+
+    void Train::Accelerate(int speed)
+    {
+        train_speed = speed;
+    }
+
+    void Train::Reverse()
+    {
+        // int data = 15;
+        // SendCommand(data);
+        isReversed = !isReversed;
+    }
+
+    void Train::Stop()
+    {
+        train_speed = 0;
+        // SendCommand(0);
+    }
+
+    bool Train::isMoving()
+    {
+        return (train_speed > 0);
+    }
+
+    // ********* End Train Class *********
+    void init_trains()
+    {
+        const int TRAIN_NUMS[5] = {1, 54, 55, 58, 77};
+        for (int i = 0; i < 5; ++i)
         {
-            trains[i].ActivateHeadlight();
-            return 0;
+            trains[i].train_num = TRAIN_NUMS[i];
         }
     }
-    return -1;
-}
 
-int Trains::Accelerate(int train_num, int speed, bool headlightOn)
-{
-    for (int i = 0; i < 5; ++i)
+    bool isValidRequest(MarklinRequest *req)
     {
-        if (trains[i].train_num == train_num)
-        {
-            trains[i].Accelerate(speed, headlightOn);
-            return 0;
-        }
-    }
-    return -1;
-}
+        int train_num = req->id;
 
-int Trains::Reverse(int train_num)
-{
-    for (int i = 0; i < 5; ++i)
-    {
-        if (trains[i].train_num == train_num)
+        for (int i = 0; i < 5; ++i)
         {
-            // move_cursor(CONSOLE, COMMAND_STATUS_LOCATION, 1);
-            // clear_to_end_line(CONSOLE);
-            int speed = trains[i].train_speed;
-            if (speed > 0)
+            if (trains[i].train_num == train_num)
             {
-                // uart_printf(CONSOLE, "Stopping train {%d} before reversing", train_num);
-                trains[i].Stop();
-                // clock.Delay(4000);
+
+                switch (req->type)
+                {
+                case MARKLIN_REQUEST_TYPE::ACCELERATE_TRAIN:
+                {
+                    // ensure input speed is valid
+                    int speed = *(req->data);
+                    if (req->data != nullptr && speed >= MIN_SPEED && speed <= MAX_SPEED)
+                    {
+                        return true;
+                    }
+                    break;
+                }
+                case MARKLIN_REQUEST_TYPE::REVERSE_TRAIN:
+                    return true;
+
+                default:
+                    return false;
+                }
             }
-            // move_cursor(CONSOLE, COMMAND_STATUS_LOCATION, 1);
-            // clear_to_end_line(CONSOLE);
-
-            // uart_printf(CONSOLE, "Reversing train {%d}", train_num);
-            trains[i].Reverse();
-            trains[i].Accelerate(speed, false);
-            return 0;
         }
+        return false;
     }
-    return -1;
 }
-
-int Trains::Stop(int train_num)
-{
-    for (int i = 0; i < 5; ++i)
-    {
-        if (trains[i].train_num == train_num)
-        {
-            trains[i].Stop();
-            return 0;
-        }
-    }
-    return -1;
-}
-
-// ********* End Trains Class *********

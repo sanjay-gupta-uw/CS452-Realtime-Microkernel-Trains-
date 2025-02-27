@@ -16,7 +16,7 @@ public:
     uint32_t Time();
     void Update();
     void Delay(uint32_t delay_ms);
-    void Display(IO *io, int X, int Y);
+    void Display();
     void ReArmTimer(uint32_t delay_interval);
     void DisarmTimer();
 

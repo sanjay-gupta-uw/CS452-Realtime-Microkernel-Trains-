@@ -3,6 +3,7 @@
 
 #include "io.h"
 #include "io_server.h"
+#include "marklin_structs.h"
 
 namespace UI_CMD_NS
 {
@@ -12,7 +13,6 @@ namespace UI_CMD_NS
 
     class CommandPrompt
     {
-        int IO_SERVER_TID;
         int BUFFER_INDEX;
         char inputBuffer[INPUT_BUFFER_SIZE];
 
@@ -20,8 +20,8 @@ namespace UI_CMD_NS
 
     public:
         CommandPrompt();
-        void InitDisplay(IO *io, int LOCATION_Y);
-        void getInput(IO *io, int LOCATION_Y);
+        void InitDisplay();
+        void getInput();
     };
 
     void start_command_prompt();

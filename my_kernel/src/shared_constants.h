@@ -42,15 +42,20 @@ typedef enum
     IRQ,
 } Syscall;
 
-#define CLOCK_LENGTH 8
+// assume terminal is 80x24
+#define NUM_ROWS 24
+#define NUM_COLS 80
 
-#define IDLE_LOCATION 1
+#define CLOCK_LENGTH 8
 #define CLOCK_LOCATION_X (NUM_COLS - CLOCK_LENGTH) / 2
 #define CLOCK_LOCATION_Y 4
+
+#define IDLE_LOCATION 1
 #define SWITCH_LOCATION 5
 
 #define SENSOR_LOCATION 30
 #define CMD_LOCATION 60
+#define COMMAND_STATUS_LOCATION 62
 
 // void color_black() { uart_puts(CONSOLE, "\033[30m"); }
 // void color_red() { uart_puts(CONSOLE, "\033[31m"); }

@@ -1,5 +1,6 @@
 #include "clock.h"
 #include <assert.h>
+#include "shared_constants.h"
 // #include "rpi.h"
 
 #define TENTH_OF_SECOND_MICRO_SECONDS 100000
@@ -88,7 +89,7 @@ void Clock::Delay(uint32_t delay_ms)
     }
 }
 
-void Clock::Display(IO *io, int X, int Y)
+void Clock::Display()
 {
     // uart_printf(CONSOLE, "HERE\r\n");
     if (!UPDATE_DISPLAY)
@@ -119,7 +120,7 @@ void Clock::Display(IO *io, int X, int Y)
         sec[1] = seconds % 10 + '0';
     }
 
-    io->Print(MOVE_CURSOR CLEAR_TO_END_LINE COLOR_YELLOW "%s:%s:%u", Y, X, min, sec, tenths);
+    IO_NS::Print(MOVE_CURSOR CLEAR_TO_END_LINE COLOR_YELLOW "%s:%s:%u", CLOCK_LOCATION_Y, CLOCK_LOCATION_X, min, sec, tenths);
     UPDATE_DISPLAY = false;
 }
 

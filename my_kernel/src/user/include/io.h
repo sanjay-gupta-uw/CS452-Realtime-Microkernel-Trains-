@@ -1,8 +1,5 @@
 #ifndef _io_h_
 #define _io_h_
-
-#define RET_BUF_SIZE 256
-
 #define COLOR_RED "\033[31m"
 #define COLOR_GREEN "\033[32m"
 #define COLOR_BLACK "\033[30m"
@@ -19,33 +16,20 @@
 #define MOVE_CURSOR "\033[%d;%dH"
 #define SAVE_CURSOR "\033[s"
 #define RESTORE_CURSOR "\033[u"
-class IO
+namespace IO_NS
 {
 
-    int IO_SERVER_TID;
+#define RET_BUF_SIZE 256
 
-public:
-    IO();
-    ~IO();
+    class IO
+    {
+    public:
+        IO();
+        ~IO();
+    };
 
-    void Print(const char *fmt, ...);
-    void pad_and_print(const char *str, int width);
+    extern "C" void Print(const char *fmt, ...);
 
-    void reset_formatting();
-    void clear_screen();
-    void clear_to_end_line();
-    void move_cursor(int row, int col);
-    void SaveCursor();
-    void RestoreCursor();
-
-    void color_red();
-    void color_green();
-    void color_black();
-    void color_yellow();
-    void color_blue();
-    void color_magenta();
-    void color_cyan();
-    void color_white();
-};
+}
 
 #endif //   _io_h_

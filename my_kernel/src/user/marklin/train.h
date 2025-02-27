@@ -1,46 +1,39 @@
 #ifndef _train_h
 #define _train_h
-
+#define MARKLIN 2
 #include <stdbool.h>
+#include "../include/marklin_structs.h"
 // #include "rpi.h"
 
-class Clock;
-
-extern Clock clock;
-
 // forward declaration
-class Trains;
-class Train
+namespace Trains_NS
 {
-private:
-   int train_num;
-   int train_speed; // between 0 and 30 (ignore 15 + 16)
+#define MAX_SPEED 14
+#define MIN_SPEED 0
+    class Train
+    {
+    private:
+        int train_speed; // between 0 and 14
+        bool headlight_on;
+        bool isReversed;
 
-   void SendCommand(int data);
-   void ActivateHeadlight();
-   void Accelerate(int speed, bool headlightOn);
-   void Reverse();
-   void Stop();
+    public:
+        int train_num;
+        void HeadlightOn();
+        void Accelerate(int speed);
+        void Reverse();
+        void Stop();
+        bool isMoving();
 
-public:
-   Train();
-   Train(int train_num);
-   ~Train();
+        Train();
+        Train(int train_num);
+        ~Train();
+    };
 
-   friend class Trains;
+    // Train trains[5];
+
+    void init_trains();
+    bool isValidRequest(MarklinRequest *req);
 };
 
-class Trains
-{
-private:
-   Train trains[5]; // Zero-initialize the entire array
-public:
-   Trains();
-   ~Trains();
-
-   int ActivateHeadlight(int train_num);
-   int Accelerate(int train_num, int speed, bool headlightOn);
-   int Reverse(int train_num);
-   int Stop(int train_num);
-};
 #endif // _train_h

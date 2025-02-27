@@ -6,6 +6,7 @@
 #include "../../shared_constants.h"
 // #include "../../rpi.h"
 #include "../include/ui.h"
+#include "../include/marklin_controller.h"
 
 static int IO_SERVER_TID = -1;
 
@@ -30,26 +31,27 @@ void FirstUserTask()
         EXIT();
     }
 
-    // int marklinIoServerTid = CREATE(PRIORITY::P0, MARKLIN_IO_SERVER::startMarklinIOServer); // Start the Marklin IO Server
-    // if (marklinIoServerTid < 0)
-    // {
-    //     uart_printf(CONSOLE, "Error starting Marklin IO Server\r\n");
-    //     EXIT();
-    // }
+    int marklinIoServerTid = CREATE(PRIORITY::P0, MARKLIN_IO_SERVER::startMarklinIOServer); // Start the Marklin IO Server
+    if (marklinIoServerTid < 0)
+    {
+        uart_printf(CONSOLE, "Error starting Marklin IO Server\r\n");
+        EXIT();
+    }
 
     // create sample clients
+    int marklinTID = CREATE(PRIORITY::P4, MarklinTask);
+    if (marklinTID < 0)
+    {
+        uart_printf(CONSOLE, "Error starting Marklin Client Task\r\n");
+        EXIT();
+    }
+
     int clientTid = CREATE(PRIORITY::P4, ClientTask);
     if (clientTid < 0)
     {
         uart_printf(CONSOLE, "Error starting Client Task\r\n");
         EXIT();
     }
-    // int marklinTID = CREATE(PRIORITY::P4, MarklinTask);
-    // if (marklinTID < 0)
-    // {
-    //     uart_printf(CONSOLE, "Error starting Marklin Client Task\r\n");
-    //     EXIT();
-    // }
 
     EXIT();
 }
@@ -72,8 +74,7 @@ void ClientTask()
     // test print
     uart_putc(CONSOLE, 'A'); // must initialize uart before using
 
-    IO io;
-    io.Print(CLEAR_SCREEN);
+    IO_NS::Print(CLEAR_SCREEN);
     int ui = CREATE(PRIORITY::P4, UI_NS::start_ui);
     int cmd_prompt = CREATE(PRIORITY::P3, UI_CMD_NS::start_command_prompt);
 
@@ -93,29 +94,15 @@ void MarklinTask()
     }
     int ret = -1;
 
-    unsigned char ch = 'A';
-
-    for (int i = 0; i < 1; ++i)
-    {
-        // uart_printf(CONSOLE, "Marklin Client Task: Sending character {%c} to IO SERVER.\r\n", ch);
-        // ch = MARKLIN_IO_SERVER::Getc(ioServerTid, CONSOLE);
-        // ret = MARKLIN_IO_SERVER::Putc(ioServerTid, CONSOLE, ch);
-
-        uart_printf(CONSOLE, "Marklin Client Task: Sending character {%c} to marklin.\r\n", ch);
-        uart_putc(MARKLIN, ch);
-    }
-
-    ch = 'B';
+    uart_putc(MARKLIN, 'A'); // must initialize uart before using
+    unsigned char ch = 'B';
     for (int i = 0; i < 10; ++i)
     {
-        ret = MARKLIN_IO_SERVER::Putc(ioServerTid, CONSOLE, ch);
+        ret = MARKLIN_IO_SERVER::Putc(ioServerTid, ch);
     }
 
-    // using this instead of idle for testing
-    for (;;)
-    {
-        YIELD();
-    }
+    // start marklin task
+    int marklinControllerTid = CREATE(PRIORITY::P4, MARKLIN_NS::start_marklin_controller);
 
     uart_printf(CONSOLE, "Marklin Client Task: Exiting.\r\n");
     EXIT();

@@ -4,7 +4,6 @@
 // #include "command.h" // for command prompt
 #include "dummy.h"
 #include "rpi.h"
-#include "ui.h"
 #include "user/include/usertask.h"
 // #include "marklin/switch.h"
 // #include "marklin/train.h"

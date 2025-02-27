@@ -205,14 +205,14 @@ namespace MARKLIN_IO_SERVER
         uart_putc(MARKLIN, ch);
     }
 
-    int Getc(int tid, int channel)
+    int Getc(int tid)
     {
         if (tid != IO_SERVER_TID) // check if tid if valid uart server
         {
             return -1;
         }
 
-        IO_REQUEST req{IO_REQUEST_TYPE::GETC, channel, 0};
+        IO_REQUEST req{IO_REQUEST_TYPE::GETC, 0, nullptr};
         IO_REPLY reply;
         // // uart_printf(CONSOLE, "GETC: Sending request to IOServer\r\n");
         SEND(IO_SERVER_TID, (char *)&req, sizeof(req), (char *)&reply, sizeof(reply));
@@ -221,7 +221,7 @@ namespace MARKLIN_IO_SERVER
         return reply.type == REPLY_TYPE::SUCCESS ? reply.ch : -1;
     }
 
-    int Putc(int tid, int channel, unsigned char ch)
+    int Putc(int tid, unsigned char ch)
     {
         // // uart_printf(CONSOLE, "MarklinIO_server::Putc\r\n");
         if (tid != IO_SERVER_TID) // check if tid if valid uart server
@@ -229,10 +229,24 @@ namespace MARKLIN_IO_SERVER
             return -1;
         }
 
-        IO_REQUEST req{IO_REQUEST_TYPE::PUTC, channel, ch};
+        IO_REQUEST req{IO_REQUEST_TYPE::PUTC, ch, nullptr};
         IO_REPLY reply;
         SEND(IO_SERVER_TID, (char *)&req, sizeof(req), (char *)&reply, sizeof(reply));
         // // uart_printf(CONSOLE, "MarklinIO_server::Putc returned %s\r\n", REPLY_TYPE_STR((REPLY_TYPE)reply));
+
+        return reply.type == REPLY_TYPE::SUCCESS ? 0 : -1;
+    }
+
+    int SendCmd(int tid, MarklinRequest *request)
+    {
+        if (tid != IO_SERVER_TID) // check if tid if valid uart server
+        {
+            return -1;
+        }
+
+        IO_REQUEST req{IO_REQUEST_TYPE::SEND_CMD, 0, request};
+        IO_REPLY reply;
+        SEND(IO_SERVER_TID, (char *)&req, sizeof(req), (char *)&reply, sizeof(reply));
 
         return reply.type == REPLY_TYPE::SUCCESS ? 0 : -1;
     }
@@ -252,7 +266,7 @@ namespace MARKLIN_IO_SERVER
             // // uart_printf(CONSOLE, "RTM NOTIFIER AWOKEN\r\n");
 
             // don't need to pass marklin in these
-            IO_REQUEST req{IO_REQUEST_TYPE::RX_NOTIFIER, MARKLIN, 0};
+            IO_REQUEST req{IO_REQUEST_TYPE::RX_NOTIFIER, 0};
             int reply;
 
             SEND(IO_SERVER_TID, (char *)&req, sizeof(req), (char *)&reply, sizeof(reply));
@@ -278,7 +292,7 @@ namespace MARKLIN_IO_SERVER
             // uart_printf(CONSOLE, "TX NOTIFIER AWOKEN\r\n");
             // spin_debug();
 
-            IO_REQUEST req{IO_REQUEST_TYPE::TX_NOTIFIER, MARKLIN, 0};
+            IO_REQUEST req{IO_REQUEST_TYPE::TX_NOTIFIER, 0};
             int reply;
 
             SEND(IO_SERVER_TID, (char *)&req, sizeof(req), (char *)&reply, sizeof(reply));
@@ -303,7 +317,7 @@ namespace MARKLIN_IO_SERVER
                 spin_debug();
             }
 
-            IO_REQUEST req{IO_REQUEST_TYPE::CTS_NOTIFIER, MARKLIN, CTS_SIGNAL};
+            IO_REQUEST req{IO_REQUEST_TYPE::CTS_NOTIFIER, CTS_SIGNAL};
             int reply;
 
             SEND(IO_SERVER_TID, (char *)&req, sizeof(req), (char *)&reply, sizeof(reply));
