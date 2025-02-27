@@ -20,6 +20,7 @@ public:
    int Get(int index, T *value);
    bool IsEmpty();
    bool IsFull();
+   int Size();
 };
 
 #endif // _ring_buffer_h_

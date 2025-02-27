@@ -1,12 +1,11 @@
 #include "sensor.h"
-#include "../include/name_server.h"
 
 const char SensorManager::BANK_LABELS[NUM_BANKS] = {'A', 'B', 'C', 'D', 'E'};
 
 SensorManager::SensorManager() 
     : UPDATE_DISPLAY(false), last_triggered_bank('\0'), last_triggered_id(0) {
-    marklin_io_tid = WhoIs("MarklinIOServer");
-    console_io_tid = WhoIs("IOServer");
+    marklin_io_tid = WHOIS("MarklinIOServer");
+    console_io_tid = WHOIS("IOServer");
 }
 
 void SensorManager::Init(bool resetMode) {
@@ -44,11 +43,11 @@ void SensorManager::ReadAll(int num_banks, RingBuffer<int> *recent_sensors) {
 void SensorManager::processSensorData(int bank, uint8_t byte1, uint8_t byte2, RingBuffer<int> *recent_sensors) {
     for (int sensor = 0; sensor < SENSORS_PER_BANK; ++sensor) {
         int idx = bank * SENSORS_PER_BANK + sensor;
-        SensorState new_state = (sensor < 8) ? 
+        int new_state = (sensor < 8) ? 
             ((byte1 >> (7 - sensor)) & 1) : 
             ((byte2 >> (7 - (sensor - 8))) & 1);
 
-        SensorState old_state = sensor_data[idx].status;
+        int old_state = sensor_data[idx].status;
         sensor_data[idx].status = new_state;
 
         if (new_state == SEN_ON && old_state == SEN_OFF) {
@@ -56,7 +55,8 @@ void SensorManager::processSensorData(int bank, uint8_t byte1, uint8_t byte2, Ri
                 sensor_data[idx].id != last_triggered_id) {
                 
                 if (recent_sensors->IsFull()) {
-                    recent_sensors->Pop(NULL);
+                    int dummy
+                    recent_sensors->Pop(&dummy);
                 }
                 recent_sensors->Push(idx);
                 
@@ -80,10 +80,10 @@ void SensorManager::InitDisplay(IO *io, int location) {
     io->Print("--------------------------------\r\n");
 }
 
-void SensorManager::Display(IO *io, int location, RingBuffer *recent_sensors) {
+void SensorManager::Display(IO *io, int location, RingBuffer<int> *recent_sensors) {
     if (!UPDATE_DISPLAY || recent_sensors->IsEmpty()) return;
 
-    int total_items = recent_sensors->size < MAX_RECENT_SENSORS ? recent_sensors->size : MAX_RECENT_SENSORS;
+    int total_items = recent_sensors->Size() < MAX_RECENT_SENSORS ? recent_sensors->Size() : MAX_RECENT_SENSORS;
 
     for (int i = 0; i < MAX_RECENT_SENSORS; i++) {
         io->move_cursor(location + 2 + i, 1);
@@ -91,7 +91,7 @@ void SensorManager::Display(IO *io, int location, RingBuffer *recent_sensors) {
         io->color_yellow();
 
         if (i < total_items) {
-            int logical_idx = recent_sensors->size - 1 - i;
+            int logical_idx = recent_sensors->Size() - 1 - i;
             int sensor_idx = recent_sensors->Get(logical_idx, &sensor_idx);
             io->Print("%2d. %c%02d\r\n", i + 1, sensor_data[sensor_idx].bank, sensor_data[sensor_idx].id);
         }

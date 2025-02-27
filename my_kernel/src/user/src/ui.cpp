@@ -23,7 +23,7 @@ namespace UI_NS
     void UI::Update()
     {
         sensors.ReadAll(NUM_BANKS, &recent_sensors);
-        snesors.Display(&io, SWITCH_LOCATION + 3, rb);
+        snesors.Display(&io, SWITCH_LOCATION + 3, &recent_sensors);
         switches.Display(&io, SWITCH_LOCATION + 5);
     }
 

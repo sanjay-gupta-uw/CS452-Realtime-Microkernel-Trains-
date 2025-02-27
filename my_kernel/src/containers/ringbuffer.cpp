@@ -80,3 +80,6 @@ bool RingBuffer<T>::IsFull()
 {
     return size == RING_BUFFER_MAX_SIZE;
 }
+
+template <typename T>
+int RingBuffer<T>::Size() { return size; }
