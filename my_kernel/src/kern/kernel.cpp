@@ -605,14 +605,12 @@ void Kernel::IRQ_Handler()
             // UART_IMSC_DISABLE(MARKLIN, CTS_INTERRUPT_MASK);
             UART_CLEAR_INTERRUPT(MARKLIN, CTS_INTERRUPT_MASK);
 
-            // uint32_t FR = UART_REG(MARKLIN, UART_FR);
-            // uart_printf(CONSOLE, "Inverted CTS: %d\r\n", !(FR & UART_FR_CTS_MASK));
-            // spin_debug();
-
+            int CTS_SIGNAL = !(UART_REG(MARKLIN, UART_FR) & UART_FR_CTS_MASK);
             while (event_queues[UART_MARKLIN_CTS].Pop(&task) != -1)
             {
+                // uart_printf(CONSOLE, "KERNEL:: WAKING UP CTS NOTIFIER with TID: %d, SIGNAL: %d\r\n", task->tid, CTS_SIGNAL);
                 task->setState(READY);
-                task->SetRetval(!(UART_REG(MARKLIN, UART_FR) & UART_FR_CTS_MASK));
+                task->SetRetval(CTS_SIGNAL);
                 ready_queue.Push(task->tid, task->priority);
             }
         }

@@ -63,7 +63,7 @@ namespace Switch_NS
     MarklinRequest CreateSwitchRequest(int switch_num, SWITCH_STATE state)
     {
         unsigned char alignment = (state == SWITCH_STATE::STRAIGHT) ? 'S' : 'C';
-        MarklinRequest req = {MARKLIN_REQUEST_TYPE::SET_SWITCH, SWITCH_ADDR[switch_num], -1, (char *)&alignment};
+        MarklinRequest req = {MARKLIN_REQUEST_TYPE::SET_SWITCH, SWITCH_ADDR[switch_num], switch_num, alignment};
         return req;
     }
 

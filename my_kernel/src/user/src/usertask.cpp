@@ -16,14 +16,14 @@ void FirstUserTask()
     // CREATE IDLE TASK
     int idleTid = CREATE(PRIORITY::IDLE, IdleTask);
 
-    int nameServerTid = CREATE(PRIORITY::P0, NameServer); // Start the Name Server
+    int nameServerTid = CREATE(PRIORITY::P1, NameServer); // Start the Name Server
     if (nameServerTid < 0)
     {
         uart_printf(CONSOLE, "Error starting Name Server\r\n");
         EXIT();
     }
 
-    int ioServerTid = CREATE(PRIORITY::P0, IO_SERVER::startIOServer); // Start the IO Server
+    int ioServerTid = CREATE(PRIORITY::P1, IO_SERVER::startIOServer); // Start the IO Server
     if (ioServerTid < 0)
     {
         uart_printf(CONSOLE, "Error starting IO Server\r\n");
@@ -32,7 +32,7 @@ void FirstUserTask()
     IO_NS::IO io; // initialize IO object for printing
     // clock server
 
-    int marklinIoServerTid = CREATE(PRIORITY::P0, MARKLIN_IO_SERVER::startMarklinIOServer); // Start the Marklin IO Server
+    int marklinIoServerTid = CREATE(PRIORITY::P1, MARKLIN_IO_SERVER::startMarklinIOServer); // Start the Marklin IO Server
     if (marklinIoServerTid < 0)
     {
         uart_printf(CONSOLE, "Error starting Marklin IO Server\r\n");
@@ -47,12 +47,12 @@ void FirstUserTask()
         EXIT();
     }
 
-    int clientTid = CREATE(PRIORITY::P4, ClientTask);
-    if (clientTid < 0)
-    {
-        uart_printf(CONSOLE, "Error starting Client Task\r\n");
-        EXIT();
-    }
+    // int clientTid = CREATE(PRIORITY::P4, ClientTask);
+    // if (clientTid < 0)
+    // {
+    //     uart_printf(CONSOLE, "Error starting Client Task\r\n");
+    //     EXIT();
+    // }
 
     EXIT();
 }
@@ -105,7 +105,7 @@ void MarklinTask()
     // }
 
     // start marklin task
-    uart_putc(MARKLIN, 'A'); // must initialize uart before using
+    // uart_putc(MARKLIN, 'A'); // must initialize uart before using
     int marklinControllerTid = CREATE(PRIORITY::P2, MARKLIN_NS::start_marklin_controller);
     // uart_printf(CONSOLE, "Marklin Client Task: Started Marklin Controller Task {tid: %d}.\r\n", marklinControllerTid);
     if (marklinControllerTid < 0)

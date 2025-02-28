@@ -81,8 +81,8 @@ namespace Trains_NS
                 case MARKLIN_REQUEST_TYPE::ACCELERATE_TRAIN:
                 {
                     // ensure input speed is valid
-                    int speed = *(req->data);
-                    if (req->data != nullptr && speed >= MIN_SPEED && speed <= MAX_SPEED)
+                    int speed = int(req->data);
+                    if (req->data != '\0' && speed >= MIN_SPEED && speed <= MAX_SPEED)
                     {
                         return true;
                     }

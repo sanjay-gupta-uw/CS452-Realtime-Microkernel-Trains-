@@ -3,6 +3,7 @@
 
 #include "../../containers/queue.h"
 #include "marklin_structs.h"
+#include <cstdint>
 
 namespace MARKLIN_IO_SERVER
 {
@@ -37,10 +38,12 @@ namespace MARKLIN_IO_SERVER
     public:
         STATE_MACHINE();
         ~STATE_MACHINE();
-        bool BeginTransaction();
+        bool isTransactionInProgress();
+        bool BeginTransaction(STATES state);
         void Transition(STATES state);
         bool isTransactionComplete();
         bool isByteChosen();
+        bool isCTS1_HIGH();
     };
 
     // REDEFINED QUEUE SIZE TO 32 -> change queue to accept size as a parameter?
@@ -63,9 +66,10 @@ namespace MARKLIN_IO_SERVER
         void write_to_uart();
         void handle_transmission();
 
+        bool initialized = false;
         Queue<unsigned char, 32> receive_buffer;
-        Queue<uint8_t, 32> transmit_buffer;  // this should be the bytes for commands
-        Queue<unsigned char, 32> cmd_buffer; // 's', 't', 'r' for switch, train(accel), reverse
+        Queue<uint8_t, 32> transmit_buffer; // this should be the bytes for commands
+        // Queue<unsigned char, 32> cmd_buffer; // 's', 't', 'r' for switch, train(accel), reverse
 
         Queue<int, 2> rx_waiting_tasks;
         // pin states for CTS and TX

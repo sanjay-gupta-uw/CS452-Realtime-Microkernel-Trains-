@@ -50,11 +50,23 @@ namespace MARKLIN_NS
 
     void MarklinController::run()
     {
+        uart_printf(CONSOLE, "initializing MARKLIN\r\n");
+        // this causes TX to fire
+        uart_putc(MARKLIN, 'A');
+
         int tid;
         MarklinRequest request;
+        int ret = -1;
+
+        request.type = MARKLIN_REQUEST_TYPE::ACCELERATE_TRAIN;
+        request.id = 55;
+        request.data = 8;
+
+        uart_printf(CONSOLE, "MarklinController:: Sending command to MarklinIOServer with tid %d\r\n", MARKLIN_IO_SERVER_TID);
+        ret = MARKLIN_IO_SERVER::SendCmd(MARKLIN_IO_SERVER_TID, &request);
+
         while (true)
         {
-            int ret = -1;
             RECEIVE(&tid, (char *)&request, sizeof(request));
 
             switch (request.type)

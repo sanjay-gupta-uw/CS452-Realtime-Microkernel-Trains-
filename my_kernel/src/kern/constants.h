@@ -42,6 +42,7 @@
 #define UART_ICR 0x44
 #define UART_LCRH 0x2C
 #define UART_IFLS 0x34
+#define UART_CR 0x30
 
 #define RX_INTERRUPT_MASK 0x10
 #define TX_INTERRUPT_MASK 0x20
