@@ -82,7 +82,7 @@ namespace UI_CMD_NS
 
             // create marklin request
             IO_NS::Print(MOVE_CURSOR CLEAR_TO_END_LINE "Switch %d set to %c", CMD_LOCATION + 1, 1, switch_num, switch_state);
-            MarklinRequest request = {MARKLIN_REQUEST_TYPE::SET_SWITCH, switch_num, -1, &switch_state};
+            MarklinRequest request = {MARKLIN_REQUEST_TYPE::SET_SWITCH, switch_num, -1, switch_state};
             SEND(MARKLIN_CONTROLLER_TID, (char *)&request, sizeof(MarklinRequest), nullptr, 0);
         }
         else if ((first == 'T' || first == 't') &&
@@ -125,7 +125,7 @@ namespace UI_CMD_NS
 
             // create marklin request
             IO_NS::Print(MOVE_CURSOR CLEAR_TO_END_LINE "Train %d accelerated to %d", CMD_LOCATION + 1, 1, train_num, train_speed);
-            MarklinRequest request = {MARKLIN_REQUEST_TYPE::ACCELERATE_TRAIN, train_num, -1, (char *)&train_speed};
+            MarklinRequest request = {MARKLIN_REQUEST_TYPE::ACCELERATE_TRAIN, train_num, -1, (unsigned char)train_speed};
             SEND(MARKLIN_CONTROLLER_TID, (char *)&request, sizeof(MarklinRequest), (char *)command_received, sizeof(int));
         }
         else if ((first == 'R' || first == 'r') &&
@@ -157,7 +157,7 @@ namespace UI_CMD_NS
             // IO_NS::Print(MOVE_CURSOR CLEAR_TO_END_LINE "SENDING to TID: %d", CMD_LOCATION + 2, 1, MARKLIN_CONTROLLER_TID);
             // create marklin request
             IO_NS::Print(MOVE_CURSOR CLEAR_TO_END_LINE "Train %d reversed", CMD_LOCATION + 1, 1, train_num);
-            MarklinRequest request = {MARKLIN_REQUEST_TYPE::REVERSE_TRAIN, train_num, -1, nullptr};
+            MarklinRequest request = {MARKLIN_REQUEST_TYPE::REVERSE_TRAIN, train_num, -1, '\0'};
             SEND(MARKLIN_CONTROLLER_TID, (char *)&request, sizeof(MarklinRequest), (char *)command_received, sizeof(int));
         }
         else

@@ -24,6 +24,7 @@ namespace Trains_NS
         void Reverse();
         void Stop();
         bool isMoving();
+        int getSpeed();
 
         Train();
         Train(int train_num);
@@ -31,7 +32,7 @@ namespace Trains_NS
     };
 
     // Train trains[5];
-
+    int getSpeed(int addr);
     void init_trains();
     bool isValidRequest(MarklinRequest *req);
 };

@@ -19,23 +19,24 @@ namespace Switch_NS
     class Switch
     {
     private:
-        int address;
         // void SendCommand(int data);
 
     public:
         Switch();
         ~Switch();
-        void SetAddr(int addr);
-        int GetAddr();
+        // void SetAddr(int addr);
+        // int GetAddr();
         void SetSwitch(SWITCH_STATE ALIGNMENT);
         SWITCH_STATE ALIGNMENT;
+
         bool updated;
+        int address;
     };
 
     // Switch switches[22]; // Zero-initialize the entire array
 
     bool isSwitchCommandValid(MarklinRequest *request); // returns true if switch was found/request updated
-
+    void init_switches();
     void InitDisplay();
     void Display();
     MarklinRequest CreateSwitchRequest(int switch_num, SWITCH_STATE state);

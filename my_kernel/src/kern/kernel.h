@@ -19,7 +19,7 @@ public:
     ~Kernel();
     TaskDescriptor *Scheduler();
     int DispatchTask(volatile Context *kernel, TaskDescriptor *scheduled_task);
-    void Handler(int N);
+    void Handler(int N, uint32_t idleTime);
     bool areTasksWaiting();
     void printStats(uint32_t idle, uint32_t total);
 

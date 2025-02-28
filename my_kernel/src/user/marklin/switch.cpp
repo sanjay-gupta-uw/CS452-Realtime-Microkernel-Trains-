@@ -8,7 +8,6 @@
 
 namespace Switch_NS
 {
-
     Switch switches[SWITCH_COUNT];
 
     static const int SWITCH_ADDR[SWITCH_COUNT] = {
@@ -20,7 +19,7 @@ namespace Switch_NS
     Switch::Switch()
     {
         address = -1;
-        ALIGNMENT = SWITCH_STATE::STRAIGHT;
+        ALIGNMENT = SWITCH_STATE::CURVED;
         updated = true;
     }
 
@@ -28,10 +27,10 @@ namespace Switch_NS
     {
     }
 
-    void Switch::SetAddr(int addr)
-    {
-        address = addr;
-    }
+    // void Switch::SetAddr(int addr)
+    // {
+    //     address = addr;
+    // }
 
     void Switch::SetSwitch(SWITCH_STATE ALIGNMENT)
     {
@@ -54,6 +53,7 @@ namespace Switch_NS
         {
             if (SWITCH_ADDR[i] == addr)
             {
+                switches[i].SetSwitch((request->data == 'S') ? SWITCH_STATE::STRAIGHT : SWITCH_STATE::CURVED);
                 return true;
             }
         }
@@ -63,8 +63,15 @@ namespace Switch_NS
     MarklinRequest CreateSwitchRequest(int switch_num, SWITCH_STATE state)
     {
         unsigned char alignment = (state == SWITCH_STATE::STRAIGHT) ? 'S' : 'C';
-        MarklinRequest req = {MARKLIN_REQUEST_TYPE::SET_SWITCH, SWITCH_ADDR[switch_num], -1, (char *)&alignment};
+        MarklinRequest req = {MARKLIN_REQUEST_TYPE::SET_SWITCH, SWITCH_ADDR[switch_num], -1, alignment};
         return req;
+    }
+    void init_switches()
+    {
+        for (int i = 0; i < SWITCH_COUNT; ++i)
+        {
+            switches[i].address = SWITCH_ADDR[i];
+        }
     }
 
     void InitDisplay()
@@ -77,7 +84,9 @@ namespace Switch_NS
         for (int i = 0; i < SWITCH_COUNT; ++i)
         {
             // print borders and switch address so display only needs to update the status
-            IO_NS::Print(COLOR_WHITE MOVE_CURSOR CLEAR_TO_END_LINE "|     %d    |           |", SWITCH_LOCATION + 5 + i, 1, SWITCH_ADDR[i]);
+            int location_y = SWITCH_LOCATION + 5 + i;
+            IO_NS::Print(COLOR_WHITE MOVE_CURSOR CLEAR_TO_END_LINE "|" MOVE_CURSOR "%d" MOVE_CURSOR "|" MOVE_CURSOR "|",
+                         location_y, 1, location_y, 6, switches[i].address, location_y, 12, location_y, 25);
         }
         IO_NS::Print(COLOR_WHITE MOVE_CURSOR CLEAR_TO_END_LINE "--------------------------\r\n", SWITCH_LOCATION + 5 + SWITCH_COUNT, 1);
     }
@@ -93,12 +102,12 @@ namespace Switch_NS
                 if (state == SWITCH_STATE::STRAIGHT)
                 {
                     // colour green
-                    IO_NS::Print(MOVE_CURSOR COLOR_GREEN "S", SWITCH_LOCATION + 5 + i, 15);
+                    IO_NS::Print(MOVE_CURSOR COLOR_GREEN "S", SWITCH_LOCATION + 5 + i, 20);
                 }
                 else
                 {
                     // colour red
-                    IO_NS::Print(MOVE_CURSOR COLOR_RED "C", SWITCH_LOCATION + 5 + i, 15);
+                    IO_NS::Print(MOVE_CURSOR COLOR_RED "C", SWITCH_LOCATION + 5 + i, 20);
                 }
                 switches[i].updated = false;
             }

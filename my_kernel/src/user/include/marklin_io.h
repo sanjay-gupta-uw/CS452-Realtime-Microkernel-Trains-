@@ -1,6 +1,6 @@
 #ifndef _marklin_io_h_
 #define _marklin_io_h_
-
+#include <cstdint>
 #include "../../containers/queue.h"
 #include "marklin_structs.h"
 
@@ -28,21 +28,6 @@ namespace MARKLIN_IO_SERVER
         INACTIVE
     };
 
-    class STATE_MACHINE
-    {
-        bool STATE_ARR[NUM_STATES];
-        void Reset();
-        STATUS status = STATUS::INACTIVE;
-
-    public:
-        STATE_MACHINE();
-        ~STATE_MACHINE();
-        bool BeginTransaction();
-        void Transition(STATES state);
-        bool isTransactionComplete();
-        bool isByteChosen();
-    };
-
     // REDEFINED QUEUE SIZE TO 32 -> change queue to accept size as a parameter?
     // #define RECEIVE_SIZE 32 // 32 chars/bytes
     class MarklinIOServer
@@ -54,9 +39,9 @@ namespace MARKLIN_IO_SERVER
         // interface for the IO server
 
     private:
-        int rx_notifier_tid;
-        int tx_notifier_tid;
-        int cts_notifier_tid;
+        // int rx_notifier_tid;
+        // int tx_notifier_tid;
+        // int cts_notifier_tid;
 
         void run();
         void spawnNotifiers();
@@ -70,8 +55,6 @@ namespace MARKLIN_IO_SERVER
         Queue<int, 2> rx_waiting_tasks;
         // pin states for CTS and TX
         // PIN_STATE tx_state;
-
-        STATE_MACHINE tx_state_machine;
     };
 
     enum class IO_REQUEST_TYPE
@@ -108,9 +91,9 @@ namespace MARKLIN_IO_SERVER
     int Putc(int tid, unsigned char ch);
     int SendCmd(int tid, MarklinRequest *request);
 
-    void notifier_rx();
-    void notifier_tx();
-    void notifier_cts();
+    // void notifier_rx();
+    // void notifier_tx();
+    // void notifier_cts();
 
 // mapping of reply type to string
 #define REPLY_TYPE_STR(type)                                                               \

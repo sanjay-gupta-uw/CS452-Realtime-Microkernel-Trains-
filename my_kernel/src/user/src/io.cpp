@@ -47,6 +47,11 @@ namespace IO_NS
     extern "C" void Print(const char *fmt, ...)
     {
 
+        if (IO_SERVER_TID < 0)
+        {
+            // uart_printf(CONSOLE, "IO_NS::Print: IO_SERVER_TID not set\r\n");
+            return;
+        }
         char ret_buffer[RET_BUF_SIZE];
         va_list va;
         char ch, buf[12];

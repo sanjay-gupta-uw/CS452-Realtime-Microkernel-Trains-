@@ -3,8 +3,22 @@
 #include "../include/marklin_io.h"
 #include "../../shared_constants.h"
 #include "../include/io.h"
+#include "../../kern/syscall.h"
 namespace UI_NS
 {
+    IdleTask::IdleTask()
+    {
+        int idlePercent = 0;
+        IO_NS::Print(COLOR_WHITE MOVE_CURSOR CLEAR_TO_END_LINE "IDLE: %d%%", IDLE_LOCATION, 0, idlePercent);
+    }
+    IdleTask::~IdleTask()
+    {
+    }
+    void IdleTask::Display()
+    {
+        uint32_t idlePercent = GETIDLEPERCENT();
+        IO_NS::Print(COLOR_WHITE MOVE_CURSOR CLEAR_TO_END_LINE "%d%%", IDLE_LOCATION, 7, idlePercent);
+    }
 
     UI::UI()
     {
@@ -29,6 +43,7 @@ namespace UI_NS
     {
         clock.Update();
         clock.Display();
+        idleTask.Display();
 
         Switch_NS::Display();
     }

@@ -1,5 +1,6 @@
 #ifndef _syscall_h_
 #define _syscall_h_
+#include <cstdint>
 
 extern "C" int CREATE(int priority, void (*function)());
 extern "C" int MYTID();
@@ -13,6 +14,7 @@ extern "C" void ENABLE_ICACHE();
 extern "C" void ENABLE_DCACHE();
 extern "C" void ENABLE_BCACHE();
 extern "C" int AWAITEVENT(int eventType);
+extern "C" uint32_t GETIDLEPERCENT();
 
 // extern "C" void GENERATE_SGI();
 #endif // _syscall_h_

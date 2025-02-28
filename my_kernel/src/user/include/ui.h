@@ -11,8 +11,19 @@ extern Clock clock;
 namespace UI_NS
 {
 
+    class IdleTask
+    {
+        int idlePercent;
+
+    public:
+        IdleTask();
+        ~IdleTask();
+        void Display();
+    };
+
     class UI
     {
+        IdleTask idleTask;
         // Switches switches;
         // CommandPrompt commandPrompt;
 

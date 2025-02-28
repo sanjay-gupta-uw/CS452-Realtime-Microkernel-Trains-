@@ -112,8 +112,6 @@ extern "C" int kmain()
             TOTAL_IDLE_TIME += task_time;
         }
 
-        // kernel.printStats(TOTAL_IDLE_TIME, TOTAL_TIME);
-
         // apply mask to ESR to get SVC number
         int N = esr_el1 & 0xFFFF;
         // // uart_printf(CONSOLE, "ACTIVE: {%d}, ESR: {%d}, N: {%d}\r\n", current_task->getTid(), esr_el1, N);
@@ -124,7 +122,7 @@ extern "C" int kmain()
             {
             }
         }
-        kernel.Handler(N);
+        kernel.Handler(N, (uint32_t)((TOTAL_IDLE_TIME * 100) / TOTAL_TIME));
     }
 
     uart_printf(CONSOLE, "Kernel has exited\r\n");

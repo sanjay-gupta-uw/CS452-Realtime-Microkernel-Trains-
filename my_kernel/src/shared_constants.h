@@ -40,6 +40,8 @@ typedef enum
     SVC_BCACHE,
     SVC_AWAITEVENT,
     IRQ,
+    SVC_GETIDLE,
+
 } Syscall;
 
 // assume terminal is 80x24

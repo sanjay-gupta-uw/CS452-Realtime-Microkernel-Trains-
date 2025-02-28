@@ -57,6 +57,11 @@ namespace Trains_NS
         return (train_speed > 0);
     }
 
+    int Train::getSpeed()
+    {
+        return train_speed;
+    }
+
     // ********* End Train Class *********
     void init_trains()
     {
@@ -81,8 +86,8 @@ namespace Trains_NS
                 case MARKLIN_REQUEST_TYPE::ACCELERATE_TRAIN:
                 {
                     // ensure input speed is valid
-                    int speed = *(req->data);
-                    if (req->data != nullptr && speed >= MIN_SPEED && speed <= MAX_SPEED)
+                    int speed = int(req->data);
+                    if (req->data != '\0' && speed >= MIN_SPEED && speed <= MAX_SPEED)
                     {
                         return true;
                     }
@@ -97,5 +102,17 @@ namespace Trains_NS
             }
         }
         return false;
+    }
+
+    int getSpeed(int train_num)
+    {
+        for (int i = 0; i < 5; ++i)
+        {
+            if (trains[i].train_num == train_num)
+            {
+                return trains[i].getSpeed();
+            }
+        }
+        return -1;
     }
 }

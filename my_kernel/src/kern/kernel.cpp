@@ -407,7 +407,7 @@ int Kernel::DispatchTask(volatile Context *kernel, TaskDescriptor *scheduled_tas
     return esr_el1;
 }
 
-void Kernel::Handler(int N)
+void Kernel::Handler(int N, uint32_t idleTime)
 {
     // uart_printf(CONSOLE, "HANDLER: {%d}, ACTIVE TASK: {%d} ", N, active_task->tid);
     switch (N)
@@ -503,6 +503,11 @@ void Kernel::Handler(int N)
     case IRQ:
         // uart_printf(CONSOLE, "(IRQ) Triggered \r\n");
         IRQ_Handler();
+        break;
+
+    case SVC_GETIDLE:
+        active_task->SetRetval(idleTime);
+        RepushActiveTask();
         break;
 
     default:
@@ -722,7 +727,8 @@ void Kernel::printStats(uint32_t idle, uint32_t total)
 
     // check if TX is enabled
     // uart_printf(CONSOLE, MOVE_CURSOR CLEAR_TO_END_LINE COLOR_CYAN "IDLE: %d, TOTAL: %d, PERCENT: %d%%", IDLE_LOCATION, 1, idle, total, (idle * 100) / total);
-    uart_printf(CONSOLE, MOVE_CURSOR CLEAR_TO_END_LINE COLOR_CYAN "IDLE: %d%%", IDLE_LOCATION, 1, (idle * 100) / total);
+    // uart_printf(CONSOLE, MOVE_CURSOR CLEAR_TO_END_LINE COLOR_CYAN "IDLE: %d%%", IDLE_LOCATION, 1, (idle * 100) / total);
+    IO_NS::Print(MOVE_CURSOR CLEAR_TO_END_LINE COLOR_CYAN "IDLE: %d%%", IDLE_LOCATION, 1, (idle * 100) / total);
 
     if (disabled)
     {

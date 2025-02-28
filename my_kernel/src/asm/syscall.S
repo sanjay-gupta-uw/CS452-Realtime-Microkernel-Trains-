@@ -87,3 +87,12 @@ ENABLE_BCACHE:
 AWAITEVENT:
     svc #11
     ret
+
+
+// irq
+
+.global GETIDLEPERCENT
+.balign 16
+GETIDLEPERCENT:
+    svc #13
+    ret

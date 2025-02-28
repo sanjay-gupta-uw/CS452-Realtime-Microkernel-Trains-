@@ -27,19 +27,28 @@ namespace MARKLIN_NS
 
         Trains_NS::init_trains();
 
-        /*
+        Switch_NS::init_switches();
+
         for (int i = 0; i < SWITCH_COUNT; ++i)
         {
-            Switch_NS::switches[i].SetAddr(i);
-            MarklinRequest req = Switch_NS::CreateSwitchRequest(i, Switch_NS::SWITCH_STATE::STRAIGHT);
-            int ret = MARKLIN_IO_SERVER::SendCmd(MARKLIN_IO_SERVER_TID, &req);
-            if (ret < 0)
+            MarklinRequest req = Switch_NS::CreateSwitchRequest(i, Switch_NS::SWITCH_STATE::CURVED);
+
+            // ensure valid
+            bool success = Switch_NS::isSwitchCommandValid(&req); // this will also trigger display updates
+            if (success)
             {
-                IO_NS::Print(MOVE_CURSOR CLEAR_TO_END_LINE "MarklinController:: Failed to send command to MarklinIOServer to init switch %d\r\n", CMD_LOCATION + 2, 0, i);
-                // spin_debug();
+                int ret = MARKLIN_IO_SERVER::SendCmd(MARKLIN_IO_SERVER_TID, &req);
+                if (ret < 0)
+                {
+                    // IO_NS::Print(MOVE_CURSOR CLEAR_TO_END_LINE "MarklinController:: Failed to send command to MarklinIOServer to init switch %d\r\n", CMD_LOCATION + 1, 0, i);
+                    // spin_debug();
+                }
+                else
+                {
+                    // IO_NS::Print(MOVE_CURSOR CLEAR_TO_END_LINE "MarklinController:: Sent command to MarklinIOServer to init switch %d\r\n", CMD_LOCATION + 1, 1, i);
+                }
             }
         }
-        */
 
         run();
     }
@@ -67,7 +76,11 @@ namespace MARKLIN_NS
                     ret = MARKLIN_IO_SERVER::SendCmd(MARKLIN_IO_SERVER_TID, &request);
                     IO_NS::Print(MOVE_CURSOR CLEAR_TO_END_LINE "MarklinController:: Sent command to MarklinIOServer\r\n", CMD_LOCATION + 2, 1);
                 }
-
+                else
+                {
+                    IO_NS::Print(MOVE_CURSOR CLEAR_TO_END_LINE "MarklinController:: Invalid Switch Command\r\n", CMD_LOCATION + 2, 1);
+                }
+                REPLY(tid, (char *)&ret, sizeof(ret));
                 break;
             }
             case MARKLIN_REQUEST_TYPE::REVERSE_TRAIN:
