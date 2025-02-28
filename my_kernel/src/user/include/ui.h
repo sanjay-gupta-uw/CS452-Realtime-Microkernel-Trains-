@@ -27,6 +27,9 @@ namespace UI_NS
         // Switches switches;
         // CommandPrompt commandPrompt;
 
+        // SensorManager sensors;
+        // RingBuffer<int> recent_sensors; 
+
     public:
         UI();
         void Update();

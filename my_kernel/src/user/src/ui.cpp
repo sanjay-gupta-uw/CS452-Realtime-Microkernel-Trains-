@@ -33,7 +33,7 @@ namespace UI_NS
         Switch_NS::InitDisplay();
 
         // Sensors
-        // init_sensor_display(SENSOR_LOCATION);
+        // sensors.InitDisplay(&io, SENSOR_LOCATION););
 
         // CommandPrompt (HANDLED BY OWN TASK)
 
@@ -44,6 +44,9 @@ namespace UI_NS
         clock.Update();
         clock.Display();
         idleTask.Display();
+        
+        // sensors.ReadAll(NUM_BANKS, &recent_sensors);
+        // snesors.Display(&io, SWITCH_LOCATION + 3, &recent_sensors);
 
         Switch_NS::Display();
     }
