@@ -117,7 +117,7 @@ namespace IO_SERVER
             {
                 // uart_printf(CONSOLE, "IO_SERVER::PUTS\r\n");
                 unsigned char *str = req.str;
-                uart_puts(CONSOLE, reinterpret_cast<const char *>(str));
+                // uart_puts(CONSOLE, reinterpret_cast<const char *>(str));
                 // spin_debug();
                 reply.type = REPLY_TYPE::FAILURE; // incase it's full
                 if (!transmit_buffer_str.IsFull())
@@ -241,7 +241,7 @@ namespace IO_SERVER
         // // uart_printf(CONSOLE, "IO_SERVER::Puts\r\n");
         if (tid != IO_SERVER_TID) // check if tid if valid uart server
         {
-            uart_printf(CONSOLE, "IO_SERVER::Puts: PANIC, Invalid tid %d\r\n", tid);
+            uart_printf(CONSOLE, "\r\nIO_SERVER::Puts: PANIC, Invalid tid %d\r\n", tid);
             return -1;
         }
 

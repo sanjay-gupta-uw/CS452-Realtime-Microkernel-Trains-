@@ -7,52 +7,38 @@
 #include "../include/marklin_structs.h"
 // #include "../include/util.h" // this includes rpi.h
 
-// class Clock;
-// extern Clock clock;
-
-typedef enum
+namespace Switch_NS
 {
-    STRAIGHT, // green
-    CURVED,   // red
-} SWITCH_STATE;
+#define SWITCH_COUNT 22
+    typedef enum
+    {
+        STRAIGHT, // green
+        CURVED,   // red
+    } SWITCH_STATE;
 
-// forward declaration
-class Switches;
+    class Switch
+    {
+    private:
+        int address;
+        // void SendCommand(int data);
 
-class Switch
-{
-private:
-    SWITCH_STATE ALIGNMENT;
-    int address;
+    public:
+        Switch();
+        ~Switch();
+        void SetAddr(int addr);
+        int GetAddr();
+        void SetSwitch(SWITCH_STATE ALIGNMENT);
+        SWITCH_STATE ALIGNMENT;
+        bool updated;
+    };
 
-    void SendCommand(int data);
-    // void Print(IO *io) const;
+    // Switch switches[22]; // Zero-initialize the entire array
 
-public:
-    Switch();
-    ~Switch();
-    void SetAddr(int addr);
-    void SetSwitch(SWITCH_STATE ALIGNMENT);
+    bool isSwitchCommandValid(MarklinRequest *request); // returns true if switch was found/request updated
 
-    friend class Switches;
+    void InitDisplay();
+    void Display();
+    MarklinRequest CreateSwitchRequest(int switch_num, SWITCH_STATE state);
 };
 
-class Switches
-{
-private:
-    Switch switches[22]; // Zero-initialize the entire array
-
-public:
-    Switches();
-    ~Switches();
-
-    bool SetSwitch(MarklinRequest *request); // returns true if switch was found/request updated
-    void SetAll(SWITCH_STATE ALIGNMENT);
-
-    void InitDisplay(int LOCATION);
-    void Display(int LOCATION);
-    void setClockServerTid(int tid);
-    void setMarklinIoServerTid(int tid);
-};
-
-#endif
+#endif // _switch_h_

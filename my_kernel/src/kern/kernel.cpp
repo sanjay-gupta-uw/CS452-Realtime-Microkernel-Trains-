@@ -619,10 +619,10 @@ void Kernel::IRQ_Handler()
         break;
     }
     case SPURIOUS_INTERRUPT:
-        uart_printf(CONSOLE, "PANIC: SPURIOUS INTERRUPT\r\n");
+        // uart_printf(CONSOLE, "PANIC: SPURIOUS INTERRUPT\r\n");
         break;
     default:
-        uart_printf(CONSOLE, "PANIC: UNDEFINED IRQ ID\r\n");
+        // uart_printf(CONSOLE, "PANIC: UNDEFINED IRQ ID\r\n");
         break;
     }
     RepushActiveTask();
@@ -708,4 +708,24 @@ bool Kernel::areTasksWaiting()
         }
     }
     return false;
+}
+
+void Kernel::printStats(uint32_t idle, uint32_t total)
+{
+    bool disabled = false;
+    if (UART_REG(CONSOLE, UART_IMSC) & TX_INTERRUPT_MASK)
+    {
+        // UART_IMSC_DISABLE(CONSOLE, TX_INTERRUPT_MASK);
+        UART_CLEAR_INTERRUPT(CONSOLE, TX_INTERRUPT_MASK);
+        disabled = true;
+    }
+
+    // check if TX is enabled
+    // uart_printf(CONSOLE, MOVE_CURSOR CLEAR_TO_END_LINE COLOR_CYAN "IDLE: %d, TOTAL: %d, PERCENT: %d%%", IDLE_LOCATION, 1, idle, total, (idle * 100) / total);
+    uart_printf(CONSOLE, MOVE_CURSOR CLEAR_TO_END_LINE COLOR_CYAN "IDLE: %d%%", IDLE_LOCATION, 1, (idle * 100) / total);
+
+    if (disabled)
+    {
+        UART_IMSC_ENABLE(CONSOLE, TX_INTERRUPT_MASK);
+    }
 }

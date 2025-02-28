@@ -7,12 +7,12 @@
 // #include "../../rpi.h"
 #include "../include/ui.h"
 #include "../include/marklin_controller.h"
-
-static int IO_SERVER_TID = -1;
+#include "../include/io.h"
 
 void FirstUserTask()
 {
-    // uart_printf(CONSOLE, "First User Task: Starting System Services.\r\n");
+    clear_screen(CONSOLE);
+    uart_printf(CONSOLE, "First User Task: Starting System Services.\r\n");
     // CREATE IDLE TASK
     int idleTid = CREATE(PRIORITY::IDLE, IdleTask);
 
@@ -24,19 +24,20 @@ void FirstUserTask()
     }
 
     int ioServerTid = CREATE(PRIORITY::P0, IO_SERVER::startIOServer); // Start the IO Server
-    IO_SERVER_TID = ioServerTid;
     if (ioServerTid < 0)
     {
         uart_printf(CONSOLE, "Error starting IO Server\r\n");
         EXIT();
     }
+    IO_NS::IO io; // initialize IO object for printing
+    // clock server
 
-    int marklinIoServerTid = CREATE(PRIORITY::P0, MARKLIN_IO_SERVER::startMarklinIOServer); // Start the Marklin IO Server
-    if (marklinIoServerTid < 0)
-    {
-        uart_printf(CONSOLE, "Error starting Marklin IO Server\r\n");
-        EXIT();
-    }
+    // int marklinIoServerTid = CREATE(PRIORITY::P0, MARKLIN_IO_SERVER::startMarklinIOServer); // Start the Marklin IO Server
+    // if (marklinIoServerTid < 0)
+    // {
+    //     uart_printf(CONSOLE, "Error starting Marklin IO Server\r\n");
+    //     EXIT();
+    // }
 
     // create sample clients
     int marklinTID = CREATE(PRIORITY::P4, MarklinTask);
@@ -69,11 +70,14 @@ void ClientTask()
         uart_printf(CONSOLE, "Error finding IO Server\r\n");
         EXIT();
     }
+    uart_printf(CONSOLE, "Client Task: Found IO Server {tid: %d}.\r\n", ioServerTid);
     int ret = -1;
     int ch = -1;
     // test print
     uart_putc(CONSOLE, 'A'); // must initialize uart before using
+    // uart_printf(CONSOLE, "\r\n");
 
+    IO_NS::Print("Hello World!\r\n");
     IO_NS::Print(CLEAR_SCREEN);
     int ui = CREATE(PRIORITY::P4, UI_NS::start_ui);
     int cmd_prompt = CREATE(PRIORITY::P3, UI_CMD_NS::start_command_prompt);
@@ -83,23 +87,23 @@ void ClientTask()
 
 void MarklinTask()
 {
-    int myTid = MYTID();
-    // uart_printf(CONSOLE, "Client Task: My Tid is %d.\r\n", myTid);
+    // int myTid = MYTID();
+    // // uart_printf(CONSOLE, "Client Task: My Tid is %d.\r\n", myTid);
 
-    int ioServerTid = WHOIS("MarklinIOServer");
-    if (ioServerTid < 0)
-    {
-        uart_printf(CONSOLE, "Error finding IO Server\r\n");
-        EXIT();
-    }
-    int ret = -1;
+    // int ioServerTid = WHOIS("MarklinIOServer");
+    // if (ioServerTid < 0)
+    // {
+    //     uart_printf(CONSOLE, "Error finding MARKLIN IO Server\r\n");
+    //     EXIT();
+    // }
+    // int ret = -1;
 
-    uart_putc(MARKLIN, 'A'); // must initialize uart before using
-    unsigned char ch = 'B';
-    for (int i = 0; i < 10; ++i)
-    {
-        ret = MARKLIN_IO_SERVER::Putc(ioServerTid, ch);
-    }
+    // uart_putc(MARKLIN, 'A'); // must initialize uart before using
+    // unsigned char ch = 'B';
+    // for (int i = 0; i < 10; ++i)
+    // {
+    //     ret = MARKLIN_IO_SERVER::Putc(ioServerTid, ch);
+    // }
 
     // start marklin task
     int marklinControllerTid = CREATE(PRIORITY::P4, MARKLIN_NS::start_marklin_controller);

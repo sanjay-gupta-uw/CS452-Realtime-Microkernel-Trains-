@@ -10,16 +10,19 @@
 
 namespace IO_NS
 {
-    static int IO_SERVER_TID;
+    static int IO_SERVER_TID = -1;
 
     IO::IO()
     {
+        uart_printf(CONSOLE, "IO_NS::IO: Finding IO Server\r\n");
         IO_SERVER_TID = WHOIS("IOServer");
         if (IO_SERVER_TID < 0)
         {
-            // uart_printf(CONSOLE, "Error finding IO Server\r\n");
+            uart_printf(CONSOLE, "IO_NS::Error finding IO Server\r\n");
+            spin_debug();
             // EXIT();
         }
+        uart_printf(CONSOLE, "IO_NS::IO: IO_SERVER_TID: %d\r\n", IO_SERVER_TID);
     }
 
     IO::~IO()
@@ -43,10 +46,14 @@ namespace IO_NS
 
     extern "C" void Print(const char *fmt, ...)
     {
+
         char ret_buffer[RET_BUF_SIZE];
         va_list va;
         char ch, buf[12];
         int len = 0; // Width for padding
+
+        // PREPEND WITH COLOR_WHITE
+        fill_buffer_wrapper(ret_buffer, COLOR_WHITE, &len);
 
         va_start(va, fmt);
         while ((ch = *(fmt++)))

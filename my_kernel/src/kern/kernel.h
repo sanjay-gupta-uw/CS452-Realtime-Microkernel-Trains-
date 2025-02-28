@@ -21,6 +21,7 @@ public:
     int DispatchTask(volatile Context *kernel, TaskDescriptor *scheduled_task);
     void Handler(int N);
     bool areTasksWaiting();
+    void printStats(uint32_t idle, uint32_t total);
 
 private:
     MemoryManager mem_manager;

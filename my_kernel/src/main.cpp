@@ -16,8 +16,6 @@
 #include "kern/kernel.h"
 #include "kern/memory.h"
 
-#define IDLE_ROW 0
-
 #if PERF == 1
 #define PERF_VALUE 1
 #else
@@ -82,7 +80,7 @@ extern "C" int kmain()
     // size_t sp = fetch_sp();
     clear_screen(CONSOLE);
     reset_formatting(CONSOLE);
-    move_cursor(CONSOLE, IDLE_ROW + 1, 0);
+    move_cursor(CONSOLE, IDLE_LOCATION, 1);
     // uart_printf(CONSOLE, "Welcome to the Train Controller\r\n");
 
 #if defined(MMU)
@@ -95,29 +93,24 @@ extern "C" int kmain()
     Kernel kernel(bootstrap_task); // bootstrap
     TaskDescriptor *current_task = nullptr;
 
+    uint32_t start_time, end_time = 0;
+
     // scheduler pops the highest priority task into td
-    // uart_printf(CONSOLE, "Starting Kernel\r\n");
-    // while (kernel.)
     while ((current_task = kernel.Scheduler()) || kernel.areTasksWaiting())
     {
-
-        if (current_task == nullptr) // replace with idle task instead..
-        {
-            // // uart_printf(CONSOLE, "NO MORE READY TASKS\r\n");
-            continue;
-        }
-        // // uart_printf(CONSOLE, "ACTIVE: {%d}\r\n", current_task->getTid());
-        // int fifo_status = UART_REG(MARKLIN, UART_FR);
-        // if (fifo_status & UART_FR_TXFE_MASK)
-        // {
-        //     // uart_printf(CONSOLE, "KMAIN::FIFO EMPTY\r\n");
-        //     // spin_debug();
-        // }
-        // else
-        // {
-        //     // uart_printf(CONSOLE, "KMAIN::FIFO NOT EMPTY\r\n");
-        // }
+        start_time = clock.Time();
         int esr_el1 = kernel.DispatchTask(&kernel_context, current_task);
+        end_time = clock.Time();
+
+        // Get the time the task was running for (including transfer times)
+        uint32_t task_time = end_time - start_time;
+        TOTAL_TIME += task_time;
+        if (current_task->getPriority() == PRIORITY::IDLE)
+        {
+            TOTAL_IDLE_TIME += task_time;
+        }
+
+        // kernel.printStats(TOTAL_IDLE_TIME, TOTAL_TIME);
 
         // apply mask to ESR to get SVC number
         int N = esr_el1 & 0xFFFF;
@@ -132,8 +125,6 @@ extern "C" int kmain()
         kernel.Handler(N);
     }
 
-    // uart_printf(CONSOLE, "NO MORE READY TASKS\r\n");
-    for (;;)
-        ;
+    uart_printf(CONSOLE, "Kernel has exited\r\n");
     return 0;
 }

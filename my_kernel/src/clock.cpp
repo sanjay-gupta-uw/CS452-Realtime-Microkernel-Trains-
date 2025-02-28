@@ -94,7 +94,7 @@ void Clock::Display()
     // uart_printf(CONSOLE, "HERE\r\n");
     if (!UPDATE_DISPLAY)
     {
-        uart_printf(CONSOLE, "NOT UPDATING DISPLAY\r\n");
+        // uart_printf(CONSOLE, "NOT UPDATING DISPLAY\r\n");
         return;
     }
 

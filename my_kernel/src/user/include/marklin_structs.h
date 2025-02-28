@@ -1,6 +1,10 @@
 #ifndef _marklin_structs_h_
 #define _marklin_structs_h_
 
+#define STRAIGHT_CMD 0x21
+#define CURVED_CMD 0x22
+#define OFF 0x20
+
 enum class MARKLIN_REQUEST_TYPE
 {
     SET_SWITCH,
@@ -13,7 +17,7 @@ struct MarklinRequest
     MARKLIN_REQUEST_TYPE type = MARKLIN_REQUEST_TYPE::INVALID;
     int id = -1;  // physcial id on the track
     int idx = -1; // index in the array
-    int *data = nullptr;
+    char *data = nullptr;
 };
 
 #endif // _marklin_structs_h_

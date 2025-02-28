@@ -10,8 +10,7 @@
 #define COLOR_WHITE "\033[37m"
 
 #define RESET_FORMATTING "\033[0m"
-// #define CLEAR_SCREEN "\033[2J"
-#define CLEAR_SCREEN " "
+#define CLEAR_SCREEN "\033[2J"
 #define CLEAR_TO_END_LINE "\033[K"
 #define MOVE_CURSOR "\033[%d;%dH"
 #define SAVE_CURSOR "\033[s"

@@ -16,7 +16,7 @@ namespace UI_NS
         clock.Display();
 
         // Switches
-        // switches.InitDisplay(&io, SWITCH_LOCATION);
+        Switch_NS::InitDisplay();
 
         // Sensors
         // init_sensor_display(SENSOR_LOCATION);
@@ -30,7 +30,7 @@ namespace UI_NS
         clock.Update();
         clock.Display();
 
-        // switches.Display(&io, SWITCH_LOCATION + 5);
+        Switch_NS::Display();
     }
 
     void start_ui()
