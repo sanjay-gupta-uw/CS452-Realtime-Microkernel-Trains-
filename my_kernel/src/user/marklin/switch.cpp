@@ -28,9 +28,9 @@ namespace Switch_NS
     {
     }
 
-    void Switch::SetAddr(int addr)
+    void Switch::SetAddr(int idx)
     {
-        address = addr;
+        address = SWITCH_ADDR[idx];
     }
 
     void Switch::SetSwitch(SWITCH_STATE ALIGNMENT)
@@ -54,6 +54,7 @@ namespace Switch_NS
         {
             if (SWITCH_ADDR[i] == addr)
             {
+                request->idx = i;
                 return true;
             }
         }
@@ -63,7 +64,7 @@ namespace Switch_NS
     MarklinRequest CreateSwitchRequest(int switch_num, SWITCH_STATE state)
     {
         unsigned char alignment = (state == SWITCH_STATE::STRAIGHT) ? 'S' : 'C';
-        MarklinRequest req = {MARKLIN_REQUEST_TYPE::SET_SWITCH, SWITCH_ADDR[switch_num], -1, (char *)&alignment};
+        MarklinRequest req = {MARKLIN_REQUEST_TYPE::SET_SWITCH, SWITCH_ADDR[switch_num], switch_num, (char *)&alignment};
         return req;
     }
 

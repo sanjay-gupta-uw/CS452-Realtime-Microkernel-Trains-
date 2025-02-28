@@ -350,10 +350,10 @@ void Kernel::AwaitEvent(int eventType)
     break;
     case UART_MARKLIN_TX:
     {
-        uart_printf(CONSOLE, "AWAIT (BEFORE INTERRUPT ENABLE), UART_IMSC: 0x%x\r\n", UART_REG(MARKLIN, UART_IMSC));
+        // uart_printf(CONSOLE, "AWAIT (BEFORE INTERRUPT ENABLE), UART_IMSC: 0x%x\r\n", UART_REG(MARKLIN, UART_IMSC));
         UART_IMSC_ENABLE(MARKLIN, (TX_INTERRUPT_MASK));
         // ensure it's set
-        uart_printf(CONSOLE, "AWAIT TX, UART_IMSC: 0x%x\r\n", UART_REG(MARKLIN, UART_IMSC));
+        // uart_printf(CONSOLE, "AWAIT TX, UART_IMSC: 0x%x\r\n", UART_REG(MARKLIN, UART_IMSC));
         active_task->SetRetval(-1);
         active_task->setState(EVENT_BLOCKED);
         event_queues[UART_MARKLIN_TX].Push(active_task);
@@ -361,9 +361,10 @@ void Kernel::AwaitEvent(int eventType)
     break;
     case UART_MARKLIN_CTS:
     {
-        UART_IMSC_ENABLE(MARKLIN, (CTS_INTERRUPT_MASK));
+        // EDGE TRIGGERED
+        // UART_IMSC_ENABLE(MARKLIN, (CTS_INTERRUPT_MASK));
         // ensure it's set
-        uart_printf(CONSOLE, "AWAIT CTS, UART_IMSC: 0x%x\r\n", UART_REG(MARKLIN, UART_IMSC));
+        // uart_printf(CONSOLE, "AWAIT CTS, UART_IMSC: 0x%x\r\n", UART_REG(MARKLIN, UART_IMSC));
         active_task->SetRetval(-1);
         active_task->setState(EVENT_BLOCKED);
         event_queues[UART_MARKLIN_CTS].Push(active_task);
@@ -602,12 +603,7 @@ void Kernel::IRQ_Handler()
 
         if (uart_mis & CTS_INTERRUPT_MASK)
         {
-            UART_IMSC_DISABLE(MARKLIN, CTS_INTERRUPT_MASK);
             UART_CLEAR_INTERRUPT(MARKLIN, CTS_INTERRUPT_MASK);
-
-            // uint32_t FR = UART_REG(MARKLIN, UART_FR);
-            // uart_printf(CONSOLE, "Inverted CTS: %d\r\n", !(FR & UART_FR_CTS_MASK));
-            // spin_debug();
 
             while (event_queues[UART_MARKLIN_CTS].Pop(&task) != -1)
             {
@@ -722,7 +718,8 @@ void Kernel::printStats(uint32_t idle, uint32_t total)
 
     // check if TX is enabled
     // uart_printf(CONSOLE, MOVE_CURSOR CLEAR_TO_END_LINE COLOR_CYAN "IDLE: %d, TOTAL: %d, PERCENT: %d%%", IDLE_LOCATION, 1, idle, total, (idle * 100) / total);
-    uart_printf(CONSOLE, MOVE_CURSOR CLEAR_TO_END_LINE COLOR_CYAN "IDLE: %d%%", IDLE_LOCATION, 1, (idle * 100) / total);
+    // uart_printf(CONSOLE, MOVE_CURSOR CLEAR_TO_END_LINE COLOR_CYAN "IDLE: %d%%", IDLE_LOCATION, 1, (idle * 100) / total);
+    // uart_printf(CONSOLE, "CTS IS: %d\r\n", !(UART_REG(MARKLIN, UART_FR) & UART_FR_CTS_MASK));
 
     if (disabled)
     {

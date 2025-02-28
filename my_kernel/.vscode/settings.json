@@ -57,7 +57,9 @@
     "__split_buffer": "cpp",
     "bitset": "cpp",
     "ios": "cpp",
-    "print": "cpp"
+    "print": "cpp",
+    "ratio": "cpp",
+    "variant": "cpp"
   },
   "makefile.configureOnOpen": false
 }

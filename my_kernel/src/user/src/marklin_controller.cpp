@@ -21,8 +21,10 @@ namespace MARKLIN_NS
 
         Trains_NS::init_trains();
 
+        /*
         for (int i = 0; i < SWITCH_COUNT; ++i)
         {
+            Switch_NS::switches[i].SetAddr(i);
             MarklinRequest req = Switch_NS::CreateSwitchRequest(i, Switch_NS::SWITCH_STATE::STRAIGHT);
             int ret = MARKLIN_IO_SERVER::SendCmd(MARKLIN_IO_SERVER_TID, &req);
             if (ret < 0)
@@ -31,6 +33,7 @@ namespace MARKLIN_NS
                 // spin_debug();
             }
         }
+        */
 
         run();
     }

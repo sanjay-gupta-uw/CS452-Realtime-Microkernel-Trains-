@@ -47,6 +47,7 @@ namespace IO_NS
     extern "C" void Print(const char *fmt, ...)
     {
 
+        uart_printf(CONSOLE, "IO_NS::Print: Sending to IO Server\r\n");
         char ret_buffer[RET_BUF_SIZE];
         va_list va;
         char ch, buf[12];

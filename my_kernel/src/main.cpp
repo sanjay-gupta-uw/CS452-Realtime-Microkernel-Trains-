@@ -95,6 +95,8 @@ extern "C" int kmain()
 
     uint32_t start_time, end_time = 0;
 
+    // UART_IMSC_ENABLE(MARKLIN, CTS_INTERRUPT_MASK); // ENABLE CTS HERE
+
     // scheduler pops the highest priority task into td
     while ((current_task = kernel.Scheduler()) || kernel.areTasksWaiting())
     {
@@ -110,7 +112,7 @@ extern "C" int kmain()
             TOTAL_IDLE_TIME += task_time;
         }
 
-        // kernel.printStats(TOTAL_IDLE_TIME, TOTAL_TIME);
+        kernel.printStats(TOTAL_IDLE_TIME, TOTAL_TIME);
 
         // apply mask to ESR to get SVC number
         int N = esr_el1 & 0xFFFF;

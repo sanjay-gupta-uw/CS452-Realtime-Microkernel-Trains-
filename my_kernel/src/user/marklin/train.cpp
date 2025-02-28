@@ -84,6 +84,8 @@ namespace Trains_NS
                     int speed = *(req->data);
                     if (req->data != nullptr && speed >= MIN_SPEED && speed <= MAX_SPEED)
                     {
+                        speed += 16;
+                        req->data = (char *)&speed;
                         return true;
                     }
                     break;

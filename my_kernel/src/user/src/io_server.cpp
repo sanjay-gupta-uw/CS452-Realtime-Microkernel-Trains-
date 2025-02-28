@@ -7,6 +7,10 @@
 
 namespace IO_SERVER
 {
+#define UNDEFINED_CHAR '-'
+#define TX_HIGH 1 // buffer is not full
+#define TX_LOW 0  // buffer is full/above threshold
+
     static int IO_SERVER_TID;
     static int tx_state;
     static int count;
