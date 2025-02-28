@@ -95,6 +95,8 @@ extern "C" int kmain()
 
     uint32_t start_time, end_time = 0;
 
+    // UART_IMSC_ENABLE(MARKLIN, (CTS_INTERRUPT_MASK)); // enable CTS interrupt
+
     // scheduler pops the highest priority task into td
     while ((current_task = kernel.Scheduler()) || kernel.areTasksWaiting())
     {

@@ -6,8 +6,8 @@
 namespace IO_SERVER
 {
 #define UNDEFINED_CHAR '-'
-#define TX_HIGH 1 // buffer is not full
-#define TX_LOW 0  // buffer is full/above threshold
+#define TX_ASSERTED 1   // buffer is not full
+#define TX_DEASSERTED 0 // buffer is full/above threshold
 
     // REDEFINED QUEUE SIZE TO 32 -> change queue to accept size as a parameter?
     // #define RECEIVE_SIZE 32 // 32 chars/bytes

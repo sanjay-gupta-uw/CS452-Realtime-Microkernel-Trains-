@@ -11,6 +11,7 @@ namespace UI_CMD_NS
 
     CommandPrompt::CommandPrompt()
     {
+        // uart_printf(CONSOLE, "CommandPrompt::Constructor\r\n");
         IO_SERVER_TID = WHOIS("IOServer");
         MARKLIN_CONTROLLER_TID = WHOIS("MarklinController");
 
@@ -153,6 +154,7 @@ namespace UI_CMD_NS
                 return;
             }
 
+            // IO_NS::Print(MOVE_CURSOR CLEAR_TO_END_LINE "SENDING to TID: %d", CMD_LOCATION + 2, 1, MARKLIN_CONTROLLER_TID);
             // create marklin request
             IO_NS::Print(MOVE_CURSOR CLEAR_TO_END_LINE "Train %d reversed", CMD_LOCATION + 1, 1, train_num);
             MarklinRequest request = {MARKLIN_REQUEST_TYPE::REVERSE_TRAIN, train_num, -1, nullptr};

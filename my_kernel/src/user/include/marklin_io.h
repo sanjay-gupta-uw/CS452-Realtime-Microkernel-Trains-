@@ -9,16 +9,38 @@ namespace MARKLIN_IO_SERVER
 #define UNDEFINED_CHAR '-'
 
     // state machine for CTS quirk
-    enum class STATE_MACHINE
+    enum class STATES
     {
-        MARKLIN_READY,
-        TRANSMITTING,
-        MARKLIN_PROCESSING,
+        BYTE_CHOSEN,
+        TX_HIGH,
+        CTS_HIGH,
+        CTS_LOW,
+        CTS_HIGH2,
+        TX_HIGH2,
+        TOTAL_STATES
     };
-    enum class PIN_STATE
+
+#define NUM_STATES (int)STATES::TOTAL_STATES
+
+    enum class STATUS
     {
-        LOW,
-        HIGH
+        ACTIVE,
+        INACTIVE
+    };
+
+    class STATE_MACHINE
+    {
+        bool STATE_ARR[NUM_STATES];
+        void Reset();
+        STATUS status = STATUS::INACTIVE;
+
+    public:
+        STATE_MACHINE();
+        ~STATE_MACHINE();
+        bool BeginTransaction();
+        void Transition(STATES state);
+        bool isTransactionComplete();
+        bool isByteChosen();
     };
 
     // REDEFINED QUEUE SIZE TO 32 -> change queue to accept size as a parameter?
@@ -42,14 +64,12 @@ namespace MARKLIN_IO_SERVER
         void handle_transmission();
 
         Queue<unsigned char, 32> receive_buffer;
-        Queue<unsigned char, 32> transmit_buffer; // this should be the bytes for commands
+        Queue<uint8_t, 32> transmit_buffer;  // this should be the bytes for commands
+        Queue<unsigned char, 32> cmd_buffer; // 's', 't', 'r' for switch, train(accel), reverse
 
         Queue<int, 2> rx_waiting_tasks;
         // pin states for CTS and TX
-        PIN_STATE cts_state;
         // PIN_STATE tx_state;
-
-        Queue<int, 32> pending_tramissions;
 
         STATE_MACHINE tx_state_machine;
     };

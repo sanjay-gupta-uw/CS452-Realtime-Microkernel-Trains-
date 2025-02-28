@@ -4,6 +4,8 @@
 #include "../include/marklin_io.h"
 #include "../../shared_constants.h"
 
+#include "../../rpi.h"
+
 namespace MARKLIN_NS
 {
 
@@ -13,6 +15,10 @@ namespace MARKLIN_NS
         CLOCK_SERVER_TID = -1;
 
         REGISTERAS("MarklinController");
+        int mytid = WHOIS("MarklinController");
+        uart_printf(CONSOLE, "MarklinController:: Registered as MarklinController with tid %d\r\n", mytid);
+        // spin_debug();
+
         MARKLIN_IO_SERVER_TID = WHOIS("MarklinIOServer");
         // trains.SetIOServerTid(marklin_io_tid);
         // switches.setMarklinIoServerTid(marklin_io_tid);
@@ -21,8 +27,10 @@ namespace MARKLIN_NS
 
         Trains_NS::init_trains();
 
+        /*
         for (int i = 0; i < SWITCH_COUNT; ++i)
         {
+            Switch_NS::switches[i].SetAddr(i);
             MarklinRequest req = Switch_NS::CreateSwitchRequest(i, Switch_NS::SWITCH_STATE::STRAIGHT);
             int ret = MARKLIN_IO_SERVER::SendCmd(MARKLIN_IO_SERVER_TID, &req);
             if (ret < 0)
@@ -31,6 +39,7 @@ namespace MARKLIN_NS
                 // spin_debug();
             }
         }
+        */
 
         run();
     }
@@ -64,12 +73,20 @@ namespace MARKLIN_NS
             case MARKLIN_REQUEST_TYPE::REVERSE_TRAIN:
             case MARKLIN_REQUEST_TYPE::ACCELERATE_TRAIN:
             {
+
                 bool success = Trains_NS::isValidRequest(&request);
+
                 if (success)
                 {
                     ret = MARKLIN_IO_SERVER::SendCmd(MARKLIN_IO_SERVER_TID, &request);
-                    IO_NS::Print(MOVE_CURSOR CLEAR_TO_END_LINE "MarklinController:: Sent command to MarklinIOServer\r\n", CMD_LOCATION + 2, 1);
+                    IO_NS::Print(MOVE_CURSOR CLEAR_TO_END_LINE "MarklinController:: Command was sent successfully to MarklinIOServer\r\n", CMD_LOCATION + 2, 1);
                 }
+                else
+                {
+                    IO_NS::Print(MOVE_CURSOR CLEAR_TO_END_LINE "MarklinController:: Invalid Train Command\r\n", CMD_LOCATION + 2, 1);
+                }
+                REPLY(tid, (char *)&ret, sizeof(ret));
+
                 break;
             }
 
@@ -80,9 +97,7 @@ namespace MARKLIN_NS
             if (ret < 0)
             {
                 IO_NS::Print(MOVE_CURSOR CLEAR_TO_END_LINE "MarklinController:: Failed to send command to MarklinIOServer\r\n", CMD_LOCATION + 2, 0);
-                // spin_debug();
             }
-            REPLY(tid, (char *)&ret, sizeof(ret));
         }
     }
 

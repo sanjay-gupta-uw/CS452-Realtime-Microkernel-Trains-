@@ -2,11 +2,21 @@
 #include "../include/name_server.h"
 #include "../../kern/syscall.h"
 #include "../../shared_constants.h"
-
+#include <cstdint>
 #include "../../rpi.h"
 
 namespace IO_SERVER
 {
+#define MMIO_BASE 0xFE000000
+    static char *const UART0_BASE = (char *)(MMIO_BASE + 0x201000);
+    static char *const UART3_BASE = (char *)(MMIO_BASE + 0x201600);
+
+#define UART_FR_TXFE_MASK 0x80
+#define UART_FR_RXTM_MASK 0x40
+#define UART_FR 0x18
+#define UART_REG(line, offset) (*(volatile uint32_t *)(line_uarts[line] + offset))
+    static char *const line_uarts[] = {NULL, UART0_BASE, UART3_BASE};
+
     static int IO_SERVER_TID;
     static int tx_state;
     static int count;
@@ -30,7 +40,7 @@ namespace IO_SERVER
         REGISTERAS("IOServer");
         // spin_debug();
         IO_SERVER_TID = MYTID();
-        tx_state = TX_LOW;
+        tx_state = TX_DEASSERTED;
         count = 0;
         spawnNotifiers();
         run();
@@ -106,7 +116,7 @@ namespace IO_SERVER
                     // count++;
                 }
 
-                if (tx_state == TX_HIGH)
+                if (tx_state == TX_ASSERTED)
                 {
                     write_to_uart();
                 }
@@ -127,7 +137,7 @@ namespace IO_SERVER
                     reply.type = REPLY_TYPE::SUCCESS;
                 }
 
-                if (tx_state == TX_HIGH)
+                if (tx_state == TX_ASSERTED)
                 {
                     write_to_uart();
                 }
@@ -195,7 +205,7 @@ namespace IO_SERVER
                 tx_waiting_tasks.Pop(&sender_tid);
                 ReplyWithMessage(sender_tid, (IO_REPLY){REPLY_TYPE::SUCCESS, 0});
             }
-            tx_state = TX_LOW;
+            tx_state = TX_DEASSERTED;
             // wake up tx_notifier
             IO_REPLY reply;
             reply.type = REPLY_TYPE::SUCCESS;
@@ -261,18 +271,15 @@ namespace IO_SERVER
         // uart_printf(CONSOLE, "RTM Notifier started\r\n");
         while (true)
         {
-            // // uart_printf(CONSOLE, "ENABLING RTM INTERRUPT\r\n");
-            int retval = AWAITEVENT(InterruptEvents::UART_RX_TIMEOUT);
-            if (retval < 0)
+            if (UART_REG(CONSOLE, UART_FR) & UART_FR_RXTM_MASK)
             {
-                // uart_printf(CONSOLE, "PANIC, RTM_NOTIFIER AWAITEVENT returned error %d\n", retval);
+                IO_REQUEST req{IO_REQUEST_TYPE::RTM_NOTIFIER, 0, nullptr};
+                int reply;
+
+                SEND(IO_SERVER_TID, (char *)&req, sizeof(req), (char *)&reply, sizeof(reply));
             }
-            // // uart_printf(CONSOLE, "RTM NOTIFIER AWOKEN\r\n");
-
-            IO_REQUEST req{IO_REQUEST_TYPE::RTM_NOTIFIER, 0, nullptr};
-            int reply;
-
-            SEND(IO_SERVER_TID, (char *)&req, sizeof(req), (char *)&reply, sizeof(reply));
+            // // uart_printf(CONSOLE, "ENABLING RTM INTERRUPT\r\n");
+            AWAITEVENT(InterruptEvents::UART_RX_TIMEOUT);
         }
     }
 
@@ -282,22 +289,18 @@ namespace IO_SERVER
 
         while (true)
         {
-            // this will be awoken when there is space in the transmit buffer (if fifo is enabled)
-            int retval = AWAITEVENT(InterruptEvents::UART_TX);
-
-            if (retval < 0)
+            if (UART_REG(CONSOLE, UART_FR) & UART_FR_TXFE_MASK)
             {
-                // uart_printf(CONSOLE, "PANIC, TX_NOTIFIER AWAITEVENT returned error %d\n", retval);
+                tx_state = TX_ASSERTED;
+                // // uart_printf(CONSOLE, "TX NOTIFIER FIRED, TRANSMITTING\r\n");
+                IO_REQUEST req{IO_REQUEST_TYPE::TX_NOTIFIER, 0, nullptr};
+                int reply;
+
+                SEND(IO_SERVER_TID, (char *)&req, sizeof(req), (char *)&reply, sizeof(reply));
             }
-            tx_state = TX_HIGH;
-            // // uart_printf(CONSOLE, "TX NOTIFIER AWOKEN, STALLING TO DEBUG\r\n");
-            // for (;;)
-            //     ;
 
-            IO_REQUEST req{IO_REQUEST_TYPE::TX_NOTIFIER, 0, nullptr};
-            int reply;
-
-            SEND(IO_SERVER_TID, (char *)&req, sizeof(req), (char *)&reply, sizeof(reply));
+            // this will be awoken when there is space in the transmit buffer (if fifo is enabled)
+            AWAITEVENT(InterruptEvents::UART_TX);
         }
     }
 
