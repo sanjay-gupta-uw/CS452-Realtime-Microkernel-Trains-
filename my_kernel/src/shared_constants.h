@@ -8,7 +8,8 @@ typedef enum
     UART_TX,
     UART_MARKLIN_RX,
     UART_MARKLIN_TX,
-    UART_MARKLIN_CTS,
+    UART_MARKLIN_CTS_HIGH,
+    UART_MARKLIN_CTS_LOW,
     NUM_EVENTS
 } InterruptEvents;
 
@@ -41,7 +42,7 @@ typedef enum
     SVC_AWAITEVENT,
     IRQ,
     SVC_GETIDLE,
-
+    SVC_ABORT
 } Syscall;
 
 // assume terminal is 80x24
@@ -57,7 +58,9 @@ typedef enum
 
 #define SENSOR_LOCATION 20
 // #define CMD_LOCATION 35
-#define CMD_LOCATION 40
+#define CMD_LOCATION 45
+#define CMD_STATUS_LOCATION CMD_LOCATION + 1
+#define TRANSMIT_LOCATION 50
 
 // void color_black() { uart_puts(CONSOLE, "\033[30m"); }
 // void color_red() { uart_puts(CONSOLE, "\033[31m"); }

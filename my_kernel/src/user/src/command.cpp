@@ -1,8 +1,10 @@
 #include "../include/command.hpp"
 #include "../include/name_server.h"
-#include "../../kern/syscall.h"
+#include "../../include/syscall.h"
 #include "../../shared_constants.h"
 #include "../../rpi.h"
+
+extern "C" void _reboot(void); // Declare the reboot function implemented in assembly
 
 namespace UI_CMD_NS
 {
@@ -22,8 +24,8 @@ namespace UI_CMD_NS
     static void Commandify(const char *str)
     {
         // clear status
-        IO_NS::Print(MOVE_CURSOR CLEAR_TO_END_LINE, CMD_LOCATION + 1, 1);
-        IO_NS::Print(MOVE_CURSOR CLEAR_TO_END_LINE, CMD_LOCATION + 2, 1);
+        IO_NS::Print(MOVE_CURSOR CLEAR_TO_END_LINE, CMD_STATUS_LOCATION, 1);
+        // IO_NS::Print(MOVE_CURSOR CLEAR_TO_END_LINE, CMD_LOCATION + 2, 1);
 
         int command_received = -3;
         // if (str == nullptr)
@@ -35,8 +37,7 @@ namespace UI_CMD_NS
         if (first == 'q')
         {
             // quit command
-            // UNIMPLEMENTED
-            return;
+            _reboot();
         }
 
         char second = str[1];
@@ -76,13 +77,13 @@ namespace UI_CMD_NS
 
             if (!set_switch_num || switch_state == ' ')
             {
-                IO_NS::Print(MOVE_CURSOR CLEAR_TO_END_LINE "Invalid Switch Command", CMD_LOCATION + 1, 1);
+                IO_NS::Print(MOVE_CURSOR CLEAR_TO_END_LINE "Invalid Switch Command", CMD_STATUS_LOCATION, 1);
                 return;
             }
 
             // create marklin request
-            IO_NS::Print(MOVE_CURSOR CLEAR_TO_END_LINE "Switch %d set to %c", CMD_LOCATION + 1, 1, switch_num, switch_state);
-            MarklinRequest request = {MARKLIN_REQUEST_TYPE::SET_SWITCH, switch_num, -1, switch_state};
+            // IO_NS::Print(MOVE_CURSOR CLEAR_TO_END_LINE "Attempting to set Switch %d to %c", CMD_STATUS_LOCATION, 1, switch_num, switch_state);
+            MarklinRequest request = {COMMAND::SET_SWITCH, switch_num, -1, switch_state};
             SEND(MARKLIN_CONTROLLER_TID, (char *)&request, sizeof(MarklinRequest), nullptr, 0);
         }
         else if ((first == 'T' || first == 't') &&
@@ -119,13 +120,13 @@ namespace UI_CMD_NS
 
             if (!num_set || !speed_set)
             {
-                IO_NS::Print(MOVE_CURSOR CLEAR_TO_END_LINE "Invalid Train Command", CMD_LOCATION + 1, 1);
+                IO_NS::Print(MOVE_CURSOR CLEAR_TO_END_LINE "Invalid Train Command", CMD_STATUS_LOCATION, 1);
                 return;
             }
 
             // create marklin request
-            IO_NS::Print(MOVE_CURSOR CLEAR_TO_END_LINE "Train %d accelerated to %d", CMD_LOCATION + 1, 1, train_num, train_speed);
-            MarklinRequest request = {MARKLIN_REQUEST_TYPE::ACCELERATE_TRAIN, train_num, -1, (unsigned char)train_speed};
+            // IO_NS::Print(MOVE_CURSOR CLEAR_TO_END_LINE "Attempting to accelerate Train %d to %d", CMD_STATUS_LOCATION, 1, train_num, train_speed);
+            MarklinRequest request = {COMMAND::ACCELERATE_TRAIN, train_num, -1, (unsigned char)train_speed};
             SEND(MARKLIN_CONTROLLER_TID, (char *)&request, sizeof(MarklinRequest), (char *)command_received, sizeof(int));
         }
         else if ((first == 'R' || first == 'r') &&
@@ -150,19 +151,19 @@ namespace UI_CMD_NS
 
             if (!num_set)
             {
-                IO_NS::Print(MOVE_CURSOR CLEAR_TO_END_LINE "Invalid Train Reverse Command", CMD_LOCATION + 1, 1);
+                IO_NS::Print(MOVE_CURSOR CLEAR_TO_END_LINE "Invalid Train Reverse Command", CMD_STATUS_LOCATION, 1);
                 return;
             }
 
             // IO_NS::Print(MOVE_CURSOR CLEAR_TO_END_LINE "SENDING to TID: %d", CMD_LOCATION + 2, 1, MARKLIN_CONTROLLER_TID);
             // create marklin request
-            IO_NS::Print(MOVE_CURSOR CLEAR_TO_END_LINE "Train %d reversed", CMD_LOCATION + 1, 1, train_num);
-            MarklinRequest request = {MARKLIN_REQUEST_TYPE::REVERSE_TRAIN, train_num, -1, '\0'};
+            // IO_NS::Print(MOVE_CURSOR CLEAR_TO_END_LINE "Attempting to reverse Train %d", CMD_STATUS_LOCATION, 1, train_num);
+            MarklinRequest request = {COMMAND::REVERSE_TRAIN, train_num, -1, '\0'};
             SEND(MARKLIN_CONTROLLER_TID, (char *)&request, sizeof(MarklinRequest), (char *)command_received, sizeof(int));
         }
         else
         {
-            IO_NS::Print(MOVE_CURSOR CLEAR_TO_END_LINE "Invalid Command", CMD_LOCATION + 1, 1);
+            IO_NS::Print(MOVE_CURSOR CLEAR_TO_END_LINE "Invalid Command", CMD_STATUS_LOCATION, 1);
             // invalid command
             // UNIMPLEMENTED
         }

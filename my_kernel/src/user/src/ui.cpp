@@ -3,7 +3,7 @@
 #include "../include/marklin_io.h"
 #include "../../shared_constants.h"
 #include "../include/io.h"
-#include "../../kern/syscall.h"
+#include "../../include/syscall.h"
 namespace UI_NS
 {
     IdleTask::IdleTask()
@@ -30,7 +30,7 @@ namespace UI_NS
         clock.Display();
 
         // Switches
-        Switch_NS::InitDisplay();
+        // Switch_NS::InitDisplay();
 
         // Sensors
         // sensors.InitDisplay(&io, SENSOR_LOCATION););
@@ -44,11 +44,11 @@ namespace UI_NS
         clock.Update();
         clock.Display();
         idleTask.Display();
-        
+
         // sensors.ReadAll(NUM_BANKS, &recent_sensors);
         // snesors.Display(&io, SWITCH_LOCATION + 3, &recent_sensors);
 
-        Switch_NS::Display();
+        // Switch_NS::Display();
     }
 
     void start_ui()

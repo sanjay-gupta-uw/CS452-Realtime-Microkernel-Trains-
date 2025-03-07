@@ -8,17 +8,19 @@
 // forward declaration
 namespace Trains_NS
 {
+#define NUM_TRAINS 5
 #define MAX_SPEED 14
 #define MIN_SPEED 0
+
+    class Trains;
     class Train
     {
     private:
+        int train_num;
         int train_speed; // between 0 and 14
         bool headlight_on;
         bool isReversed;
 
-    public:
-        int train_num;
         void HeadlightOn();
         void Accelerate(int speed);
         void Reverse();
@@ -26,15 +28,30 @@ namespace Trains_NS
         bool isMoving();
         int getSpeed();
 
+    public:
         Train();
         Train(int train_num);
         ~Train();
+
+        friend class Trains;
     };
 
-    // Train trains[5];
-    int getSpeed(int addr);
-    void init_trains();
-    bool isValidRequest(MarklinRequest *req);
+    class Trains
+    {
+    private:
+        Train trains[NUM_TRAINS];
+        void init_trains();
+        Train *isTrainValid(int train_num);
+        bool isSpeedValid(int speed);
+
+    public:
+        Trains();
+        ~Trains();
+        bool AccelerateTrain(int train_num, int speed);
+        bool ReverseTrain(int train_num);
+        void setIOServerTid(int tid);
+    };
+
 };
 
 #endif // _train_h

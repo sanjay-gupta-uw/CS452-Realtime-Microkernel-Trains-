@@ -4,6 +4,7 @@
 #include <stdarg.h>
 #include "../../util.h"
 // #include "../../rpi.h"
+#include "../include/uassert.h"
 
 #define CONSOLE 1
 #define MARKLIN 2
@@ -14,15 +15,8 @@ namespace IO_NS
 
     IO::IO()
     {
-        uart_printf(CONSOLE, "IO_NS::IO: Finding IO Server\r\n");
         IO_SERVER_TID = WHOIS("IOServer");
-        if (IO_SERVER_TID < 0)
-        {
-            uart_printf(CONSOLE, "IO_NS::Error finding IO Server\r\n");
-            spin_debug();
-            // EXIT();
-        }
-        uart_printf(CONSOLE, "IO_NS::IO: IO_SERVER_TID: %d\r\n", IO_SERVER_TID);
+        uassert(IO_SERVER_TID > 0 && "IO_NS::Error finding IO Server");
     }
 
     IO::~IO()
@@ -44,12 +38,11 @@ namespace IO_NS
         }
     }
 
+    // DISABLED PRINT FOR TESTING
     extern "C" void Print(const char *fmt, ...)
     {
-
         if (IO_SERVER_TID < 0)
         {
-            // uart_printf(CONSOLE, "IO_NS::Print: IO_SERVER_TID not set\r\n");
             return;
         }
         char ret_buffer[RET_BUF_SIZE];

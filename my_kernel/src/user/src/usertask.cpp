@@ -1,5 +1,5 @@
 #include "../include/usertask.h"
-#include "../../kern/syscall.h"
+#include "../../include/syscall.h"
 #include "../include/name_server.h"
 #include "../include/io_server.h"
 #include "../include/marklin_io.h"
@@ -10,28 +10,31 @@
 #include "../include/clock_server.h"
 #include "../include/io.h"
 
+#include "../include/uassert.h"
+
 void FirstUserTask()
 {
-    clear_screen(CONSOLE);
+    // clear_screen(CONSOLE);
     uart_printf(CONSOLE, "First User Task: Starting System Services.\r\n");
+    // uassert(2 == 3);
     // CREATE IDLE TASK
     int idleTid = CREATE(PRIORITY::IDLE, IdleTask);
 
-    int nameServerTid = CREATE(PRIORITY::P0, NameServer); // Start the Name Server
+    int nameServerTid = CREATE(PRIORITY::P1, NameServer); // Start the Name Server
     if (nameServerTid < 0)
     {
         uart_printf(CONSOLE, "Error starting Name Server\r\n");
         EXIT();
     }
     // clock server
-    int clockServerTid = CREATE(PRIORITY::P0, ClockServer); // Start the Clock Server
+    int clockServerTid = CREATE(PRIORITY::P1, ClockServer); // Start the Clock Server
     if (clockServerTid < 0)
     {
         uart_printf(CONSOLE, "Error starting Clock Server\r\n");
         EXIT();
     }
 
-    int ioServerTid = CREATE(PRIORITY::P0, IO_SERVER::startIOServer); // Start the IO Server
+    int ioServerTid = CREATE(PRIORITY::P1, IO_SERVER::startIOServer); // Start the IO Server
     if (ioServerTid < 0)
     {
         uart_printf(CONSOLE, "Error starting IO Server\r\n");
@@ -40,7 +43,7 @@ void FirstUserTask()
 
     IO_NS::IO io; // initialize IO object for printing
 
-    int marklinIoServerTid = CREATE(PRIORITY::P0, MARKLIN_IO_SERVER::startMarklinIOServer); // Start the Marklin IO Server
+    int marklinIoServerTid = CREATE(PRIORITY::P1, MARKLIN_IO_SERVER::startMarklinIOServer); // Start the Marklin IO Server
     if (marklinIoServerTid < 0)
     {
         uart_printf(CONSOLE, "Error starting Marklin IO Server\r\n");
@@ -85,8 +88,8 @@ void ClientTask()
     // uart_putc(CONSOLE, 'A'); // must initialize uart before using
     // uart_printf(CONSOLE, "\r\n");
 
-    IO_NS::Print("Hello World!\r\n");
-    IO_NS::Print(CLEAR_SCREEN);
+    // IO_NS::Print("Hello World!\r\n");
+    // IO_NS::Print(CLEAR_SCREEN);
     int ui = CREATE(PRIORITY::P4, UI_NS::start_ui);
     int cmd_prompt = CREATE(PRIORITY::P3, UI_CMD_NS::start_command_prompt);
 

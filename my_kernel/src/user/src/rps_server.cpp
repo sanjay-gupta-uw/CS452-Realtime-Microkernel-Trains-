@@ -1,7 +1,7 @@
 #include "../include/rps_server.h"
 #include "../include/rps_client.h"
 #include "../include/name_server.h"
-#include "../../kern/syscall.h"
+#include "../../include/syscall.h"
 #include "../../rpi.h"
 #include <cstring>
 #include "../../containers/queue.h"

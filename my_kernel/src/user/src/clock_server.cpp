@@ -3,7 +3,7 @@
 #include "../../containers/pqueue.h"
 #include "../../shared_constants.h"
 #include "../../rpi.h"
-#include "../../kern/syscall.h"
+#include "../../include/syscall.h"
 
 static int CLOCK_SERVER_TID = -1;
 

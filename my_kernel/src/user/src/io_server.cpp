@@ -1,6 +1,6 @@
 #include "../include/io_server.h"
 #include "../include/name_server.h"
-#include "../../kern/syscall.h"
+#include "../../include/syscall.h"
 #include "../../shared_constants.h"
 #include <cstdint>
 #include "../../rpi.h"

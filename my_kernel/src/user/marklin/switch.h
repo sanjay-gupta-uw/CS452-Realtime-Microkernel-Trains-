@@ -16,30 +16,34 @@ namespace Switch_NS
         CURVED,   // red
     } SWITCH_STATE;
 
+    class Switches;
     class Switch
     {
     private:
-        // void SendCommand(int data);
-
-    public:
-        Switch();
-        ~Switch();
-        // void SetAddr(int addr);
-        // int GetAddr();
-        void SetSwitch(SWITCH_STATE ALIGNMENT);
         SWITCH_STATE ALIGNMENT;
 
-        bool updated;
+    public:
         int address;
+        Switch();
+        ~Switch();
+        void SetSwitch(SWITCH_STATE ALIGNMENT);
+
+        friend class Switches;
     };
 
-    // Switch switches[22]; // Zero-initialize the entire array
+    class Switches
+    {
+    private:
+        Switch switches[SWITCH_COUNT];
 
-    bool isSwitchCommandValid(MarklinRequest *request); // returns true if switch was found/request updated
-    void init_switches();
-    void InitDisplay();
-    void Display();
-    MarklinRequest CreateSwitchRequest(int switch_num, SWITCH_STATE state);
+    public:
+        Switches();
+        ~Switches();
+        void Init();
+        bool SetSwitch(int switch_addr, SWITCH_STATE state);
+        void setIOServerTid(int tid);
+    };
+    // ui.h for switch display
 };
 
 #endif // _switch_h_

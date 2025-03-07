@@ -6,6 +6,8 @@
 #include "interrupts.h"
 
 #include "../clock.h"
+#include "kabort.h"
+
 extern Clock clock;
 extern "C" void DEBUG()
 {
@@ -359,14 +361,18 @@ void Kernel::AwaitEvent(int eventType)
         event_queues[UART_MARKLIN_TX].Push(active_task);
     }
     break;
-    case UART_MARKLIN_CTS:
+    case UART_MARKLIN_CTS_HIGH:
     {
-        // UART_IMSC_ENABLE(MARKLIN, (CTS_INTERRUPT_MASK));
-        // ensure it's set
-        // uart_printf(CONSOLE, "AWAIT CTS, UART_IMSC: 0x%x\r\n", UART_REG(MARKLIN, UART_IMSC));
         active_task->SetRetval(-1);
         active_task->setState(EVENT_BLOCKED);
-        event_queues[UART_MARKLIN_CTS].Push(active_task);
+        event_queues[UART_MARKLIN_CTS_HIGH].Push(active_task);
+    }
+    break;
+    case UART_MARKLIN_CTS_LOW:
+    {
+        active_task->SetRetval(-1);
+        active_task->setState(EVENT_BLOCKED);
+        event_queues[UART_MARKLIN_CTS_LOW].Push(active_task);
     }
     break;
     default:
@@ -510,6 +516,18 @@ void Kernel::Handler(int N, uint32_t idleTime)
         RepushActiveTask();
         break;
 
+    case SVC_ABORT:
+    {
+        // uart_printf(CONSOLE, "ABORTING KERNEL\r\n");
+        // extract condition from active task
+        const char *condition = reinterpret_cast<const char *>(active_task->context.x[0]);
+        int line = static_cast<int>(active_task->context.x[1]);
+        const char *file = reinterpret_cast<const char *>(active_task->context.x[3]);
+        kabort(condition, line, file, 1);
+
+        break;
+    }
+
     default:
         break;
     }
@@ -610,14 +628,19 @@ void Kernel::IRQ_Handler()
             // UART_IMSC_DISABLE(MARKLIN, CTS_INTERRUPT_MASK);
             UART_CLEAR_INTERRUPT(MARKLIN, CTS_INTERRUPT_MASK);
 
-            // uint32_t FR = UART_REG(MARKLIN, UART_FR);
-            // uart_printf(CONSOLE, "Inverted CTS: %d\r\n", !(FR & UART_FR_CTS_MASK));
-            // spin_debug();
-
-            while (event_queues[UART_MARKLIN_CTS].Pop(&task) != -1)
+            uint32_t FR = UART_REG(MARKLIN, UART_FR);
+            int retval = !(FR & UART_FR_CTS_MASK);
+            // uart_printf(CONSOLE, "CTS INTERRUPT TRIGGERED: %d \r\n", retval);
+            if (event_queues[UART_MARKLIN_CTS_HIGH].IsEmpty() && event_queues[UART_MARKLIN_CTS_LOW].IsEmpty())
             {
+                uart_printf(CONSOLE, "CTS INTERRUPT TRIGGERED: NO TASKS WAITING -- MISSING CHANGE: %d\r\n", retval);
+            }
+
+            while (event_queues[retval ? UART_MARKLIN_CTS_HIGH : UART_MARKLIN_CTS_LOW].Pop(&task) != -1)
+            {
+                // uart_printf(CONSOLE, "*** NOTIFIER RECEIVING CTS ALERT: %d \r\n", retval);
                 task->setState(READY);
-                task->SetRetval(!(UART_REG(MARKLIN, UART_FR) & UART_FR_CTS_MASK));
+                task->SetRetval(retval);
                 ready_queue.Push(task->tid, task->priority);
             }
         }

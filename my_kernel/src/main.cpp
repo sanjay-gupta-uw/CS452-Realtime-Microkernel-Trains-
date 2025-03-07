@@ -5,6 +5,7 @@
 #include "dummy.h"
 #include "rpi.h"
 #include "user/include/usertask.h"
+#include "kern/kassert.h"
 // #include "marklin/switch.h"
 // #include "marklin/train.h"
 
@@ -15,6 +16,8 @@
 // instantiate the template class
 #include "kern/kernel.h"
 #include "kern/memory.h"
+
+// extern void _reboot(void); // Declare the reboot function implemented in assembly
 
 #if PERF == 1
 #define PERF_VALUE 1
@@ -51,8 +54,8 @@ extern "C" int __cxa_atexit(void (*)(void *), void *, void *)
 void *__dso_handle = 0;
 
 extern "C" size_t fetch_sp();
-extern "C" int _get_el_debug();
 extern "C" void setup_mmu();
+extern "C" int _get_el_();
 
 extern "C" void _start(); // expose this to LLDB
 
@@ -95,11 +98,13 @@ extern "C" int kmain()
 
     uint32_t start_time, end_time = 0;
 
-    // UART_IMSC_ENABLE(MARKLIN, (CTS_INTERRUPT_MASK)); // enable CTS interrupt
-
+    UART_IMSC_ENABLE(MARKLIN, (CTS_INTERRUPT_MASK)); // enable CTS interrupt
+    int EL = _get_el_();
+    uart_printf(CONSOLE, "Kernel has started (EL%d)\r\n", EL);
     // scheduler pops the highest priority task into td
     while ((current_task = kernel.Scheduler()) || kernel.areTasksWaiting())
     {
+        // uart_printf(CONSOLE, "Kernel loop \r\n");
         start_time = clock.Time();
         int esr_el1 = kernel.DispatchTask(&kernel_context, current_task);
         end_time = clock.Time();
@@ -115,16 +120,10 @@ extern "C" int kmain()
         // apply mask to ESR to get SVC number
         int N = esr_el1 & 0xFFFF;
         // // uart_printf(CONSOLE, "ACTIVE: {%d}, ESR: {%d}, N: {%d}\r\n", current_task->getTid(), esr_el1, N);
-        if (esr_el1 < 0)
-        {
-            // uart_printf(CONSOLE, "UNEXPECTED ERROR\r\n");
-            for (;;)
-            {
-            }
-        }
+        kassert(N >= 0 && "UNEXPECTED ERROR DECODING SVC NUMBER");
         kernel.Handler(N, (uint32_t)((TOTAL_IDLE_TIME * 100) / TOTAL_TIME));
     }
 
-    uart_printf(CONSOLE, "Kernel has exited\r\n");
+    kassert(false && "Kernel loop");
     return 0;
 }

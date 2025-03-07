@@ -96,3 +96,9 @@ AWAITEVENT:
 GETIDLEPERCENT:
     svc #13
     ret
+
+.global ABORT
+.balign 16
+ABORT:
+    svc #14
+    ret

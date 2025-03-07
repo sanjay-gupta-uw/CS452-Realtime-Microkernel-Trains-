@@ -6,16 +6,18 @@
 #define OFF 0x20
 #define REVERSE_CMD 0xF
 
-enum class MARKLIN_REQUEST_TYPE
+enum class COMMAND
 {
+    READ_SENSOR,
     SET_SWITCH,
     ACCELERATE_TRAIN,
     REVERSE_TRAIN,
-    INVALID
+    SOLENOID_OFF,
+    INVALID,
 };
 struct MarklinRequest
 {
-    MARKLIN_REQUEST_TYPE type = MARKLIN_REQUEST_TYPE::INVALID;
+    COMMAND type = COMMAND::INVALID;
     int id = -1;  // physcial id on the track
     int idx = -1; // index in the array
     unsigned char data = '\0';

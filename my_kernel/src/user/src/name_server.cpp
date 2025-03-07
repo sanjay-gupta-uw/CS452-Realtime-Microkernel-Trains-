@@ -1,5 +1,5 @@
 #include "../include/name_server.h"
-#include "../../kern/syscall.h"
+#include "../../include/syscall.h"
 #include "../../rpi.h"
 #include <cstring>
 #include <cstdlib>
@@ -18,12 +18,6 @@ static int NAME_SERVER_TID = -1; // Global variable to store Name Server task ID
 void NameServer()
 {
     NAME_SERVER_TID = MYTID();
-
-    // uart_printf(CONSOLE, "Name Server running...\r\n");
-    // // uart_printf(CONSOLE, "DEBUG PAUSE HERE\r\n");
-    // for (;;)
-    // {
-    // }
 
     NameEntry names[MAX_NAME_ENTRIES] = {};
     int name_count = 0;
