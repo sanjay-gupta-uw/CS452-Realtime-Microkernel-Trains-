@@ -21,7 +21,6 @@ public:
     int DispatchTask(volatile Context *kernel, TaskDescriptor *scheduled_task);
     void Handler(int N, uint32_t idleTime);
     bool areTasksWaiting();
-    void printStats(uint32_t idle, uint32_t total);
 
 private:
     MemoryManager mem_manager;
@@ -46,9 +45,9 @@ private:
 
     int CopyMessage(TaskDescriptor *sender_td, TaskDescriptor *receiver_td, bool is_reply);
     void inline RepushActiveTask();
-    void enable_icache();
-    void enable_dcache();
-    void enable_bcache();
+    // void enable_icache();
+    // void enable_dcache();
+    // void enable_bcache();
     void AwaitEvent(int eventType);
 
     void IRQ_Handler();

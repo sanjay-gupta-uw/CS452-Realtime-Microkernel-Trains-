@@ -9,61 +9,44 @@
 #include "../include/marklin_controller.h"
 #include "../include/clock_server.h"
 #include "../include/io.h"
-
+#include "../include/command.hpp"
 #include "../include/uassert.h"
+
+#if IRQEn == 1
+#define IRQ_ENABLED 1
+#else
+#define IRQ_ENABLED 0
+#endif
 
 void FirstUserTask()
 {
-    // clear_screen(CONSOLE);
-    uart_printf(CONSOLE, "First User Task: Starting System Services.\r\n");
-    // uassert(2 == 3);
-    // CREATE IDLE TASK
-    int idleTid = CREATE(PRIORITY::IDLE, IdleTask);
 
     int nameServerTid = CREATE(PRIORITY::P1, NameServer); // Start the Name Server
-    if (nameServerTid < 0)
-    {
-        uart_printf(CONSOLE, "Error starting Name Server\r\n");
-        EXIT();
-    }
-    // clock server
-    int clockServerTid = CREATE(PRIORITY::P1, ClockServer); // Start the Clock Server
-    if (clockServerTid < 0)
-    {
-        uart_printf(CONSOLE, "Error starting Clock Server\r\n");
-        EXIT();
-    }
+    uart_printf(CONSOLE, "Name Server TID: %d\r\n", nameServerTid);
 
     int ioServerTid = CREATE(PRIORITY::P1, IO_SERVER::startIOServer); // Start the IO Server
-    if (ioServerTid < 0)
-    {
-        uart_printf(CONSOLE, "Error starting IO Server\r\n");
-        EXIT();
-    }
+    uart_printf(CONSOLE, "IO Server TID: %d\r\n", ioServerTid);
 
     IO_NS::IO io; // initialize IO object for printing
+    IO_NS::Print(CLEAR_SCREEN COLUMN_132 SCROLL_REGION MOVE_CURSOR SMOOTH_SCROLL "Terminal Output:\r\n" SAVE_CURSOR, SCROLL_ROW_START, SCROLL_ROW_END, SCROLL_ROW_START, 1);
+
+    int idleTid = CREATE(PRIORITY::IDLE, IdleTask);
+    uassert(idleTid >= 0 && "Error starting Idle Task");
 
     int marklinIoServerTid = CREATE(PRIORITY::P1, MARKLIN_IO_SERVER::startMarklinIOServer); // Start the Marklin IO Server
-    if (marklinIoServerTid < 0)
-    {
-        uart_printf(CONSOLE, "Error starting Marklin IO Server\r\n");
-        EXIT();
-    }
+    uassert(marklinIoServerTid >= 0 && "Error starting Marklin IO Server");
+
+#if IRQ_ENABLED == 1
+    int clockServerTid = CREATE(PRIORITY::P1, ClockServer); // Start the Clock Server
+    uassert(clockServerTid >= 0 && "Error starting Clock Server");
+#endif
 
     // create sample clients
     int marklinTID = CREATE(PRIORITY::P3, MarklinTask);
-    if (marklinTID < 0)
-    {
-        uart_printf(CONSOLE, "Error starting Marklin Client Task\r\n");
-        EXIT();
-    }
+    uassert(marklinTID >= 0 && "Error starting Marklin Task");
 
     int clientTid = CREATE(PRIORITY::P4, ClientTask);
-    if (clientTid < 0)
-    {
-        uart_printf(CONSOLE, "Error starting Client Task\r\n");
-        EXIT();
-    }
+    uassert(clientTid >= 0 && "Error starting Client Task");
 
     EXIT();
 }
@@ -72,26 +55,12 @@ void FirstUserTask()
 void ClientTask()
 {
     int myTid = MYTID();
-    // uart_printf(CONSOLE, "Client Task: My Tid is %d.\r\n", myTid);
-    // uart_puts(CONSOLE, "Client Task: Starting IO Test.\r\n");
 
-    int ioServerTid = WHOIS("IOServer");
-    if (ioServerTid < 0)
-    {
-        uart_printf(CONSOLE, "Error finding IO Server\r\n");
-        EXIT();
-    }
-    uart_printf(CONSOLE, "Client Task: Found IO Server {tid: %d}.\r\n", ioServerTid);
-    int ret = -1;
-    int ch = -1;
-    // test print
-    // uart_putc(CONSOLE, 'A'); // must initialize uart before using
-    // uart_printf(CONSOLE, "\r\n");
-
-    // IO_NS::Print("Hello World!\r\n");
-    // IO_NS::Print(CLEAR_SCREEN);
     int ui = CREATE(PRIORITY::P4, UI_NS::start_ui);
+    uassert(ui >= 0 && "Error starting UI Task");
+
     int cmd_prompt = CREATE(PRIORITY::P3, UI_CMD_NS::start_command_prompt);
+    uassert(cmd_prompt >= 0 && "Error starting Command Prompt Task");
 
     EXIT();
 }
@@ -101,18 +70,18 @@ void MarklinTask()
 
     // start marklin task
     int marklinControllerTid = CREATE(PRIORITY::P2, MARKLIN_NS::start_marklin_controller);
-    if (marklinControllerTid < 0)
-    {
-        uart_printf(CONSOLE, "Error starting Marklin Controller Task\r\n");
-        EXIT();
-    }
+    uassert(marklinControllerTid >= 0 && "Error starting Marklin Controller Task");
+
     EXIT();
 }
 
 void IdleTask()
 {
+    // extern Clock clock;
     for (;;)
     {
+        // IO_NS::PrintTerminal("IdleTask -- updating clock\r\n");
+        // clock.Update();
         asm volatile("wfi");
     }
     EXIT();

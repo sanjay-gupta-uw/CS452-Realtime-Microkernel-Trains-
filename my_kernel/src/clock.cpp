@@ -46,6 +46,7 @@ void Clock::Update()
 {
     // Get current time from system timer
     uint32_t current_time = SYSTIMER_REG(SYSTIMER_CLO);
+    // IO_NS::PrintTerminal("Clock::Update() - current_time: %u, last_time: %u, diff: %u\r\n", current_time, last_time, current_time - last_time);
 
     // elapsed time since last update (in microseconds)
     uint32_t elapsed = current_time - last_time;
@@ -64,7 +65,6 @@ void Clock::Update()
         minutes += seconds / 60;
         seconds %= 60;
 
-        // // uart_printf(CONSOLE, "FILLD: minutes: %u, seconds: %u, tenths: %u\r\n", *minutes, *seconds, *tenths);
         last_time = current_time;
 
         UPDATE_DISPLAY = true;
@@ -91,10 +91,11 @@ void Clock::Delay(uint32_t delay_ms)
 
 void Clock::Display()
 {
-    // uart_printf(CONSOLE, "HERE\r\n");
+    Update();
+
     if (!UPDATE_DISPLAY)
     {
-        // uart_printf(CONSOLE, "NOT UPDATING DISPLAY\r\n");
+        // IO_NS::PrintTerminal("Clock::Display() - No update needed\r\n");
         return;
     }
 
@@ -120,14 +121,15 @@ void Clock::Display()
         sec[1] = seconds % 10 + '0';
     }
 
-    IO_NS::Print(MOVE_CURSOR CLEAR_TO_END_LINE COLOR_YELLOW "%s:%s:%u", CLOCK_LOCATION_Y, CLOCK_LOCATION_X, min, sec, tenths);
+    // IO_NS::PrintTerminal("Clock::Display()\r\n");
+
+    IO_NS::Print(MOVE_CURSOR COLOR_YELLOW "%s:%s:%u", CLOCK_LOCATION_Y, CLOCK_LOCATION_X, min, sec, tenths);
     UPDATE_DISPLAY = false;
 }
 
 // CMP_REG should be 1/3
 void Clock::ReArmTimer(uint32_t delay_interval)
 {
-    // // uart_printf(CONSOLE, "REARMING TIMER\r\n");
     uint32_t next_match = SYSTIMER_REG(SYSTIMER_CLO) + delay_interval;
     SYSTIMER_REG(SYSTIMER_C1) = next_match;
     // ++TICKS;

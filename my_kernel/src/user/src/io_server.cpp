@@ -4,6 +4,13 @@
 #include "../../shared_constants.h"
 #include <cstdint>
 #include "../../rpi.h"
+#include "../include/uassert.h"
+
+#if IRQEn == 1
+#define IRQ_ENABLED 1
+#else
+#define IRQ_ENABLED 0
+#endif
 
 namespace IO_SERVER
 {
@@ -54,16 +61,10 @@ namespace IO_SERVER
     {
         // ensure this runs before tx_notifier
         rtm_notifier_tid = CREATE(PRIORITY::P1, notifier_rxto);
-        if (rtm_notifier_tid < 0)
-        {
-            // uart_printf(CONSOLE, "Error starting RTM Notifier\n");
-        }
+        uassert(rtm_notifier_tid >= 0 && "IO_SERVER::spawnNotifiers: PANIC, Error starting RTM Notifier");
 
         tx_notifier_tid = CREATE(PRIORITY::P2, notifier_tx);
-        if (tx_notifier_tid < 0)
-        {
-            // uart_printf(CONSOLE, "Error starting TX Notifier\n");
-        }
+        uassert(tx_notifier_tid >= 0 && "IO_SERVER::spawnNotifiers: PANIC, Error starting TX Notifier");
     }
 
     void IOServer::run()
@@ -72,14 +73,8 @@ namespace IO_SERVER
         IO_REQUEST req;
         while (true)
         {
-            // // uart_printf(CONSOLE, "IO_SERVER::Waiting for request\r\n");
             int retval = RECEIVE(&sender_tid, (char *)&req, sizeof(req));
-            // // uart_printf(CONSOLE, "IO_SERVER::Received request from %d\r\n", sender_tid);
-            if (retval < 0)
-            {
-                // uart_printf(CONSOLE, "PANIC, IO_SERVER RECEIVE returned error %d\n", retval);
-            }
-            // // uart_printf(CONSOLE, "IO_SERVER::Received request from %d\r\n", sender_tid);
+            uassert(retval >= 0 && "IO_SERVER::run: PANIC, Error receiving message");
 
             IO_REPLY reply;
             reply.type = REPLY_TYPE::UNIMPLEMENTED;
@@ -89,7 +84,6 @@ namespace IO_SERVER
             {
             case IO_REQUEST_TYPE::GETC:
             {
-                // // uart_printf(CONSOLE, "IO_SERVER::GETC\r\n");
                 if (!receive_buffer.IsEmpty())
                 {
                     // need to reply with CH
@@ -99,36 +93,31 @@ namespace IO_SERVER
                 }
                 else
                 {
-                    // // uart_printf(CONSOLE, "IO_SERVER::GETC: {tid: %d} waiting for character\r\n", sender_tid);
                     rx_waiting_tasks.Push(sender_tid);
                 }
             }
             break;
             case IO_REQUEST_TYPE::PUTC:
             {
-                uart_printf(CONSOLE, "IO_SERVER::PUTC\r\n");
-                reply.type = REPLY_TYPE::FAILURE;  // incase it's full
-                if (!transmit_buffer_str.IsFull()) // this will ignore characters if "overwhelmed"
-                {
-                    transmit_buffer_str.Push((unsigned char *)(req.ch));
-                    tx_waiting_tasks.Push(sender_tid);
-                    reply.type = REPLY_TYPE::SUCCESS;
-                    // count++;
-                }
+                // reply.type = REPLY_TYPE::FAILURE;  // incase it's full
+                // if (!transmit_buffer_str.IsFull()) // this will ignore characters if "overwhelmed"
+                // {
+                //     transmit_buffer_str.Push((unsigned char *)(req.ch));
+                //     tx_waiting_tasks.Push(sender_tid);
+                //     reply.type = REPLY_TYPE::SUCCESS;
+                //     // count++;
+                // }
 
-                if (tx_state == TX_ASSERTED)
-                {
-                    write_to_uart();
-                }
-                // ReplyWithMessage(sender_tid, reply); // sends UNIMPLEMENTED
+                // if (tx_state == TX_ASSERTED)
+                // {
+                //     write_to_uart();
+                // }
+                // // ReplyWithMessage(sender_tid, reply); // sends UNIMPLEMENTED
             }
             break;
             case IO_REQUEST_TYPE::PUTS:
             {
-                // uart_printf(CONSOLE, "IO_SERVER::PUTS\r\n");
                 unsigned char *str = req.str;
-                // uart_puts(CONSOLE, reinterpret_cast<const char *>(str));
-                // spin_debug();
                 reply.type = REPLY_TYPE::FAILURE; // incase it's full
                 if (!transmit_buffer_str.IsFull())
                 {
@@ -146,7 +135,6 @@ namespace IO_SERVER
             break;
             case IO_REQUEST_TYPE::RTM_NOTIFIER:
             {
-                // // uart_printf(CONSOLE, "IO_SERVER::RTM_NOTIFIER FIRED, RECEIVING CHAR\r\n");
                 // need to get char from fifo
                 unsigned char ch = uart_receive_c(CONSOLE);
                 if (!receive_buffer.IsFull()) // this will ignore characters if "overwhelmed"
@@ -159,7 +147,6 @@ namespace IO_SERVER
                 {
                     int waiting_task;
                     int ret = rx_waiting_tasks.Pop(&waiting_task);
-                    // // uart_printf(CONSOLE, "IO_SERVER::RTM_NOTIFIER: {tid: %d} received character %c\r\n", waiting_task, ch);
                     receive_buffer.Pop(&ch);
                     GETC_SUCCESS_REPLY(waiting_task, ch);
                 }
@@ -170,11 +157,7 @@ namespace IO_SERVER
 
             case IO_REQUEST_TYPE::TX_NOTIFIER:
             {
-                // // uart_printf(CONSOLE, "IO_SERVER::TX_NOTIFIER\r\n");
                 write_to_uart();
-                // // uart_printf(CONSOLE, "IO_SERVER::TX_NOTIFIER: Transmit buffer is empty\r\n");
-                // reply.type = REPLY_TYPE::SUCCESS;
-                // ReplyWithMessage(sender_tid, reply); // wake up notifier
             }
             break;
 
@@ -188,14 +171,10 @@ namespace IO_SERVER
     {
         if (!transmit_buffer_str.IsEmpty())
         {
-            // uart_printf(CONSOLE, "IO_SERVER::write_to_uart\r\n");
-            // spin_debug();
             while (!transmit_buffer_str.IsEmpty())
             {
                 unsigned char *str = nullptr;
                 transmit_buffer_str.Pop(&str);
-
-                // uart_printf(CONSOLE, "IO_SERVER::write_to_uart: TRANSMITTING string %s\r\n", str);
 
                 while (*str)
                 {
@@ -215,51 +194,41 @@ namespace IO_SERVER
 
     int Getc(int tid)
     {
-        if (tid != IO_SERVER_TID) // check if tid if valid uart server
-        {
-            return -1;
-        }
+        uassert(tid == IO_SERVER_TID && "IO_SERVER::Getc: PANIC, Invalid tid");
+
+#if IRQ_ENABLED == 0
+        char ch = uart_getc(CONSOLE);
+        return ch;
+#endif
 
         IO_REQUEST req{IO_REQUEST_TYPE::GETC, 0, nullptr};
         IO_REPLY reply;
-        // // uart_printf(CONSOLE, "GETC: Sending request to IOServer\r\n");
         SEND(IO_SERVER_TID, (char *)&req, sizeof(req), (char *)&reply, sizeof(reply));
-        // // uart_printf(CONSOLE, "GETC: IOServer finished processing request\r\n");
+        uassert(reply.type != REPLY_TYPE::UNIMPLEMENTED && "IO_SERVER::Getc: PANIC, Unimplemented");
 
         return reply.type == REPLY_TYPE::SUCCESS ? reply.ch : -1;
     }
 
     int Putc(int tid, unsigned char ch)
     {
-        // // uart_printf(CONSOLE, "IO_SERVER::Putc\r\n");
-        if (tid != IO_SERVER_TID) // check if tid if valid uart server
-        {
-            uart_printf(CONSOLE, "IO_SERVER::Putc: PANIC, Invalid tid %d\r\n", tid);
-            return -1;
-        }
+        uassert(tid == IO_SERVER_TID && "IO_SERVER::Putc: PANIC, Invalid tid");
 
         IO_REQUEST req{IO_REQUEST_TYPE::PUTC, ch, nullptr};
         IO_REPLY reply;
         SEND(IO_SERVER_TID, (char *)&req, sizeof(req), (char *)&reply, sizeof(reply));
-        // // uart_printf(CONSOLE, "IO_SERVER::Putc returned %s\r\n", REPLY_TYPE_STR((REPLY_TYPE)reply));
+        uassert(reply.type != REPLY_TYPE::UNIMPLEMENTED && "IO_SERVER::Putc: PANIC, Unimplemented");
 
         return reply.type == REPLY_TYPE::SUCCESS ? 0 : -1;
     }
 
     int Puts(int tid, unsigned char *str)
     {
-        // // uart_printf(CONSOLE, "IO_SERVER::Puts\r\n");
-        if (tid != IO_SERVER_TID) // check if tid if valid uart server
-        {
-            uart_printf(CONSOLE, "\r\nIO_SERVER::Puts: PANIC, Invalid tid %d\r\n", tid);
-            return -1;
-        }
+        uassert(tid == IO_SERVER_TID && "IO_SERVER::Puts: PANIC, Invalid tid");
 
         IO_REQUEST req{IO_REQUEST_TYPE::PUTS, '\0', str};
         IO_REPLY reply;
-        // uart_printf(CONSOLE, "IO_SERVER::Puts: Sending request to IOServer\r\n");
         SEND(IO_SERVER_TID, (char *)&req, sizeof(req), (char *)&reply, sizeof(reply));
-        // // uart_printf(CONSOLE, "IO_SERVER::Puts returned %s\r\n", REPLY_TYPE_STR((REPLY_TYPE)reply));
+        uassert(reply.type != REPLY_TYPE::UNIMPLEMENTED && "IO_SERVER::Puts: PANIC, Unimplemented");
 
         return reply.type == REPLY_TYPE::SUCCESS ? 0 : -1;
     }
@@ -268,35 +237,33 @@ namespace IO_SERVER
     // this works because flag is set based on receive buffer, which triggers interrupt
     void notifier_rxto() // receive timeout
     {
-        // uart_printf(CONSOLE, "RTM Notifier started\r\n");
         while (true)
         {
             if (UART_REG(CONSOLE, UART_FR) & UART_FR_RXTM_MASK)
             {
                 IO_REQUEST req{IO_REQUEST_TYPE::RTM_NOTIFIER, 0, nullptr};
-                int reply;
+                IO_REPLY reply;
 
                 SEND(IO_SERVER_TID, (char *)&req, sizeof(req), (char *)&reply, sizeof(reply));
+                uassert(reply.type != REPLY_TYPE::UNIMPLEMENTED && "IO_SERVER::notifier_rxto: PANIC, Unimplemented");
             }
-            // // uart_printf(CONSOLE, "ENABLING RTM INTERRUPT\r\n");
             AWAITEVENT(InterruptEvents::UART_RX_TIMEOUT);
         }
     }
 
     void notifier_tx()
     {
-        // uart_printf(CONSOLE, "TX Notifier started\r\n");
 
         while (true)
         {
             if (UART_REG(CONSOLE, UART_FR) & UART_FR_TXFE_MASK)
             {
                 tx_state = TX_ASSERTED;
-                // // uart_printf(CONSOLE, "TX NOTIFIER FIRED, TRANSMITTING\r\n");
                 IO_REQUEST req{IO_REQUEST_TYPE::TX_NOTIFIER, 0, nullptr};
-                int reply;
+                IO_REPLY reply;
 
                 SEND(IO_SERVER_TID, (char *)&req, sizeof(req), (char *)&reply, sizeof(reply));
+                uassert(reply.type != REPLY_TYPE::UNIMPLEMENTED && "IO_SERVER::notifier_tx: PANIC, Unimplemented");
             }
 
             // this will be awoken when there is space in the transmit buffer (if fifo is enabled)

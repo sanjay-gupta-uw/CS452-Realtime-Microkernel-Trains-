@@ -17,8 +17,6 @@ MemoryManager::MemoryManager()
 
         stack_addr += STACK_SIZE; // verify this
         last_block = &memory_blocks[i];
-        // print range for memory block
-        // // uart_printf(CONSOLE, "Memory block %d: [0x%x - 0x%x)\n", i, memory_blocks[i].addr, memory_blocks[i].addr - STACK_SIZE);
     }
 }
 

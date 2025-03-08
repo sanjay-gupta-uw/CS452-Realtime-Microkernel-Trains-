@@ -13,7 +13,6 @@ namespace UI_CMD_NS
 
     CommandPrompt::CommandPrompt()
     {
-        // uart_printf(CONSOLE, "CommandPrompt::Constructor\r\n");
         IO_SERVER_TID = WHOIS("IOServer");
         MARKLIN_CONTROLLER_TID = WHOIS("MarklinController");
 
@@ -25,7 +24,6 @@ namespace UI_CMD_NS
     {
         // clear status
         IO_NS::Print(MOVE_CURSOR CLEAR_TO_END_LINE, CMD_STATUS_LOCATION, 1);
-        // IO_NS::Print(MOVE_CURSOR CLEAR_TO_END_LINE, CMD_LOCATION + 2, 1);
 
         int command_received = -3;
         // if (str == nullptr)
@@ -82,7 +80,7 @@ namespace UI_CMD_NS
             }
 
             // create marklin request
-            // IO_NS::Print(MOVE_CURSOR CLEAR_TO_END_LINE "Attempting to set Switch %d to %c", CMD_STATUS_LOCATION, 1, switch_num, switch_state);
+            IO_NS::Print(MOVE_CURSOR CLEAR_TO_END_LINE "Attempting to set Switch %d to %c", CMD_STATUS_LOCATION, 1, switch_num, switch_state);
             MarklinRequest request = {COMMAND::SET_SWITCH, switch_num, -1, switch_state};
             SEND(MARKLIN_CONTROLLER_TID, (char *)&request, sizeof(MarklinRequest), nullptr, 0);
         }
@@ -125,7 +123,7 @@ namespace UI_CMD_NS
             }
 
             // create marklin request
-            // IO_NS::Print(MOVE_CURSOR CLEAR_TO_END_LINE "Attempting to accelerate Train %d to %d", CMD_STATUS_LOCATION, 1, train_num, train_speed);
+            IO_NS::Print(MOVE_CURSOR CLEAR_TO_END_LINE "Attempting to accelerate Train %d to %d", CMD_STATUS_LOCATION, 1, train_num, train_speed);
             MarklinRequest request = {COMMAND::ACCELERATE_TRAIN, train_num, -1, (unsigned char)train_speed};
             SEND(MARKLIN_CONTROLLER_TID, (char *)&request, sizeof(MarklinRequest), (char *)command_received, sizeof(int));
         }
@@ -155,9 +153,8 @@ namespace UI_CMD_NS
                 return;
             }
 
-            // IO_NS::Print(MOVE_CURSOR CLEAR_TO_END_LINE "SENDING to TID: %d", CMD_LOCATION + 2, 1, MARKLIN_CONTROLLER_TID);
             // create marklin request
-            // IO_NS::Print(MOVE_CURSOR CLEAR_TO_END_LINE "Attempting to reverse Train %d", CMD_STATUS_LOCATION, 1, train_num);
+            IO_NS::Print(MOVE_CURSOR CLEAR_TO_END_LINE "Attempting to reverse Train %d", CMD_STATUS_LOCATION, 1, train_num);
             MarklinRequest request = {COMMAND::REVERSE_TRAIN, train_num, -1, '\0'};
             SEND(MARKLIN_CONTROLLER_TID, (char *)&request, sizeof(MarklinRequest), (char *)command_received, sizeof(int));
         }
@@ -181,12 +178,13 @@ namespace UI_CMD_NS
 
     void CommandPrompt::InitDisplay()
     {
-        IO_NS::Print(MOVE_CURSOR CLEAR_TO_END_LINE COLOR_GREEN "cmd> ", CMD_LOCATION, 1);
+        IO_NS::Print(MOVE_CURSOR CLEAR_TO_END_LINE COLOR_GREEN "cmd> ", CMD_LOCATION, 0);
     }
 
     void CommandPrompt::getInput()
     {
 
+        // IO_NS::PrintTerminal("GETTING INPUT\r\n");
         // const int CONSOLE = 1;
 
         char c = IO_SERVER::Getc(IO_SERVER_TID);
@@ -232,7 +230,6 @@ namespace UI_CMD_NS
     void start_command_prompt()
     {
         CommandPrompt commandPrompt;
-        // uart_printf(CONSOLE, "Starting Command Prompt, location %d\r\n", CMD_LOCATION);
 
         commandPrompt.InitDisplay();
         while (true)

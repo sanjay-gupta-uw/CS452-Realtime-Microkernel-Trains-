@@ -20,7 +20,7 @@ void updateCpuUsage()
     if (totalTime > 0)
     {
         double idlePercentage = ((double)idleTime / totalTime) * 100.0;
-        // uart_printf(CONSOLE, "CPU Idle Time: %.2f%%\n", idlePercentage);
+        // (CONSOLE, "CPU Idle Time: %.2f%%\n", idlePercentage);
     }
 
     // Reset the counters every so often to avoid overflow and keep figures recent

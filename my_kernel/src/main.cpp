@@ -59,11 +59,6 @@ extern "C" int _get_el_();
 
 extern "C" void _start(); // expose this to LLDB
 
-extern "C" void printASM(int x0)
-{
-    // uart_printf(CONSOLE, "X0: 0x%x \n", x0);
-}
-
 extern "C" int kmain()
 {
     if (false)
@@ -81,10 +76,6 @@ extern "C" int kmain()
     uart_config_and_enable(MARKLIN);
 
     // size_t sp = fetch_sp();
-    clear_screen(CONSOLE);
-    reset_formatting(CONSOLE);
-    move_cursor(CONSOLE, IDLE_LOCATION, 1);
-    // uart_printf(CONSOLE, "Welcome to the Train Controller\r\n");
 
 #if defined(MMU)
     setup_mmu();
@@ -99,12 +90,12 @@ extern "C" int kmain()
     uint32_t start_time, end_time = 0;
 
     UART_IMSC_ENABLE(MARKLIN, (CTS_INTERRUPT_MASK)); // enable CTS interrupt
-    int EL = _get_el_();
-    uart_printf(CONSOLE, "Kernel has started (EL%d)\r\n", EL);
+
     // scheduler pops the highest priority task into td
     while ((current_task = kernel.Scheduler()) || kernel.areTasksWaiting())
     {
-        // uart_printf(CONSOLE, "Kernel loop \r\n");
+        // IO_NS::PrintTerminal("ACTIVE TASK: tid{%d} priority{%d}\r\n", current_task->getTid(), current_task->getPriority());
+        clock.Display();
         start_time = clock.Time();
         int esr_el1 = kernel.DispatchTask(&kernel_context, current_task);
         end_time = clock.Time();
@@ -119,10 +110,11 @@ extern "C" int kmain()
 
         // apply mask to ESR to get SVC number
         int N = esr_el1 & 0xFFFF;
-        // // uart_printf(CONSOLE, "ACTIVE: {%d}, ESR: {%d}, N: {%d}\r\n", current_task->getTid(), esr_el1, N);
         kassert(N >= 0 && "UNEXPECTED ERROR DECODING SVC NUMBER");
         kernel.Handler(N, (uint32_t)((TOTAL_IDLE_TIME * 100) / TOTAL_TIME));
-    }
+        // IO_NS::Print(MOVE_CURSOR CLEAR_TO_END_LINE, IDLE_LOCATION, 1);
+        // IO_NS::Print(MOVE_CURSOR COLOR_CYAN "IDLE: %d%%", IDLE_LOCATION, 1, (uint32_t)((TOTAL_IDLE_TIME * 100) / TOTAL_TIME));
+        }
 
     kassert(false && "Kernel loop");
     return 0;

@@ -21,5 +21,5 @@ void uart_putc(size_t line, char c);                            // write a chara
 void uart_putl(size_t line, const char *buf, size_t blen);      // write a buffer to UART line
 void uart_puts(size_t line, const char *buf);                   // write a string to UART line
 extern "C" void uart_printf(size_t line, const char *fmt, ...); // write a formatted string to UART line
-void spin_debug();                                              // spin to debug
-#endif                                                          /* rpi.h */
+
+#endif /* rpi.h */

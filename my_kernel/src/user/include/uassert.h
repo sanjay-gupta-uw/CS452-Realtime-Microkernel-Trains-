@@ -9,8 +9,3 @@
     }
 
 #endif // _uassert_h_
-
-/*
-        uart_printf(CONSOLE, "SYSCALL\r\n");                                                                \
-
-*/

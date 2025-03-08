@@ -18,9 +18,10 @@ void kabort(const char *condition, int line, const char *file, int EL)
     UART_CLEAR_INTERRUPT(MARKLIN, (TX_INTERRUPT_MASK | RX_INTERRUPT_MASK | CTS_INTERRUPT_MASK));
 
     // print condition
-    uart_printf(CONSOLE, "ASSERTION FAILURE {%s} (in EL%d): line %d, file %s\r\n", condition, EL, line, file);
-    uart_printf(CONSOLE, "Kernel is halting\r\n");
+    IO_NS::PrintTerminal(COLOR_GREEN "ASSERTION FAILURE {%s} (in EL%d): line %d, file %s\r\n", condition, EL, line, file);
+    IO_NS::PrintTerminal(COLOR_RED "KERNEL PANIC: HALTING SYSTEM\r\n");
     for (;;)
     {
+        asm volatile("wfi"); // low power mode
     }
 }

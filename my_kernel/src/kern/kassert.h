@@ -14,5 +14,3 @@ extern "C" int _get_el_();
     }
 
 #endif // _kassert_h_
-
-// uart_printf(CONSOLE, "Assertion failed: %s, line %d, file %s\r\n", #condition, __LINE__, __FILE__); \

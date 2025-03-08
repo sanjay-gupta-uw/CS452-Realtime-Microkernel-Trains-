@@ -2,6 +2,7 @@
 #include "util.h"
 #include <stdarg.h>
 #include <stdint.h>
+#include "shared_constants.h"
 
 static char *const MMIO_BASE = (char *)0xFE000000;
 
@@ -162,7 +163,6 @@ unsigned char uart_getc(size_t line)
     while (UART_REG(line, UART_FR) & UART_FR_RXFE)
     {
         // wait for data
-        // uart_printf(CONSOLE, "SPINNING DETECTED\r\n");
     }
     ch = UART_REG(line, UART_DR);
     return ch;
@@ -187,7 +187,6 @@ void uart_putc(size_t line, char c)
     // make sure there is room to write more data
     while (UART_REG(line, UART_FR) & UART_FR_TXFF)
     {
-        // uart_printf(CONSOLE, "SPINNING DETECTED\r\n");
     }
     UART_REG(line, UART_DR) = c;
 }
@@ -232,11 +231,6 @@ static void pad_and_print(size_t line, const char *str, int width)
 
 extern "C" void uart_printf(size_t line, const char *fmt, ...)
 {
-
-    // return; // disable uart_printf
-    color_cyan();
-    // shift to the far right
-    // uart_puts(line, "\33[170C");
     va_list va;
     char ch, buf[12];
     int width = 0; // Width for padding
@@ -312,11 +306,4 @@ extern "C" void uart_printf(size_t line, const char *fmt, ...)
         }
     }
     va_end(va);
-}
-
-void spin_debug()
-{
-    uart_printf(CONSOLE, "SPINNING TO DEBUG\r\n");
-    while (1)
-        ;
 }

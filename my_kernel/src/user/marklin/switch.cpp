@@ -32,9 +32,14 @@ namespace Switch_NS
         // update display
 
         bool is_straight = (ALIGNMENT == SWITCH_STATE::STRAIGHT);
-        const char *colour = is_straight ? COLOR_GREEN : COLOR_RED;
-        IO_NS::Print(MOVE_CURSOR CLEAR_TO_END_LINE "%sSwitch %d set to %c", CMD_STATUS_LOCATION, 1, colour, address, is_straight ? 'S' : 'C');
-        // uart_printf(CONSOLE, "%sSwitch %d set to %c\r\n", colour, address, is_straight ? 'S' : 'C');
+        if (ALIGNMENT == SWITCH_STATE::STRAIGHT)
+        {
+            IO_NS::PrintTerminal(COLOR_GREEN "Switch-%d set to %c\r\n", address, 'S');
+        }
+        else
+        {
+            IO_NS::PrintTerminal(COLOR_RED "Switch-%d set to %c\r\n", address, 'C');
+        }
     }
 
     // ********* Switches Class *********

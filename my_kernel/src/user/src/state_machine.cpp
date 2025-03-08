@@ -54,7 +54,6 @@ void TransmitMachine::update_state(STATES state)
 void TransmitMachine::reset()
 {
     // IO_NS::Print(COLOR_MAGENTA MOVE_CURSOR CLEAR_TO_END_LINE "TransmitMachine::reset\r\n", TRANSMIT_LOCATION + 6, 1);
-    uart_printf(CONSOLE, "TransmitMachine::reset\r\n");
     isTransmitting = false;
     hasCTSGoneDown = false;
 }

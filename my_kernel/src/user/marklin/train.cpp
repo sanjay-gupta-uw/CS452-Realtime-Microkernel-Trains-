@@ -38,7 +38,8 @@ namespace Trains_NS
         MarklinRequest request;
         request.type = COMMAND::ACCELERATE_TRAIN;
         request.id = train_num;
-        request.data = speed + 16; // turn on the lights
+        // request.data = speed + 16; // turn on the lights
+        request.data = speed;
         MARKLIN_IO_SERVER::SendCmd(MARKLIN_IO_SERVER_TID, &request);
     }
 

@@ -22,7 +22,7 @@ namespace Sensors_NS
                 sensor_data[idx].status = SensorState::SEN_OFF;
             }
         }
-        uart_printf(CONSOLE, "Sending Initial Reset to Marklin\r\n");
+        IO_NS::PrintTerminal("Sending Initial Reset to Marklin\r\n");
         uart_putc(MARKLIN, RESET_MODE_ON); // this will allow the marklin to send cts/tx interrupts
     }
 

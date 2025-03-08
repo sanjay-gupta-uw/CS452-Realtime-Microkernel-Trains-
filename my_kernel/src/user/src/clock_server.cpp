@@ -4,7 +4,7 @@
 #include "../../shared_constants.h"
 #include "../../rpi.h"
 #include "../../include/syscall.h"
-
+#include "../include/uassert.h"
 static int CLOCK_SERVER_TID = -1;
 
 class TimeServer
@@ -15,10 +15,7 @@ public:
         CLOCK_SERVER_TID = MYTID();
         REGISTERAS("ClockServer");
         int notifierTid = CREATE(PRIORITY::P1, ClockNotifier);
-        if (notifierTid < 0)
-        {
-            // uart_printf(CONSOLE, "Error starting Clock Notifier\n");
-        }
+        uassert(notifierTid > 0 && "Error starting Clock Notifier");
 
         run();
     }
@@ -77,7 +74,6 @@ private:
         while (!waitingTasks.isEmpty() && waitingTasks.Peek(&waiting_tid, &trigger_time) == 0 && (uint32_t)trigger_time <= TOTAL_TICKS)
         {
             waitingTasks.Pop(&waiting_tid);
-            // // uart_printf(CONSOLE, "ClockServer: Waking up task %d\n", waiting_tid);
             REPLY(waiting_tid, "U R FREE", 8);
         }
         REPLY(sender_tid, nullptr, 0); // FREE THE CLOCK NOTIFIER
@@ -113,10 +109,7 @@ int DELAY(int tid, int ticks)
     ClockRequest req{ClockRequestType::DELAY, ticks};
     int reply;
     SEND(CLOCK_SERVER_TID, (char *)&req, sizeof(req), (char *)&reply, sizeof(reply));
-    if (reply < 0)
-    {
-        // uart_printf(CONSOLE, "PANIC, DELAY returned error %d\n", reply);
-    }
+    uassert(reply == 0 && "Error in delay");
     return TIME(tid); // return current Time()
 }
 
@@ -133,10 +126,7 @@ int DELAY_UNTIL(int tid, int ticks)
     ClockRequest req{ClockRequestType::DELAY_UNTIL, ticks};
     int reply;
     SEND(CLOCK_SERVER_TID, (char *)&req, sizeof(req), (char *)&reply, sizeof(reply));
-    if (reply < 0)
-    {
-        // uart_printf(CONSOLE, "PANIC, DELAY_UNTIL returned error %d\n", reply);
-    }
+    uassert(reply == 0 && "Error in delay until");
     return TIME(tid); // return current Time()
 }
 
@@ -151,10 +141,14 @@ void ClockNotifier()
     int clockServerTid = WHOIS("ClockServer");
     while (true)
     {
-        // // uart_printf(CONSOLE, "ClockNotifier: Waiting for a tick\n");
-        AWAITEVENT(TIMER_TICK);
-        ClockRequest tickReq = {ClockRequestType::TICK, 0}; // No ticks needed for a notification
-        // // uart_printf(CONSOLE, "ClockNotifier: Sending a tick to the clock server\n");
+        int ret = AWAITEVENT(TIMER_TICK);
+        if (ret < 0)
+        {
+            // delay until the next tick
+            // clock.Delay(1);
+        }
+
+        ClockRequest tickReq = {ClockRequestType::TICK, 0};                  // No ticks needed for a notification
         SEND(clockServerTid, (char *)&tickReq, sizeof(tickReq), nullptr, 0); // Notify the clock server with a TICK
     }
 }

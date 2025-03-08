@@ -1,63 +1,41 @@
 #include "../include/ui.h"
-#include "../include/usertask.h"
-#include "../include/marklin_io.h"
-#include "../../shared_constants.h"
-#include "../include/io.h"
 #include "../../include/syscall.h"
+
+#include "../../clock.h"
 namespace UI_NS
 {
-    IdleTask::IdleTask()
+
+    static void init_switch_display()
     {
-        int idlePercent = 0;
-        IO_NS::Print(COLOR_WHITE MOVE_CURSOR CLEAR_TO_END_LINE "IDLE: %d%%", IDLE_LOCATION, 0, idlePercent);
-    }
-    IdleTask::~IdleTask()
-    {
-    }
-    void IdleTask::Display()
-    {
-        uint32_t idlePercent = GETIDLEPERCENT();
-        IO_NS::Print(COLOR_WHITE MOVE_CURSOR CLEAR_TO_END_LINE "%d%%", IDLE_LOCATION, 7, idlePercent);
-    }
-
-    UI::UI()
-    {
-        // int marklin_tid = WHOIS("MarklinIOServer");
-        // MARKLIN_IO_SERVER::Getc(, MARKLIN);
-        // io.reset_formatting();
-        // io.clear_screen();
-        IO_NS::Print(COLOR_GREEN MOVE_CURSOR "WELCOME TO THE TRAIN CONTROLLER\r\n", 0, 0);
-        clock.Display();
-
-        // Switches
-        // Switch_NS::InitDisplay();
-
-        // Sensors
-        // sensors.InitDisplay(&io, SENSOR_LOCATION););
-
-        // CommandPrompt (HANDLED BY OWN TASK)
-
-        // uart_puts(CONSOLE, "Press 'q' to reboot\r\n");
-    }
-    void UI::Update()
-    {
-        clock.Update();
-        clock.Display();
-        idleTask.Display();
-
-        // sensors.ReadAll(NUM_BANKS, &recent_sensors);
-        // snesors.Display(&io, SWITCH_LOCATION + 3, &recent_sensors);
-
-        // Switch_NS::Display();
+        const int SWITCH_ADDR[SWITCH_COUNT] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 0x9A, 0x9B, 0x9C, 0x99};
+        IO_NS::Print(COLOR_WHITE MOVE_CURSOR CLEAR_TO_END_LINE "-------------------------\r\n", SWITCH_LOCATION + 0, 1);
+        IO_NS::Print(COLOR_WHITE MOVE_CURSOR CLEAR_TO_END_LINE "|   Table of Switches:  |\r\n", SWITCH_LOCATION + 1, 1);
+        IO_NS::Print(COLOR_WHITE MOVE_CURSOR CLEAR_TO_END_LINE "-------------------------\r\n", SWITCH_LOCATION + 2, 1);
+        // IO_NS::Print(COLOR_WHITE MOVE_CURSOR CLEAR_TO_END_LINE "|  Switch  |   Status    |\r\n", SWITCH_LOCATION + 3, 1);
+        // IO_NS::Print(COLOR_WHITE MOVE_CURSOR CLEAR_TO_END_LINE "--------------------------\r\n", SWITCH_LOCATION + 4, 1);
+        for (int i = 0; i < SWITCH_COUNT; ++i)
+        {
+            // print borders and switch address so display only needs to update the status
+            int location_y = SWITCH_LOCATION + 3 + i;
+            IO_NS::Print(COLOR_WHITE MOVE_CURSOR CLEAR_TO_END_LINE "|" MOVE_CURSOR "%d" MOVE_CURSOR "|" MOVE_CURSOR "|",
+                         location_y, 1, location_y, 6, SWITCH_ADDR[i], location_y, 12, location_y, 25);
+        }
+        IO_NS::Print(COLOR_WHITE MOVE_CURSOR CLEAR_TO_END_LINE "-------------------------\r\n", SWITCH_LOCATION + 3 + SWITCH_COUNT, 1);
     }
 
     void start_ui()
     {
-        UI ui;
+        Clock clock;
 
-        while (true)
+        for (int i = 1; i <= NUM_COLS; i++)
         {
-            ui.Update();
+            IO_NS::Print(MOVE_CURSOR "-", SCROLL_ROW_END + 1, i);
         }
+
+        init_switch_display();
+        IO_NS::Print(MOVE_CURSOR "IDLE: %d%%", IDLE_LOCATION, 1, 1);
+        clock.Display();
+        EXIT();
     }
+
 }

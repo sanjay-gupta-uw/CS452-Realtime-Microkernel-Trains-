@@ -85,5 +85,5 @@ void TaskDescriptor::SetRetval(int ret_val)
 // DISABLED
 void TaskDescriptor::Print()
 {
-    // uart_printf(CONSOLE, "tid {%d} :: Priority {%d} :: F {0x%x} :: SP {0x%x} :: &context {0x%x} :: STATE {%d}\r\n", tid, priority, context.elr, context.sp, &context, state);
+    // (CONSOLE, "tid {%d} :: Priority {%d} :: F {0x%x} :: SP {0x%x} :: &context {0x%x} :: STATE {%d}\r\n", tid, priority, context.elr, context.sp, &context, state);
 }

@@ -6,10 +6,10 @@
 #include "../include/io.h"
 #include "../include/marklin_structs.h"
 // #include "../include/util.h" // this includes rpi.h
+#include "../../shared_constants.h"
 
 namespace Switch_NS
 {
-#define SWITCH_COUNT 22
     typedef enum
     {
         STRAIGHT, // green

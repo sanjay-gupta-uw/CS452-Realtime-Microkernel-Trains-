@@ -45,31 +45,29 @@ typedef enum
     SVC_ABORT
 } Syscall;
 
+#define SWITCH_COUNT 22
 // assume terminal is 80x24
 #define NUM_ROWS 24
-#define NUM_COLS 80
+#define NUM_COLS 132
+
+#define SCROLL_ROW_START 1
+#define SCROLL_ROW_END 30
 
 #define CLOCK_LENGTH 8
 #define CLOCK_LOCATION_X (NUM_COLS - CLOCK_LENGTH) / 2
-#define CLOCK_LOCATION_Y 4
+#define CLOCK_LOCATION_Y SCROLL_ROW_END + 1
 
-#define IDLE_LOCATION 2
-#define SWITCH_LOCATION 5
+#define IDLE_LOCATION CLOCK_LOCATION_Y
 
-#define SENSOR_LOCATION 20
-// #define CMD_LOCATION 35
-#define CMD_LOCATION 45
+#define SWITCH_LOCATION IDLE_LOCATION + 1
+
+#define CMD_LOCATION SWITCH_LOCATION + 26
 #define CMD_STATUS_LOCATION CMD_LOCATION + 1
-#define TRANSMIT_LOCATION 50
 
-// void color_black() { uart_puts(CONSOLE, "\033[30m"); }
-// void color_red() { uart_puts(CONSOLE, "\033[31m"); }
-// void color_green() { uart_puts(CONSOLE, "\033[32m"); }
-// void color_yellow() { uart_puts(CONSOLE, "\033[33m"); }
-// void color_blue() { uart_puts(CONSOLE, "\033[34m"); }
-// void color_magenta() { uart_puts(CONSOLE, "\033[35m"); }
-// void color_cyan() { uart_puts(CONSOLE, "\033[36m"); }
-// void color_white() { uart_puts(CONSOLE, "\033[37m"); }
-// save colours as strings
+#define SENSOR_LOCATION SWITCH_LOCATION + 25
+
+// need to deprecate
+#define TRANSMIT_LOCATION SENSOR_LOCATION + 20
+#define START_COLUMN 88
 
 #endif
