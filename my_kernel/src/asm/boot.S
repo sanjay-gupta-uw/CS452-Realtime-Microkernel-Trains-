@@ -128,7 +128,7 @@ vectors:
     b _dummyHandler2  // VBAR_ELx + 0x200
     .balign 0x80
     mov x0, #2
-    b _dummyHandler2   // VBAR_ELx + 0x280
+    b _dummyHandler1   // VBAR_ELx + 0x280
     .balign 0x80
     mov x0, #3
     b _dummyHandler2   // VBAR_ELx + 0x300

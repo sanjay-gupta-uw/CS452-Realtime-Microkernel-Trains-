@@ -3,6 +3,7 @@
 #include "../../include/syscall.h"
 #include "../../shared_constants.h"
 #include "../../rpi.h"
+#include "../include/uassert.h"
 
 extern "C" void _reboot(void); // Declare the reboot function implemented in assembly
 
@@ -13,18 +14,17 @@ namespace UI_CMD_NS
 
     CommandPrompt::CommandPrompt()
     {
+        REGISTERAS("CommandPrompt");
         IO_SERVER_TID = WHOIS("IOServer");
         MARKLIN_CONTROLLER_TID = WHOIS("MarklinController");
 
         BUFFER_INDEX = 0;
         clearInputBuffer();
+        InitDisplay();
     }
 
     static void Commandify(const char *str)
     {
-        // clear status
-        IO_NS::Print(MOVE_CURSOR CLEAR_TO_END_LINE, CMD_STATUS_LOCATION, 1);
-
         int command_received = -3;
         // if (str == nullptr)
         // {
@@ -35,6 +35,7 @@ namespace UI_CMD_NS
         if (first == 'q')
         {
             // quit command
+            // IO_NS::PrintTerminal(RESET_FORMATTING CLEAR_SCREEN "Quitting...\r\n");
             _reboot();
         }
 
@@ -75,12 +76,12 @@ namespace UI_CMD_NS
 
             if (!set_switch_num || switch_state == ' ')
             {
-                IO_NS::Print(MOVE_CURSOR CLEAR_TO_END_LINE "Invalid Switch Command", CMD_STATUS_LOCATION, 1);
+                IO_NS::PrintTerminal("Invalid Switch Command\r\n");
                 return;
             }
 
             // create marklin request
-            IO_NS::Print(MOVE_CURSOR CLEAR_TO_END_LINE "Attempting to set Switch %d to %c", CMD_STATUS_LOCATION, 1, switch_num, switch_state);
+            IO_NS::PrintTerminal("Attempting to set Switch %d to %c\r\n", switch_num, switch_state);
             MarklinRequest request = {COMMAND::SET_SWITCH, switch_num, -1, switch_state};
             SEND(MARKLIN_CONTROLLER_TID, (char *)&request, sizeof(MarklinRequest), nullptr, 0);
         }
@@ -118,12 +119,12 @@ namespace UI_CMD_NS
 
             if (!num_set || !speed_set)
             {
-                IO_NS::Print(MOVE_CURSOR CLEAR_TO_END_LINE "Invalid Train Command", CMD_STATUS_LOCATION, 1);
+                IO_NS::PrintTerminal("Invalid Train Command\r\n");
                 return;
             }
 
             // create marklin request
-            IO_NS::Print(MOVE_CURSOR CLEAR_TO_END_LINE "Attempting to accelerate Train %d to %d", CMD_STATUS_LOCATION, 1, train_num, train_speed);
+            IO_NS::PrintTerminal("Attempting to accelerate Train %d to %d\r\n", train_num, train_speed);
             MarklinRequest request = {COMMAND::ACCELERATE_TRAIN, train_num, -1, (unsigned char)train_speed};
             SEND(MARKLIN_CONTROLLER_TID, (char *)&request, sizeof(MarklinRequest), (char *)command_received, sizeof(int));
         }
@@ -149,18 +150,18 @@ namespace UI_CMD_NS
 
             if (!num_set)
             {
-                IO_NS::Print(MOVE_CURSOR CLEAR_TO_END_LINE "Invalid Train Reverse Command", CMD_STATUS_LOCATION, 1);
+                IO_NS::PrintTerminal("Invalid Train Reverse Command\r\n");
                 return;
             }
 
             // create marklin request
-            IO_NS::Print(MOVE_CURSOR CLEAR_TO_END_LINE "Attempting to reverse Train %d", CMD_STATUS_LOCATION, 1, train_num);
+            IO_NS::PrintTerminal("Attempting to reverse Train %d\r\n", train_num);
             MarklinRequest request = {COMMAND::REVERSE_TRAIN, train_num, -1, '\0'};
             SEND(MARKLIN_CONTROLLER_TID, (char *)&request, sizeof(MarklinRequest), (char *)command_received, sizeof(int));
         }
         else
         {
-            IO_NS::Print(MOVE_CURSOR CLEAR_TO_END_LINE "Invalid Command", CMD_STATUS_LOCATION, 1);
+            IO_NS::PrintTerminal("Invalid Command\r\n");
             // invalid command
             // UNIMPLEMENTED
         }
@@ -184,10 +185,11 @@ namespace UI_CMD_NS
     void CommandPrompt::getInput()
     {
 
-        // IO_NS::PrintTerminal("GETTING INPUT\r\n");
+        IO_NS::PrintTerminal("GETTING INPUT\r\n");
         // const int CONSOLE = 1;
 
-        char c = IO_SERVER::Getc(IO_SERVER_TID);
+        char c = (char)(IO_SERVER::Getc(IO_SERVER_TID));
+        IO_NS::PrintTerminal("GOT INPUT: %c\r\n", c);
 
         IO_NS::Print(MOVE_CURSOR, CMD_LOCATION, BUFFER_INDEX + CMD_PREFIX_LENGTH);
         switch (c)
@@ -231,7 +233,6 @@ namespace UI_CMD_NS
     {
         CommandPrompt commandPrompt;
 
-        commandPrompt.InitDisplay();
         while (true)
         {
             commandPrompt.getInput();

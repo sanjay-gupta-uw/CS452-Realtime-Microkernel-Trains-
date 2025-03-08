@@ -16,6 +16,7 @@
 // instantiate the template class
 #include "kern/kernel.h"
 #include "kern/memory.h"
+#include "kern/interrupts.h"
 
 // extern void _reboot(void); // Declare the reboot function implemented in assembly
 
@@ -61,10 +62,6 @@ extern "C" void _start(); // expose this to LLDB
 
 extern "C" int kmain()
 {
-    if (false)
-    {
-        _start();
-    }
     call_global_constructors();
     // Set up GPIO pins for both console and Marklin UARTs
     gpio_init();
@@ -80,24 +77,30 @@ extern "C" int kmain()
 #if defined(MMU)
     setup_mmu();
 #endif
+    uart_printf(CONSOLE, RESET_FORMATTING CLEAR_SCREEN COLUMN_132 SCROLL_REGION MOVE_CURSOR SMOOTH_SCROLL "Terminal Output Kernel:\r\n" SAVE_CURSOR, SCROLL_ROW_START, SCROLL_ROW_END, SCROLL_ROW_START, 1);
 
-    Context kernel_context;                    // Initialize kernel context
-    funcvoid_t bootstrap_task = FirstUserTask; // bootstrap task with first user task in user/usertask.h
+    Context kernel_context;               // Initialize kernel context
+    funcvoid_t bootstrap_task = IdleTask; // bootstrap task with first user task in user/usertask.h
 
     Kernel kernel(bootstrap_task); // bootstrap
     TaskDescriptor *current_task = nullptr;
 
     uint32_t start_time, end_time = 0;
 
-    UART_IMSC_ENABLE(MARKLIN, (CTS_INTERRUPT_MASK)); // enable CTS interrupt
+    // UART_IMSC_ENABLE(MARKLIN, (CTS_INTERRUPT_MASK)); // enable CTS interrupt
+    // kassert(false && "PANIC: Kernel Struct Created");
 
     // scheduler pops the highest priority task into td
-    while ((current_task = kernel.Scheduler()) || kernel.areTasksWaiting())
+    while (current_task = kernel.Scheduler())
     {
+        // kassert(false && "PANIC: Kernel loop");
+        // uart_printf(CONSOLE, RESTORE_CURSOR "ACTIVE TASK: tid{%d} priority{%d}\r\n" SAVE_CURSOR, current_task->getTid(), current_task->getPriority());
         // IO_NS::PrintTerminal("ACTIVE TASK: tid{%d} priority{%d}\r\n", current_task->getTid(), current_task->getPriority());
-        clock.Display();
         start_time = clock.Time();
+
+        enable_irq(); // enable interrupts
         int esr_el1 = kernel.DispatchTask(&kernel_context, current_task);
+        disable_irq(); // disable interrupts
         end_time = clock.Time();
 
         // Get the time the task was running for (including transfer times)
@@ -114,8 +117,8 @@ extern "C" int kmain()
         kernel.Handler(N, (uint32_t)((TOTAL_IDLE_TIME * 100) / TOTAL_TIME));
         // IO_NS::Print(MOVE_CURSOR CLEAR_TO_END_LINE, IDLE_LOCATION, 1);
         // IO_NS::Print(MOVE_CURSOR COLOR_CYAN "IDLE: %d%%", IDLE_LOCATION, 1, (uint32_t)((TOTAL_IDLE_TIME * 100) / TOTAL_TIME));
-        }
+    }
 
-    kassert(false && "Kernel loop");
+    kassert(false && "Kernel loop exited unexpectedly");
     return 0;
 }

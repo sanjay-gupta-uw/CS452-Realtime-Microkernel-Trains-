@@ -36,13 +36,6 @@ namespace IO_NS
 
 #define RET_BUF_SIZE 256
 
-    class IO
-    {
-    public:
-        IO();
-        ~IO();
-    };
-
     extern "C" void Print(const char *fmt, ...);
     extern "C" void PrintTerminal(const char *fmt, ...);
 

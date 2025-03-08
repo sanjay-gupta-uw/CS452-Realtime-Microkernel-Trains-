@@ -54,10 +54,11 @@ Kernel::Kernel()
 Kernel::Kernel(void (*function)()) : Kernel()
 {
     // initilize default task with medium priority
-    int tid = Create(PRIORITY::P2, function);
+    int tid = Create(PRIORITY::IDLE, function);
 
     // initialize INTERRUPTS
     InitGIC();
+    disable_irq(); // disable interrupts
     // disable irqs to uart
     // set first 11 bits to 1
     UART_IMSC_DISABLE(CONSOLE, 0x7FF);
@@ -493,12 +494,16 @@ void Kernel::IRQ_Handler()
             UART_IMSC_DISABLE(CONSOLE, TX_INTERRUPT_MASK);
             UART_CLEAR_INTERRUPT(CONSOLE, TX_INTERRUPT_MASK);
 
+            uart_printf(CONSOLE, RESTORE_CURSOR "UART_TX INTERRUPT TRIGGERED\r\n" SAVE_CURSOR);
             while (event_queues[UART_TX].Pop(&task) != -1)
             {
+                uart_printf(CONSOLE, RESTORE_CURSOR "UART_TX INTERRUPT TRIGGERED -- waking up task {%d}\r\n" SAVE_CURSOR, task->tid);
                 task->setState(READY);
                 task->SetRetval(0);
                 ready_queue.Push(task->tid, task->priority);
             }
+            uart_printf(CONSOLE, RESTORE_CURSOR "UART_TX INTERRUPT TRIGGERED -- NO MORE TASKS WAITING\r\n" SAVE_CURSOR);
+            // kassert(false && "PANIC: UART_TX INTERRUPT TRIGGERED");
         }
 
         // read MARKLIN UART
@@ -556,6 +561,8 @@ void Kernel::IRQ_Handler()
     default:
         break;
     }
+    // uart_printf(CONSOLE, RESTORE_CURSOR "IRQ HANDLER: %d\r\n" SAVE_CURSOR, irq_id);
+    // kassert(false && "PANIC: INTERRUPT TRIGGERED");
     RepushActiveTask();
 
     D_REG(GICC_BASE, GICC_EOIR) = irq_id; // must write the interrupt ID to GICC_EOIR to signal end of interrupt

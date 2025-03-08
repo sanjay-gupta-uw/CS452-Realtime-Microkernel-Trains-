@@ -3,11 +3,12 @@
 namespace Sensors_NS
 {
 
-    const char SensorManager::BANK_LABELS[NUM_BANKS] = {'A', 'B', 'C', 'D', 'E'};
+    static const char BANK_LABELS[NUM_BANKS] = {'A', 'B', 'C', 'D', 'E'};
 
     SensorManager::SensorManager()
         : UPDATE_DISPLAY(false), last_triggered_bank('\0'), last_triggered_id(0)
     {
+        IO_NS::PrintTerminal("SensorManager::SensorManager: Initializing SensorManager\r\n");
         MARKLIN_IO_SERVER_TID = -1;
         last_triggered_bank = '\0';
         last_triggered_id = 0;
@@ -23,6 +24,7 @@ namespace Sensors_NS
             }
         }
         IO_NS::PrintTerminal("Sending Initial Reset to Marklin\r\n");
+        // uassert(2 == 3 && "SensorManager::SensorManager: Sending Initial Reset to Marklin");
         uart_putc(MARKLIN, RESET_MODE_ON); // this will allow the marklin to send cts/tx interrupts
     }
 
@@ -36,7 +38,7 @@ namespace Sensors_NS
         // int ret = MARKLIN_IO_SERVER::Putc(MARKLIN_IO_SERVER_TID, MARKLIN, reset_on ? RESET_MODE_ON : RESET_MODE_OFF);
         MarklinRequest request = {COMMAND::READ_SENSOR, -1, -1, reset_on ? RESET_MODE_ON : RESET_MODE_OFF};
         int ret = MARKLIN_IO_SERVER::SendCmd(MARKLIN_IO_SERVER_TID, &request);
-        uassert(ret > 0 && "SensorManager::Reset: command sent to MarklinIOServer failed");
+        uassert(ret >= 0 && "SensorManager::Reset: command sent to MarklinIOServer failed");
     }
 
     void SensorManager::setMarklinIOtid(int tid)
@@ -51,7 +53,7 @@ namespace Sensors_NS
         // send command to marklin
         MarklinRequest request = {COMMAND::READ_SENSOR, -1, -1, READ_ONE_SENSOR_BASE + num_bank};
         int ret = MARKLIN_IO_SERVER::SendCmd(MARKLIN_IO_SERVER_TID, &request);
-        uassert(ret > 0 && "SensorManager::ReadBank: command sent to MarklinIOServer failed");
+        uassert(ret >= 0 && "SensorManager::ReadBank: command sent to MarklinIOServer failed");
 
         // get response from marklin -- 2 bytes per bank
         char bytes[2];
@@ -70,7 +72,7 @@ namespace Sensors_NS
 
         MarklinRequest request = {COMMAND::READ_SENSOR, -1, -1, READ_ALL_SENSOR_BASE + num_banks};
         int ret = MARKLIN_IO_SERVER::SendCmd(MARKLIN_IO_SERVER_TID, &request);
-        uassert(ret > 0 && "SensorManager::ReadAll: command sent to MarklinIOServer failed");
+        uassert(ret >= 0 && "SensorManager::ReadAll: command sent to MarklinIOServer failed");
 
         for (int bank = 0; bank < num_banks; ++bank)
         {
@@ -113,35 +115,29 @@ namespace Sensors_NS
         }
     }
 
-    // void SensorManager::InitDisplay(IO *io, int location)
-    // {
-    //     io->move_cursor(location, 1);
-    //     io->color_yellow();
-    //     io->Print("Recent Sensor Changes (Last 10):\r\n");
-    //     io->Print("--------------------------------\r\n");
-    // }
+    void SensorManager::Display()
+    {
+        if (!UPDATE_DISPLAY)
+            return;
 
-    // void SensorManager::Display(IO *io, int location, RingBuffer<int> *recent_sensors)
-    // {
-    //     if (!UPDATE_DISPLAY || recent_sensors->IsEmpty())
-    //         return;
+        for (int i = 0; i < MAX_RECENT_SENSORS; i++)
+        {
+            if (recent_sensors.IsEmpty())
+            {
+                return;
+            }
+            int idx;
+            recent_sensors.Pop(&idx);
+            int bank = idx / SENSORS_PER_BANK;
+            int sensor = idx % SENSORS_PER_BANK;
+            char bank_label = sensor_data[idx].bank;
 
-    //     int total_items = recent_sensors->Size() < MAX_RECENT_SENSORS ? recent_sensors->Size() : MAX_RECENT_SENSORS;
+            IO_NS::Print(COLOR_YELLOW MOVE_CURSOR "%c%d %s",
+                         SENSOR_LOCATION + 3 + i, BOX_WIDTH + 5,
+                         bank_label, sensor + 1,
+                         sensor_data[idx].status == SEN_ON ? "ON" : "OFF");
+        }
 
-    //     for (int i = 0; i < MAX_RECENT_SENSORS; i++)
-    //     {
-    //         io->move_cursor(location + 2 + i, 1);
-    //         io->clear_to_end_line();
-    //         io->color_yellow();
-
-    //         if (i < total_items)
-    //         {
-    //             int logical_idx = recent_sensors->Size() - 1 - i;
-    //             int sensor_idx = recent_sensors->Get(logical_idx, &sensor_idx);
-    //             io->Print("%2d. %c%02d\r\n", i + 1, sensor_data[sensor_idx].bank, sensor_data[sensor_idx].id);
-    //         }
-    //     }
-
-    //     UPDATE_DISPLAY = false;
-    // }
+        UPDATE_DISPLAY = false;
+    }
 } // namespace Sensors_NS

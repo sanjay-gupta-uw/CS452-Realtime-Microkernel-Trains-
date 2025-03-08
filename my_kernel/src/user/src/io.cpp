@@ -14,19 +14,6 @@ namespace IO_NS
 #else
 #define IRQ_ENABLED 0
 #endif
-
-    static int IO_SERVER_TID = -1;
-
-    IO::IO()
-    {
-        IO_SERVER_TID = WHOIS("IOServer");
-        uassert(IO_SERVER_TID > 0 && "IO_NS::Error finding IO Server");
-    }
-
-    IO::~IO()
-    {
-    }
-
     static void fill_buffer_char(char *buffer, char ch, int *len)
     {
         buffer[(*len)++] = ch;
@@ -45,6 +32,7 @@ namespace IO_NS
     // DISABLED PRINT FOR TESTING
     extern "C" void Print(const char *fmt, ...)
     {
+        int IO_SERVER_TID = WHOIS("IOServer");
         if (IO_SERVER_TID < 0)
         {
             return;
@@ -122,10 +110,13 @@ namespace IO_NS
 
     extern "C" void PrintTerminal(const char *fmt, ...)
     {
-        if (IO_SERVER_TID < 0)
-        {
-            return;
-        }
+        // uart_printf(CONSOLE, RESTORE_CURSOR "PRINTTERMINAL CALLED\r\n" SAVE_CURSOR);
+        // int IO_SERVER_TID = WHOIS("IOServer");
+        // uart_printf(CONSOLE, RESTORE_CURSOR "PRINTTERMINAL CALLED, IO_SERVER_TID: %d\r\n" SAVE_CURSOR, IO_SERVER_TID);
+        // if (IO_SERVER_TID < 0)
+        // {
+        //     return;
+        // }
 
         char ret_buffer[RET_BUF_SIZE];
         va_list va;
@@ -194,11 +185,14 @@ namespace IO_NS
         if (len > 0)
         {
 #if IRQ_ENABLED == 1
-            IO_SERVER::Puts(IO_SERVER_TID, (unsigned char *)ret_buffer);
+            int retval = IO_SERVER::Puts(-1, (unsigned char *)ret_buffer);
+            uassert(retval != -1 && "IO_SERVER::PrintTerminal: PANIC, Puts failed");
+            // uart_printf(CONSOLE, RESTORE_CURSOR "PRINTTERMINAL -- string sent successfully -- returning\r\n" SAVE_CURSOR);
 #else
             uart_puts(CONSOLE, ret_buffer);
 #endif
         }
+        return;
     }
 
 }

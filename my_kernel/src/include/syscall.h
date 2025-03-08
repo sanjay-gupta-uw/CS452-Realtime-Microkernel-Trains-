@@ -2,6 +2,7 @@
 #define _syscall_h_
 #include <cstdint>
 
+// extern "C" int CREATE(int priority, void (*function)());
 extern "C" int CREATE(int priority, void (*function)());
 extern "C" int MYTID();
 extern "C" int MYPARENTTID();

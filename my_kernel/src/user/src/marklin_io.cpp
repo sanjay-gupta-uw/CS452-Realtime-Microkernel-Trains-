@@ -46,21 +46,22 @@ namespace MARKLIN_IO_SERVER
     void MarklinIOServer::spawnNotifiers()
     {
         // ensure this runs before tx_notifier
-        rx_notifier_tid = CREATE(PRIORITY::P0, notifier_rx);
+        rx_notifier_tid = CREATE(PRIORITY::P1, notifier_rx);
         uassert(rx_notifier_tid >= 0 && "Error starting RX Notifier");
 
-        tx_notifier_tid = CREATE(PRIORITY::P0, notifier_tx);
+        tx_notifier_tid = CREATE(PRIORITY::P1, notifier_tx);
         uassert(tx_notifier_tid >= 0 && "Error starting TX Notifier");
 
-        cts_notifier_high_tid = CREATE(PRIORITY::P0, notifier_cts_high);
+        cts_notifier_high_tid = CREATE(PRIORITY::P1, notifier_cts_high);
         uassert(cts_notifier_high_tid >= 0 && "Error starting CTS Notifier");
 
-        cts_notifier_low_tid = CREATE(PRIORITY::P0, notifier_cts_low);
+        cts_notifier_low_tid = CREATE(PRIORITY::P1, notifier_cts_low);
         uassert(cts_notifier_low_tid >= 0 && "Error starting CTS Notifier");
     }
 
     void notifier_rx()
     {
+        REGISTERAS("Marklin_RXNotifier");
         // (CONSOLE, "M-RX Notifier started\r\n");
         while (true)
         {
@@ -78,6 +79,7 @@ namespace MARKLIN_IO_SERVER
     }
     void notifier_tx()
     {
+        REGISTERAS("Marklin_TXNotifier");
         // (CONSOLE, "M-TX Notifier started\r\n");
         while (true)
         {
@@ -95,6 +97,7 @@ namespace MARKLIN_IO_SERVER
     }
     void notifier_cts_high()
     {
+        REGISTERAS("Marklin_CTS_HIGH_Notifier");
         // (CONSOLE, "M-CTS-HIGH Notifier started\r\n");
         while (true)
         {
@@ -112,6 +115,7 @@ namespace MARKLIN_IO_SERVER
     }
     void notifier_cts_low()
     {
+        REGISTERAS("Marklin_CTS_LOW_Notifier");
         // (CONSOLE, "M-CTS-LOW Notifier started\r\n");
         while (true)
         {
@@ -137,6 +141,7 @@ namespace MARKLIN_IO_SERVER
             // bool isReady = tx_state.isReady();
             // IO_NS::Print(COLOR_MAGENTA MOVE_CURSOR CLEAR_TO_END_LINE "MarklinIO_server::Ready to Transmit: {%s}\r\n", TRANSMIT_LOCATION + 2, 1, isReady ? "YES" : "NO");
             int retval = RECEIVE(&sender_tid, (char *)&req, sizeof(req));
+            // IO_NS::PrintTerminal("MarklinIO_server::run: Received request from tid{%d} of size{%d}\r\n", sender_tid, retval);
 
             IO_REPLY reply;
             reply.type = REPLY_TYPE::FAILURE;
@@ -216,7 +221,7 @@ namespace MARKLIN_IO_SERVER
             break;
             case IO_REQUEST_TYPE::SEND_CMD:
             {
-                // IO_NS::Print(MOVE_CURSOR CLEAR_TO_END_LINE "MarklinIO_server::SEND_CMD\r\n", CMD_LOCATION + 2, 1);
+                // IO_NS::PrintTerminal("MarklinIO_server::SEND_CMD\r\n");
                 MarklinRequest m_req = *(req.request);
                 if (m_req.type != COMMAND::SET_SWITCH && last_switch_addr != -1)
                 {
@@ -232,6 +237,7 @@ namespace MARKLIN_IO_SERVER
                 {
                 case COMMAND::READ_SENSOR:
                 {
+                    IO_NS::PrintTerminal("MarklinIO_server::SEND_CMD: Reading sensor %d\r\n", m_req.data);
                     cmd_buffer.Push(COMMAND::READ_SENSOR);
                     transmit_buffer.Push((unsigned char)m_req.data);
                     reply.type = REPLY_TYPE::SUCCESS;
@@ -246,7 +252,7 @@ namespace MARKLIN_IO_SERVER
                     transmit_buffer.Push(state);
                     transmit_buffer.Push(switch_addr);
 
-                    IO_NS::Print(COLOR_MAGENTA MOVE_CURSOR CLEAR_TO_END_LINE "MarklinIO_server::SEND_CMD: Setting switch %d to state %c\r\n", CMD_STATUS_LOCATION, 1, switch_addr, state);
+                    // IO_NS::Print(COLOR_MAGENTA MOVE_CURSOR CLEAR_TO_END_LINE "MarklinIO_server::SEND_CMD: Setting switch %d to state %c\r\n", CMD_STATUS_LOCATION, 1, switch_addr, state);
                     last_switch_addr = switch_addr;
 
                     reply.type = REPLY_TYPE::SUCCESS;
@@ -271,7 +277,7 @@ namespace MARKLIN_IO_SERVER
 
                     transmit_buffer.Push(REVERSE_CMD); // send the speed back
                     transmit_buffer.Push(train_addr);  // send the train address back
-                    IO_NS::Print(COLOR_MAGENTA MOVE_CURSOR CLEAR_TO_END_LINE "MarklinIO_server::SEND_CMD: Reversing train %d\r\n", CMD_STATUS_LOCATION, 1, train_addr);
+                    // IO_NS::Print(COLOR_MAGENTA MOVE_CURSOR CLEAR_TO_END_LINE "MarklinIO_server::SEND_CMD: Reversing train %d\r\n", CMD_STATUS_LOCATION, 1, train_addr);
                     reply.type = REPLY_TYPE::SUCCESS;
                 }
                 break;
@@ -327,7 +333,7 @@ namespace MARKLIN_IO_SERVER
         transmit_buffer.Pop(&ch);
         // (CONSOLE, "MarklinIO_server::write_to_uart: {%d} transmitting: %c\r\n", ch);
         uart_putc(MARKLIN, ch);
-        IO_NS::Print(COLOR_MAGENTA MOVE_CURSOR CLEAR_TO_END_LINE "MarklinIO_server::write_to_uart: {%d} successfully transmitted.\r\n", TRANSMIT_LOCATION + bytes_transmitted, 1, ch);
+        // IO_NS::Print(COLOR_MAGENTA MOVE_CURSOR CLEAR_TO_END_LINE "MarklinIO_server::write_to_uart: {%d} successfully transmitted.\r\n", TRANSMIT_LOCATION + bytes_transmitted, 1, ch);
         // (CONSOLE, "MarklinIO_server::write_to_uart: {%d} successfully transmitted.\r\n", ch);
         bytes_transmitted++;
     }
@@ -373,7 +379,7 @@ namespace MARKLIN_IO_SERVER
         IO_REPLY reply;
         SEND(IO_SERVER_TID, (char *)&req, sizeof(req), (char *)&reply, sizeof(reply));
 
-        return reply.type == REPLY_TYPE::SUCCESS ? 0 : -1;
+        return reply.type == REPLY_TYPE::FAILURE ? -1 : 0;
     }
 
     void startMarklinIOServer()

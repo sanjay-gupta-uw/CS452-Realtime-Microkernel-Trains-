@@ -39,8 +39,7 @@ namespace Sensors_NS
         void ReadBank(int num_bank);
         void ReadAll(int num_banks);
         void Reset(bool reset_on);
-        // void InitDisplay(IO *io, int location);
-        // void Display(IO *io, int location, RingBuffer<int> *recent_sensors);
+        void Display();
 
     private:
         Queue<int, MAX_RECENT_SENSORS> recent_sensors;
@@ -52,7 +51,6 @@ namespace Sensors_NS
         };
 
         Sensor sensor_data[NUM_BANKS * SENSORS_PER_BANK];
-        static const char BANK_LABELS[NUM_BANKS];
         bool UPDATE_DISPLAY;
         char last_triggered_bank;
         uint8_t last_triggered_id;

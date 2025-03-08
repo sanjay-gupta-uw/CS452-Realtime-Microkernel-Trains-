@@ -2,7 +2,7 @@
 // #include "../clock.h"
 // #include "../include/io.h"
 // #include "../include/name_server.h"
-// #include "../include/marklin_io.h"
+#include "../include/marklin_io.h"
 #include "../include/clock_server.h"
 #include "../../shared_constants.h"
 #include "../include/uassert.h"
@@ -10,6 +10,18 @@
 namespace Switch_NS
 {
     static int MARKLIN_IO_SERVER_TID;
+
+    static void PrintSwitchStatus(int switch_addr, SWITCH_STATE state)
+    {
+        if (state == SWITCH_STATE::STRAIGHT)
+        {
+            IO_NS::Print(MOVE_CURSOR COLOR_GREEN "S", SWITCH_LOCATION + 3 + switch_addr, SWITCH_STATUS_COL);
+        }
+        else
+        {
+            IO_NS::Print(MOVE_CURSOR COLOR_RED "C", SWITCH_LOCATION + 3 + switch_addr, SWITCH_STATUS_COL);
+        }
+    }
     // ********* Switch Class *********
     Switch::Switch()
     {
@@ -29,17 +41,17 @@ namespace Switch_NS
         request.type = COMMAND::SET_SWITCH;
         request.id = address;
         request.data = (ALIGNMENT == SWITCH_STATE::STRAIGHT) ? STRAIGHT_CMD : CURVED_CMD;
-        // update display
 
         bool is_straight = (ALIGNMENT == SWITCH_STATE::STRAIGHT);
         if (ALIGNMENT == SWITCH_STATE::STRAIGHT)
         {
-            IO_NS::PrintTerminal(COLOR_GREEN "Switch-%d set to %c\r\n", address, 'S');
+            // IO_NS::PrintTerminal(COLOR_GREEN "Setting Switch-%d to %c\r\n", address, 'S');
         }
         else
         {
-            IO_NS::PrintTerminal(COLOR_RED "Switch-%d set to %c\r\n", address, 'C');
+            // IO_NS::PrintTerminal(COLOR_RED "Setting Switch-%d to %c\r\n", address, 'C');
         }
+        MARKLIN_IO_SERVER::SendCmd(MARKLIN_IO_SERVER_TID, &request);
     }
 
     // ********* Switches Class *********
@@ -62,6 +74,7 @@ namespace Switch_NS
             switches[i] = Switch();
             switches[i].address = SWITCH_ADDR[i];
             switches[i].SetSwitch(SWITCH_STATE::CURVED);
+            PrintSwitchStatus(i, SWITCH_STATE::CURVED);
         }
     }
 
@@ -72,9 +85,11 @@ namespace Switch_NS
             if (switches[i].address == switch_addr)
             {
                 switches[i].SetSwitch(state);
+                PrintSwitchStatus(i, state);
                 return true;
             }
         }
+        IO_NS::PrintTerminal("Switches::SetSwitch: Switch-%d not found\r\n", switch_addr);
 
         return false;
     }

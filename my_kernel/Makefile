@@ -12,7 +12,7 @@ OBJDUMP:=$(XBINDIR)/$(TRIPLE)-objdump
 MMU?=1
 OPT?=1
 PERF?=0
-IRQEn?=0
+IRQEn?=1
 
 # COMPILE OPTIONS
 WARNINGS=-Wall -Wextra -Wpedantic
@@ -30,7 +30,9 @@ endif
 CXXFLAGS:=-g -pipe -static -mstrict-align -ffreestanding -fno-exceptions -fno-unwind-tables \
 			-mgeneral-regs-only -mcpu=$(ARCH) -march=armv8-a $(MMUFLAGS) $(WARNINGS) $(OPTFLAGS)  \
 			-DOPT=$(OPT)   \
-			-DPERF=$(PERF) -std=c++17 
+			-DPERF=$(PERF) \
+			-DIRQEn=$(IRQEn) \
+			-std=c++17 
 
 # Linker options
 LDFLAGS:=-Wl,-nmagic -Wl,-Tlinker.ld -Wl,--no-warn-rwx-segments -nostartfiles -nodefaultlibs -nostdlib -lc

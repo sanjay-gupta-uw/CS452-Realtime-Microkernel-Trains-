@@ -138,6 +138,7 @@ void ClockServer()
 // THIS SHOULD BE THE ONLY THREAD THAT CALLS THE CLOCK SERVER WITH TICK
 void ClockNotifier()
 {
+    REGISTERAS("ClockNotifier");
     int clockServerTid = WHOIS("ClockServer");
     while (true)
     {

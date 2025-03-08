@@ -4,5 +4,4 @@
 void NameServer();
 int REGISTERAS(const char *name);
 int WHOIS(const char *name);
-
 #endif // _NAME_SERVER_H_

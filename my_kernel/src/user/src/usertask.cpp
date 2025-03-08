@@ -18,65 +18,11 @@
 #define IRQ_ENABLED 0
 #endif
 
-void FirstUserTask()
-{
-
-    int nameServerTid = CREATE(PRIORITY::P1, NameServer); // Start the Name Server
-    uart_printf(CONSOLE, "Name Server TID: %d\r\n", nameServerTid);
-
-    int ioServerTid = CREATE(PRIORITY::P1, IO_SERVER::startIOServer); // Start the IO Server
-    uart_printf(CONSOLE, "IO Server TID: %d\r\n", ioServerTid);
-
-    IO_NS::IO io; // initialize IO object for printing
-    IO_NS::Print(CLEAR_SCREEN COLUMN_132 SCROLL_REGION MOVE_CURSOR SMOOTH_SCROLL "Terminal Output:\r\n" SAVE_CURSOR, SCROLL_ROW_START, SCROLL_ROW_END, SCROLL_ROW_START, 1);
-
-    int idleTid = CREATE(PRIORITY::IDLE, IdleTask);
-    uassert(idleTid >= 0 && "Error starting Idle Task");
-
-    int marklinIoServerTid = CREATE(PRIORITY::P1, MARKLIN_IO_SERVER::startMarklinIOServer); // Start the Marklin IO Server
-    uassert(marklinIoServerTid >= 0 && "Error starting Marklin IO Server");
-
-#if IRQ_ENABLED == 1
-    int clockServerTid = CREATE(PRIORITY::P1, ClockServer); // Start the Clock Server
-    uassert(clockServerTid >= 0 && "Error starting Clock Server");
-#endif
-
-    // create sample clients
-    int marklinTID = CREATE(PRIORITY::P3, MarklinTask);
-    uassert(marklinTID >= 0 && "Error starting Marklin Task");
-
-    int clientTid = CREATE(PRIORITY::P4, ClientTask);
-    uassert(clientTid >= 0 && "Error starting Client Task");
-
-    EXIT();
-}
-
-// CONSOLE CLIENT
-void ClientTask()
-{
-    int myTid = MYTID();
-
-    int ui = CREATE(PRIORITY::P4, UI_NS::start_ui);
-    uassert(ui >= 0 && "Error starting UI Task");
-
-    int cmd_prompt = CREATE(PRIORITY::P3, UI_CMD_NS::start_command_prompt);
-    uassert(cmd_prompt >= 0 && "Error starting Command Prompt Task");
-
-    EXIT();
-}
-
-void MarklinTask()
-{
-
-    // start marklin task
-    int marklinControllerTid = CREATE(PRIORITY::P2, MARKLIN_NS::start_marklin_controller);
-    uassert(marklinControllerTid >= 0 && "Error starting Marklin Controller Task");
-
-    EXIT();
-}
-
 void IdleTask()
 {
+    int FUT = CREATE(PRIORITY::P6, FirstUserTask);
+    uassert(FUT > 0 && "Error starting First User Task");
+    // REGISTERAS("IdleTask");
     // extern Clock clock;
     for (;;)
     {
@@ -84,5 +30,50 @@ void IdleTask()
         // clock.Update();
         asm volatile("wfi");
     }
+    EXIT();
+}
+
+// tid 2
+void FirstUserTask()
+{
+    // tid 3
+    int nameServerTid = CREATE(PRIORITY::P0, NameServer); // Start the Name Server
+    uassert(nameServerTid > 0 && "Error starting Name Server");
+
+    // tid 4
+    int ioServerTid = CREATE(PRIORITY::P0, IO_SERVER::startIOServer); // Start the IO Server
+    uassert(ioServerTid > 0 && "Error starting IO Server");
+
+    IO_NS::PrintTerminal("Starting User Tasks!\r\n");
+    IO_NS::PrintTerminal("NEXT LINE!\r\n");
+    // uassert(false && "FORCED PANIC -- FUT -- REMOVE THIS LINE");
+
+    // uassert(false && "FORCED PANIC -- FUT -- REMOVE THIS LINE");
+    // // uart_printf(CONSOLE, RESTORE_CURSOR "FUT RUNNING AGAIN -- issuing second print\r\n" SAVE_CURSOR);
+    // IO_NS::PrintTerminal("SHOULD BE ON NEXT LINE!\r\n");
+    // uassert(false && "FORCED PANIC -- FUT RUNNING AGAIN! -- REMOVE THIS LINE");
+
+    /*
+    int marklinIoServerTid = CREATE(PRIORITY::P0, MARKLIN_IO_SERVER::startMarklinIOServer); // Start the Marklin IO Server
+    uassert(marklinIoServerTid > 0 && "Error starting Marklin IO Server");
+
+    #if IRQ_ENABLED == 1
+    int clockServerTid = CREATE(PRIORITY::P0, ClockServer); // Start the Clock Server
+    uassert(clockServerTid > 0 && "Error starting Clock Server");
+    #endif
+    */
+
+    // create sample clients
+    int ui = CREATE(PRIORITY::P3, UI_NS::start_ui); // this initializes the sensors so must be after the marklin io server
+    uassert(ui > 0 && "Error starting UI Task");
+
+    /*
+    int marklinControllerTid = CREATE(PRIORITY::P3, MARKLIN_NS::start_marklin_controller); // must be called after UI since ui sets sensors
+    uassert(marklinControllerTid > 0 && "Error starting Marklin Controller Task");
+
+    int cmd_prompt = CREATE(PRIORITY::P3, UI_CMD_NS::start_command_prompt);
+    uassert(cmd_prompt >= 0 && "Error starting Command Prompt Task");
+    */
+
     EXIT();
 }
