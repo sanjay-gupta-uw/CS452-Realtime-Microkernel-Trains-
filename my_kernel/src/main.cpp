@@ -18,6 +18,7 @@
 #include "kern/memory.h"
 #include "kern/interrupts.h"
 
+#include "register.h"
 // extern void _reboot(void); // Declare the reboot function implemented in assembly
 
 #if PERF == 1
@@ -38,6 +39,15 @@ Clock clock;
 // Switches switches;
 // Trains trains;
 // CommandPrompt cmd_prompt;
+
+#define MMIO_BASE 0xFE000000
+
+#define UART_REG(line, offset) (*(volatile uint32_t *)(line_uarts[line] + offset))
+#define UART_FR 0x18
+
+// masks for flag register
+#define UART_FR_TXFE (1 << 7)
+#define UART_FR_CTS (1 << 0)
 
 void call_global_constructors()
 {
@@ -77,7 +87,6 @@ extern "C" int kmain()
 #if defined(MMU)
     setup_mmu();
 #endif
-    uart_printf(CONSOLE, RESET_FORMATTING CLEAR_SCREEN COLUMN_132 SCROLL_REGION MOVE_CURSOR SMOOTH_SCROLL "Terminal Output Kernel:\r\n" SAVE_CURSOR, SCROLL_ROW_START, SCROLL_ROW_END, SCROLL_ROW_START, 1);
 
     Context kernel_context;               // Initialize kernel context
     funcvoid_t bootstrap_task = IdleTask; // bootstrap task with first user task in user/usertask.h
@@ -87,11 +96,18 @@ extern "C" int kmain()
 
     uint32_t start_time, end_time = 0;
 
+    // read TX status
+    int cts_status = CTS_STATUS(CONSOLE);
+    int tx_status = TX_STATUS(CONSOLE);
+    uart_printf(CONSOLE, RESET_FORMATTING CLEAR_SCREEN COLUMN_132 SCROLL_REGION MOVE_CURSOR SMOOTH_SCROLL "Terminal Output Kernel:\r\n" SAVE_CURSOR, SCROLL_ROW_START, SCROLL_ROW_END, SCROLL_ROW_START, 1);
+    uart_printf(CONSOLE, RESTORE_CURSOR "CTS STATUS: %x\r\n" SAVE_CURSOR, cts_status);
+    uart_printf(CONSOLE, RESTORE_CURSOR "TX STATUS: %x\r\n" SAVE_CURSOR, tx_status);
+
+    UART_IMSC_ENABLE(CONSOLE, (CTS_INTERRUPT_MASK)); // enable CTS interrupt
     // UART_IMSC_ENABLE(MARKLIN, (CTS_INTERRUPT_MASK)); // enable CTS interrupt
     // kassert(false && "PANIC: Kernel Struct Created");
-
     // scheduler pops the highest priority task into td
-    while (current_task = kernel.Scheduler())
+    while ((current_task = kernel.Scheduler()) != nullptr)
     {
         // kassert(false && "PANIC: Kernel loop");
         // uart_printf(CONSOLE, RESTORE_CURSOR "ACTIVE TASK: tid{%d} priority{%d}\r\n" SAVE_CURSOR, current_task->getTid(), current_task->getPriority());

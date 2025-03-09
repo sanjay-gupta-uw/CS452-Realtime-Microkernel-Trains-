@@ -45,7 +45,11 @@ void FirstUserTask()
     uassert(ioServerTid > 0 && "Error starting IO Server");
 
     IO_NS::PrintTerminal("Starting User Tasks!\r\n");
-    IO_NS::PrintTerminal("NEXT LINE!\r\n");
+    IO_NS::PrintTerminal("This should be on the next line!\r\n");
+
+    // IO_NS::PrintTerminal("Starting User Tasks!\r\n");
+    // IO_NS::PrintTerminal("NEXT LINE!\r\n");
+
     // uassert(false && "FORCED PANIC -- FUT -- REMOVE THIS LINE");
 
     // uassert(false && "FORCED PANIC -- FUT -- REMOVE THIS LINE");
@@ -64,8 +68,11 @@ void FirstUserTask()
     */
 
     // create sample clients
-    int ui = CREATE(PRIORITY::P3, UI_NS::start_ui); // this initializes the sensors so must be after the marklin io server
-    uassert(ui > 0 && "Error starting UI Task");
+    // int ui = CREATE(PRIORITY::P3, UI_NS::start_ui); // this initializes the sensors so must be after the marklin io server
+    // IO_NS::PrintTerminal("UI Task Created!\r\n");
+    // // uassert(false && "FORCED PANIC -- FUT -- REMOVE THIS LINE");
+    // uassert(ui > 0 && "Error starting UI Task");
+    // uassert(false && "FORCED PANIC -- FUT about to exit -- REMOVE THIS LINE");
 
     /*
     int marklinControllerTid = CREATE(PRIORITY::P3, MARKLIN_NS::start_marklin_controller); // must be called after UI since ui sets sensors

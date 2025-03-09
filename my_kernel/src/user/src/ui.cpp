@@ -1,10 +1,10 @@
-#include "../../clock.h"
+// #include "../../clock.h"
 #include "../../include/syscall.h"
 #include "../marklin/switch.h"
 #include "../marklin/sensor.h"
 #include "../include/ui.h"
 #include "../include/io.h"
-
+#include "../include/uassert.h"
 namespace UI_NS
 {
 
@@ -42,10 +42,13 @@ namespace UI_NS
 
     void start_ui()
     {
-        REGISTERAS("UI_TASK");
-        Clock clock;
+        uassert(false && "FORCED PANIC -- UI1 -- REMOVE THIS LINE");
+        IO_NS::PrintTerminal("UI TASK STARTED!\r\n");
+        // REGISTERAS("UI_TASK");
+        // Clock clock;
 
         // sensors.setMarklinIOtid(MARKLIN_IO_SERVER_TID);
+        uassert(false && "FORCED PANIC -- UI2 -- REMOVE THIS LINE");
 
         for (int i = 1; i <= NUM_COLS; i++)
         {
@@ -54,7 +57,7 @@ namespace UI_NS
 
         init_switch_display();
         IO_NS::Print(MOVE_CURSOR "IDLE: %d%%", IDLE_LOCATION, 1, 1);
-        clock.Display();
+        // clock.Display();
         init_sensor_display();
 
         EXIT();

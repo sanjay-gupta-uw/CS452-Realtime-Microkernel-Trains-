@@ -1,3 +1,4 @@
+#include "../../register.h"
 #include "../include/io_server.h"
 #include "../include/io.h"
 
@@ -73,9 +74,12 @@ namespace IO_SERVER
         tx_notifier_tid = CREATE(PRIORITY::P1, notifier_tx);
         uassert(tx_notifier_tid >= 0 && "IO_SERVER::spawnNotifiers: PANIC, Error starting TX Notifier");
 
+        cts_notifier_tid = CREATE(PRIORITY::P1, notifier_cts);
+        uassert(cts_notifier_tid >= 0 && "IO_SERVER::spawnNotifiers: PANIC, Error starting CTS Notifier");
+
         // ensure it runs after notifiers
-        int init_stream_tid = CREATE(PRIORITY::P2, init_stream);
-        uassert(init_stream_tid >= 0 && "IO_SERVER::spawnNotifiers: PANIC, Error starting TX Notifier");
+        // int init_stream_tid = CREATE(PRIORITY::P2, init_stream);
+        // uassert(init_stream_tid >= 0 && "IO_SERVER::spawnNotifiers: PANIC, Error starting TX Notifier");
     }
 
     void IOServer::run()
@@ -102,6 +106,7 @@ namespace IO_SERVER
                     receive_buffer.Pop(&ch);
                     reply.ch = ch;
                     reply.type = REPLY_TYPE::SUCCESS;
+                    REPLY(sender_tid, (char *)&reply, sizeof(reply));
                 }
                 else
                 {
@@ -132,21 +137,28 @@ namespace IO_SERVER
                 // uart_printf(CONSOLE, RESTORE_CURSOR "IO_SERVER::PUTS: %s\r\n" SAVE_CURSOR, req.str);
                 unsigned char *str = req.str;
                 reply.type = REPLY_TYPE::FAILURE; // incase it's full
-                if (!transmit_buffer_str.IsFull())
+                if (!transmit_buffer.IsFull())
                 {
-                    transmit_buffer_str.Push(str);
-                    tx_waiting_tasks.Push(sender_tid);
+                    while (*str != '\0')
+                    {
+                        transmit_buffer.Push(*str);
+                        str++;
+                    }
                     reply.type = REPLY_TYPE::SUCCESS;
                 }
                 else
                 {
                     reply.type = REPLY_TYPE::FAILURE;
                 }
-
+                // check status
                 if (tx_state == TX_ASSERTED)
                 {
+                    // uassert(false && "WAKING UP PUTS CALLED");
                     write_to_uart();
                 }
+
+                REPLY(sender_tid, (char *)&reply, sizeof(reply));
+
                 // uassert(false && "WAKING UP PUTS CALLED");
                 // ReplyWithMessage(sender_tid, reply); // sends UNIMPLEMENTED
             }
@@ -167,49 +179,43 @@ namespace IO_SERVER
                     int ret = rx_waiting_tasks.Pop(&waiting_task);
                     receive_buffer.Pop(&ch);
                     IO_REPLY rx_reply = {REPLY_TYPE::SUCCESS, ch};
-                    ReplyWithMessage(waiting_task, rx_reply);
+                    REPLY(waiting_task, (char *)&rx_reply, sizeof(rx_reply));
                 }
+
+                REPLY(sender_tid, (char *)&reply, sizeof(reply));
             }
             break;
             case IO_REQUEST_TYPE::TX_NOTIFIER:
             {
-                reply.type = REPLY_TYPE::SUCCESS;
-                write_to_uart();
+                write_to_uart(); // replies to the sender
             }
             break;
 
             default:
                 break;
             }
-
-            ReplyWithMessage(sender_tid, reply);
         }
+    }
+
+    void IOServer::transmit_char(unsigned char ch)
+    {
+        uart_putc(CONSOLE, ch);
+        tx_state = TX_DEASSERTED;
+        REPLY(tx_notifier_tid, nullptr, 0);
     }
 
     void IOServer::write_to_uart()
     {
-        if (!transmit_buffer_str.IsEmpty())
+        // if (CTS_STATUS(CONSOLE) && TX_STATUS(CONSOLE))
+        // {
+        if (!transmit_buffer.IsEmpty())
         {
-            int sender_tid;
-            while (!transmit_buffer_str.IsEmpty())
-            {
-                unsigned char *str = nullptr;
-                transmit_buffer_str.Pop(&str);
-
-                while (*str)
-                {
-                    uart_putc(CONSOLE, *(str++));
-                }
-                sender_tid = -1;
-                tx_waiting_tasks.Pop(&sender_tid);
-                ReplyWithMessage(sender_tid, (IO_REPLY){REPLY_TYPE::SUCCESS, 0});
-            }
-            tx_state = TX_DEASSERTED;
-            // wake up tx_notifier
-            IO_REPLY reply;
-            reply.type = REPLY_TYPE::SUCCESS;
-            REPLY(tx_notifier_tid, (char *)&reply, sizeof(reply));
+            // unsigned char ch = 'A';
+            unsigned char ch;
+            transmit_buffer.Pop(&ch);
+            transmit_char(ch);
         }
+        // }
     }
 
     int Getc(int tid)
@@ -289,17 +295,38 @@ namespace IO_SERVER
             AWAITEVENT(InterruptEvents::UART_TX);
             // if (UART_REG(CONSOLE, UART_FR) & UART_FR_TXFE_MASK)
             {
-                uart_printf(CONSOLE, RESTORE_CURSOR "TX NOTIFIER ASSERTED\r\n" SAVE_CURSOR);
+                // uart_printf(CONSOLE, RESTORE_CURSOR "TX NOTIFIER ASSERTED\r\n" SAVE_CURSOR);
                 // uassert(false && "TX NOTIFIER ASSERTED");
                 tx_state = TX_ASSERTED;
                 IO_REQUEST req{IO_REQUEST_TYPE::TX_NOTIFIER, 0, nullptr};
                 IO_REPLY reply;
 
                 SEND(IO_SERVER_TID, (char *)&req, sizeof(req), (char *)&reply, sizeof(reply));
-                uassert(reply.type != REPLY_TYPE::UNIMPLEMENTED && "IO_SERVER::notifier_tx: PANIC, Unimplemented");
+                // uassert(reply.type != REPLY_TYPE::UNIMPLEMENTED && "IO_SERVER::notifier_tx: PANIC, Unimplemented");
+                // uassert(false && "IO_SERVER::notifier_tx: FORCED PANIC");
             }
 
             // this will be awoken when there is space in the transmit buffer (if fifo is enabled)
+        }
+    }
+
+    void notifier_cts()
+    {
+        int IO_SERVER_TID = WHOIS("IOServer");
+        REGISTERAS("CONSOLE_CTSNotifier");
+        while (true)
+        {
+            AWAITEVENT(InterruptEvents::UART_CTS);
+            // if (UART_REG(CONSOLE, UART_FR) & UART_FR_TXFE_MASK)
+            {
+                // uart_printf(CONSOLE, RESTORE_CURSOR "CTS NOTIFIER ASSERTED\r\n" SAVE_CURSOR);
+                // uassert(false && "CTS NOTIFIER ASSERTED");
+                IO_REQUEST req{IO_REQUEST_TYPE::CTS_NOTIFIER, 0, nullptr};
+                IO_REPLY reply;
+
+                SEND(IO_SERVER_TID, (char *)&req, sizeof(req), (char *)&reply, sizeof(reply));
+                uassert(reply.type != REPLY_TYPE::UNIMPLEMENTED && "IO_SERVER::notifier_cts: PANIC, Unimplemented");
+            }
         }
     }
 

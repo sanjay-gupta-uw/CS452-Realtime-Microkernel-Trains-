@@ -8,6 +8,7 @@ namespace IO_SERVER
 #define UNDEFINED_CHAR '-'
 #define TX_ASSERTED 1   // buffer is not full
 #define TX_DEASSERTED 0 // buffer is full/above threshold
+#define MAX_QUEUE_SIZE 132
 
     // REDEFINED QUEUE SIZE TO 32 -> change queue to accept size as a parameter?
     // #define RECEIVE_SIZE 32 // 32 chars/bytes
@@ -23,17 +24,17 @@ namespace IO_SERVER
         int rtm_notifier_tid;
         int rx_notifier_tid;
         int tx_notifier_tid;
+        int cts_notifier_tid;
 
         void run();
         void spawnNotifiers();
         void write_to_uart();
+        void transmit_char(unsigned char ch);
 
-        Queue<unsigned char, 40> receive_buffer;
-        // Queue<unsigned char, 32> transmit_buffer;
-        Queue<unsigned char *, 32> transmit_buffer_str;
+        Queue<unsigned char, MAX_QUEUE_SIZE> transmit_buffer;
+        Queue<unsigned char, 32> receive_buffer;
 
         Queue<int, 3> rx_waiting_tasks;
-        Queue<int, 32> tx_waiting_tasks;
     };
 
     enum class IO_REQUEST_TYPE
@@ -73,6 +74,7 @@ namespace IO_SERVER
 
     void notifier_rxto();
     void notifier_tx();
+    void notifier_cts();
 
 // mapping of reply type to string
 #define REPLY_TYPE_STR(type)                                                               \

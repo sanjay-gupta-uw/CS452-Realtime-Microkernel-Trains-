@@ -32,6 +32,7 @@ namespace IO_NS
     // DISABLED PRINT FOR TESTING
     extern "C" void Print(const char *fmt, ...)
     {
+        // uassert(false && "DISABLED PRINT FOR TESTING");
         int IO_SERVER_TID = WHOIS("IOServer");
         if (IO_SERVER_TID < 0)
         {
@@ -110,6 +111,7 @@ namespace IO_NS
 
     extern "C" void PrintTerminal(const char *fmt, ...)
     {
+        // uassert(false && "DISABLED PRINTTERMINAL FOR TESTING");
         // uart_printf(CONSOLE, RESTORE_CURSOR "PRINTTERMINAL CALLED\r\n" SAVE_CURSOR);
         // int IO_SERVER_TID = WHOIS("IOServer");
         // uart_printf(CONSOLE, RESTORE_CURSOR "PRINTTERMINAL CALLED, IO_SERVER_TID: %d\r\n" SAVE_CURSOR, IO_SERVER_TID);

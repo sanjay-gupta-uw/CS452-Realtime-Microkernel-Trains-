@@ -1,3 +1,5 @@
+#include "../register.h"
+#include "constants.h"
 #include "kernel.h"
 #include <cstddef>
 #include "interrupts.h"
@@ -58,7 +60,7 @@ Kernel::Kernel(void (*function)()) : Kernel()
 
     // initialize INTERRUPTS
     InitGIC();
-    disable_irq(); // disable interrupts
+    // disable_irq(); // disable interrupts
     // disable irqs to uart
     // set first 11 bits to 1
     UART_IMSC_DISABLE(CONSOLE, 0x7FF);
@@ -330,6 +332,13 @@ void Kernel::AwaitEvent(int eventType)
         event_queues[UART_MARKLIN_CTS_LOW].Push(active_task);
     }
     break;
+    case UART_CTS:
+    {
+        active_task->SetRetval(-1);
+        active_task->setState(EVENT_BLOCKED);
+        event_queues[UART_CTS].Push(active_task);
+    }
+    break;
     default:
         active_task->SetRetval(-1);   // set return value to -1
         active_task->setState(READY); // set task state to ready
@@ -473,60 +482,74 @@ void Kernel::IRQ_Handler()
     }
     case UART_IRQ:
     {
-        TaskDescriptor *task;
-
-        uint32_t uart_mis = UART_REG(CONSOLE, UART_MIS); // read UART_MIS register to find out which interrupt is triggered
-        if (uart_mis & RTM_INTERRUPT_MASK)
-        {
-
-            UART_IMSC_DISABLE(CONSOLE, RTM_INTERRUPT_MASK);
-            UART_CLEAR_INTERRUPT(CONSOLE, RTM_INTERRUPT_MASK);
-
-            while (event_queues[UART_RX_TIMEOUT].Pop(&task) != -1)
+        // keep array of interrupt event masks
+        const int NUM_CONSOLE_EVENTS = 2;
+        int CONSOLE_EVENT_MASKS[NUM_CONSOLE_EVENTS] =
             {
-                task->setState(READY);
-                task->SetRetval(0);
-                ready_queue.Push(task->tid, task->priority);
-            }
-        }
+                TX_INTERRUPT_MASK,
+                RTM_INTERRUPT_MASK,
+                // RX_INTERRUPT_MASK,
+                // CTS_INTERRUPT_MASK,
+            };
+        int CONSOLE_EVENT_INDEX[NUM_CONSOLE_EVENTS] =
+            {
+                UART_TX,
+                UART_RX_TIMEOUT,
+                // UART_RX,
+                // UART_CTS,
+            };
+
+        TaskDescriptor *task;
+        uint32_t uart_mis = UART_REG(CONSOLE, UART_MIS); // read UART_MIS register to find out which interrupt is triggered
+                                                         /*
+                                                         for (int i = 0; i < NUM_CONSOLE_EVENTS; i++)
+                                                         {
+                                                             if (uart_mis & CONSOLE_EVENT_MASKS[i])
+                                                             {
+                                                                 UART_IMSC_DISABLE(CONSOLE, CONSOLE_EVENT_MASKS[i]);
+                                                                 UART_CLEAR_INTERRUPT(CONSOLE, CONSOLE_EVENT_MASKS[i]);
+                                                                 while (event_queues[CONSOLE_EVENT_INDEX[i]].Pop(&task) != -1)
+                                                                 {
+                                                                     task->setState(READY);
+                                                                     task->SetRetval(0);
+                                                                     ready_queue.Push(task->tid, task->priority);
+                                                                 }
+                                                             }
+                                                         }
+                                                             */
         if (uart_mis & TX_INTERRUPT_MASK)
         {
             UART_IMSC_DISABLE(CONSOLE, TX_INTERRUPT_MASK);
             UART_CLEAR_INTERRUPT(CONSOLE, TX_INTERRUPT_MASK);
 
-            uart_printf(CONSOLE, RESTORE_CURSOR "UART_TX INTERRUPT TRIGGERED\r\n" SAVE_CURSOR);
+            int tx_status = TX_STATUS(CONSOLE);
+            if (tx_status == 1)
+            {
+                // kassert(false && "PANIC: UART_TX INTERRUPT HIGH");
+            }
+            else if (tx_status == 0)
+            {
+                kassert(false && "PANIC: UART_TX INTERRUPT LOW");
+            }
+
             while (event_queues[UART_TX].Pop(&task) != -1)
             {
-                uart_printf(CONSOLE, RESTORE_CURSOR "UART_TX INTERRUPT TRIGGERED -- waking up task {%d}\r\n" SAVE_CURSOR, task->tid);
+                // uart_printf(CONSOLE, RESTORE_CURSOR "UART_TX INTERRUPT TRIGGERED -- waking up task {%d}\r\n" SAVE_CURSOR, task->tid);
                 task->setState(READY);
                 task->SetRetval(0);
                 ready_queue.Push(task->tid, task->priority);
             }
-            uart_printf(CONSOLE, RESTORE_CURSOR "UART_TX INTERRUPT TRIGGERED -- NO MORE TASKS WAITING\r\n" SAVE_CURSOR);
+            // uart_printf(CONSOLE, RESTORE_CURSOR "UART_TX INTERRUPT TRIGGERED -- NO MORE TASKS WAITING\r\n" SAVE_CURSOR);
             // kassert(false && "PANIC: UART_TX INTERRUPT TRIGGERED");
         }
 
-        // read MARKLIN UART
-        uart_mis = UART_REG(MARKLIN, UART_MIS);
-        if (uart_mis & RX_INTERRUPT_MASK)
+        if (uart_mis & RTM_INTERRUPT_MASK)
         {
-            UART_IMSC_DISABLE(MARKLIN, RX_INTERRUPT_MASK);
-            UART_CLEAR_INTERRUPT(MARKLIN, RX_INTERRUPT_MASK);
+            UART_IMSC_DISABLE(CONSOLE, RTM_INTERRUPT_MASK);
+            UART_CLEAR_INTERRUPT(CONSOLE, RTM_INTERRUPT_MASK);
 
-            while (event_queues[UART_MARKLIN_RX].Pop(&task) != -1)
-            {
-                task->setState(READY);
-                task->SetRetval(0);
-                ready_queue.Push(task->tid, task->priority);
-            }
-        }
-
-        if (uart_mis & TX_INTERRUPT_MASK)
-        {
-            UART_IMSC_DISABLE(MARKLIN, TX_INTERRUPT_MASK);
-            UART_CLEAR_INTERRUPT(MARKLIN, TX_INTERRUPT_MASK);
-
-            while (event_queues[UART_MARKLIN_TX].Pop(&task) != -1)
+            kassert(false && "PANIC: UART_RX_TIMEOUT INTERRUPT TRIGGERED");
+            while (event_queues[UART_RX_TIMEOUT].Pop(&task) != -1)
             {
                 task->setState(READY);
                 task->SetRetval(0);
@@ -536,25 +559,27 @@ void Kernel::IRQ_Handler()
 
         if (uart_mis & CTS_INTERRUPT_MASK)
         {
-            // UART_IMSC_DISABLE(MARKLIN, CTS_INTERRUPT_MASK);
-            UART_CLEAR_INTERRUPT(MARKLIN, CTS_INTERRUPT_MASK);
+            UART_CLEAR_INTERRUPT(CONSOLE, CTS_INTERRUPT_MASK);
 
-            uint32_t FR = UART_REG(MARKLIN, UART_FR);
-            int retval = !(FR & UART_FR_CTS_MASK);
-            // uart_printf(CONSOLE, "CTS INTERRUPT TRIGGERED: %d \r\n", retval);
-            if (event_queues[UART_MARKLIN_CTS_HIGH].IsEmpty() && event_queues[UART_MARKLIN_CTS_LOW].IsEmpty())
+            int cts_status = CTS_STATUS(CONSOLE);
+            if (cts_status == 1)
             {
-                // uart_printf(CONSOLE, "CTS INTERRUPT TRIGGERED: NO TASKS WAITING -- MISSING CHANGE: %d\r\n", retval);
+                kassert(false && "PANIC: UART_CTS INTERRUPT HIGH");
+            }
+            else if (cts_status == 0)
+            {
+                kassert(false && "PANIC: UART_CTS INTERRUPT LOW");
             }
 
-            while (event_queues[retval ? UART_MARKLIN_CTS_HIGH : UART_MARKLIN_CTS_LOW].Pop(&task) != -1)
+            kassert(false && "PANIC: UART_CTS INTERRUPT TRIGGERED");
+            while (event_queues[UART_CTS].Pop(&task) != -1)
             {
-                // uart_printf(CONSOLE, "*** NOTIFIER RECEIVING CTS ALERT: %d \r\n", retval);
                 task->setState(READY);
-                task->SetRetval(retval);
+                task->SetRetval(0);
                 ready_queue.Push(task->tid, task->priority);
             }
         }
+
         break;
     }
     case SPURIOUS_INTERRUPT:

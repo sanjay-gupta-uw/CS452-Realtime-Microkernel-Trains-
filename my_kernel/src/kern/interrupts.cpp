@@ -51,5 +51,5 @@ void InitGIC()
     // MASK INTERRUPTS
     UART_REG(CONSOLE, UART_IMSC) = RX_INTERRUPT_MASK | TX_INTERRUPT_MASK | RTM_INTERRUPT_MASK | CTS_INTERRUPT_MASK;
 
-    enable_irq();
+    // enable_irq();
 }

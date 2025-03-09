@@ -6,6 +6,7 @@ typedef enum
     TIMER_TICK,
     UART_RX_TIMEOUT,
     UART_TX,
+    UART_CTS,
     UART_MARKLIN_RX,
     UART_MARKLIN_TX,
     UART_MARKLIN_CTS_HIGH,

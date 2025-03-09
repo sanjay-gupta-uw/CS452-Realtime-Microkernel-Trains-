@@ -39,6 +39,15 @@ public:
         return 0;
     }
 
+    int Peek(T *item)
+    {
+        if (size == 0)
+            return -1; // Queue is empty.
+
+        *item = buffer[tail];
+        return 0;
+    }
+
     // Check if the queue is empty.
     bool IsEmpty() const
     {
