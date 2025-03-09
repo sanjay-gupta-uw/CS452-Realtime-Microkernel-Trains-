@@ -114,7 +114,7 @@ vectors:
     // ---------------------
     eret  // VBAR_ELx + 0x000
     .balign 0x80
-    eret  // VBAR_ELx + 0x080
+    b _dummyHandler1  // VBAR_ELx + 0x080
     .balign 0x80
     eret  // VBAR_ELx + 0x100
     .balign 0x80
@@ -127,7 +127,7 @@ vectors:
     eret  // VBAR_ELx + 0x200
     .balign 0x80
     mov x0, #2
-    eret   // VBAR_ELx + 0x280
+    b _dummyHandler2  // VBAR_ELx + 0x280
     .balign 0x80
     mov x0, #3
     eret   // VBAR_ELx + 0x300
@@ -141,7 +141,8 @@ vectors:
     // ---------------------
     b task_to_kernel_asm  // VBAR_ELx + 0x400
     .balign 0x80
-    b irq_to_kernel_asm  // VBAR_ELx + 0x480
+    //b irq_to_kernel_asm  // VBAR_ELx + 0x480
+    b _dummyHandler3
     .balign 0x80
     eret   // VBAR_ELx + 0x500
     .balign 0x80
@@ -153,7 +154,7 @@ vectors:
     // ---------------------
     eret  // VBAR_ELx + 0x600
     .balign 0x80
-    eret  // VBAR_ELx + 0x680
+    b _dummyHandler4
     .balign 0x80
     eret   // VBAR_ELx + 0x700
     .balign 0x80

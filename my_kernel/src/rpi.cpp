@@ -190,6 +190,16 @@ void uart_putc(size_t line, char c)
     UART_REG(line, UART_DR) = c;
 }
 
+void uart_putc_non_blocking(size_t line, char c)
+{
+    // check if there is room to write more data
+    if (UART_REG(line, UART_FR) & UART_FR_TXFF)
+    {
+        return;
+    }
+    UART_REG(line, UART_DR) = c;
+}
+
 void uart_putl(size_t line, const char *buf, size_t blen)
 {
     for (size_t i = 0; i < blen; i++)

@@ -78,6 +78,10 @@ extern "C" int kmain()
 
     int delay = 100;
     clock.Delay(delay);
+    // disable_irq(); // disable interrupts
+    // uint64_t daif;
+    // asm volatile("mrs %0, daif" : "=r"(daif));
+    // uart_printf(CONSOLE, "DAIF Register: 0x%llx\r\n", daif);
     // Not strictly necessary, since console is configured during boot
     uart_config_and_enable(CONSOLE);
     uart_config_and_enable(MARKLIN);
@@ -94,30 +98,43 @@ extern "C" int kmain()
     Kernel kernel(bootstrap_task); // bootstrap
     TaskDescriptor *current_task = nullptr;
 
+    uart_printf(CONSOLE, CLEAR_SCREEN RESET_FORMATTING MOVE_CURSOR, 1, 1);
+    uart_printf(CONSOLE, "Kernel Started -- enabling interrupts\r\n");
+    UART_IMSC_ENABLE(CONSOLE, (RTM_INTERRUPT_MASK)); // enable receive timeout interrupt
+    enable_irq();                                    // enable interrupts
+    while (true)
+    {
+        uart_printf(CONSOLE, "Kernel Loop\r\n");
+    }
+
     uint32_t start_time, end_time = 0;
 
     // read TX status
-    int cts_status = CTS_STATUS(CONSOLE);
-    int tx_status = TX_STATUS(CONSOLE);
-    uart_printf(CONSOLE, RESET_FORMATTING CLEAR_SCREEN COLUMN_132 SCROLL_REGION MOVE_CURSOR SMOOTH_SCROLL "Terminal Output Kernel:\r\n" SAVE_CURSOR, SCROLL_ROW_START, SCROLL_ROW_END, SCROLL_ROW_START, 1);
-    // uart_printf(CONSOLE, RESET_FORMATTING CLEAR_SCREEN COLUMN_132 MOVE_CURSOR "Terminal Output Kernel:\r\n" SAVE_CURSOR, 1, 1);
+    // int cts_status = CTS_STATUS(CONSOLE);
+    // int tx_status = TX_STATUS(CONSOLE);
+    // uart_printf(CONSOLE, RESET_FORMATTING CLEAR_SCREEN COLUMN_132 SCROLL_REGION MOVE_CURSOR SMOOTH_SCROLL "Terminal Output Kernel:\r\n" SAVE_CURSOR, SCROLL_ROW_START, SCROLL_ROW_END, SCROLL_ROW_START, 1);
+
     // uart_printf(CONSOLE, RESTORE_CURSOR "CTS STATUS: %x\r\n" SAVE_CURSOR, cts_status);
     // uart_printf(CONSOLE, RESTORE_CURSOR "TX STATUS: %x\r\n" SAVE_CURSOR, tx_status);
 
-    UART_IMSC_ENABLE(CONSOLE, (CTS_INTERRUPT_MASK)); // enable CTS interrupt
+    // kassert(false && "Kernel Started");
     // UART_IMSC_ENABLE(MARKLIN, (CTS_INTERRUPT_MASK)); // enable CTS interrupt
     // kassert(false && "PANIC: Kernel Struct Created");
+
+    // uart_printf(CONSOLE, RESTORE_CURSOR "NOTHING SHOULD BE PRINTED AFTER THIS\r\n" SAVE_CURSOR);
     // scheduler pops the highest priority task into td
+
     while ((current_task = kernel.Scheduler()) != nullptr)
     {
+        uart_printf(CONSOLE, RESTORE_CURSOR "ACTIVE TASK: tid{%d} priority{%d}\r\n" SAVE_CURSOR, current_task->getTid(), current_task->getPriority());
         // kassert(false && "PANIC: Kernel loop");
         // uart_printf(CONSOLE, RESTORE_CURSOR "ACTIVE TASK: tid{%d} priority{%d}\r\n" SAVE_CURSOR, current_task->getTid(), current_task->getPriority());
         // IO_NS::PrintTerminal("ACTIVE TASK: tid{%d} priority{%d}\r\n", current_task->getTid(), current_task->getPriority());
         start_time = clock.Time();
 
-        enable_irq(); // enable interrupts
+        // enable_irq(); // enable interrupts
         int esr_el1 = kernel.DispatchTask(&kernel_context, current_task);
-        disable_irq(); // disable interrupts
+        // disable_irq(); // disable interrupts
         end_time = clock.Time();
 
         // Get the time the task was running for (including transfer times)

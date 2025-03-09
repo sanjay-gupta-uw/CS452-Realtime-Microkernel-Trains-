@@ -20,12 +20,16 @@
 
 void IdleTask()
 {
-    int FUT = CREATE(PRIORITY::P6, FirstUserTask);
-    uassert(FUT > 0 && "Error starting First User Task");
+    // int FUT = CREATE(PRIORITY::P6, FirstUserTask);
+    // uassert(FUT > 0 && "Error starting First User Task");
+
+    /*
     // REGISTERAS("IdleTask");
     // extern Clock clock;
+    */
     for (;;)
     {
+        // uassert(false && "IdleTask -- PANIC: Idle Task");
         // IO_NS::PrintTerminal("IdleTask -- updating clock\r\n");
         // clock.Update();
         asm volatile("wfi");
@@ -38,6 +42,7 @@ extern "C" void _reboot(void); // Declare the reboot function implemented in ass
 void FirstUserTask()
 {
     // tid 3
+    uart_printf(CONSOLE, RESTORE_CURSOR "First User Task Started\r\n" SAVE_CURSOR);
     int nameServerTid = CREATE(PRIORITY::P0, NameServer); // Start the Name Server
     uassert(nameServerTid > 0 && "Error starting Name Server");
 
@@ -45,51 +50,17 @@ void FirstUserTask()
     int ioServerTid = CREATE(PRIORITY::P2, IO_SERVER::startIOServer); // Start the IO Server
     uassert(ioServerTid > 0 && "Error starting IO Server");
 
-    // uart_printf(CONSOLE, "First User Task: Starting User Tasks!\r\n");
-    // IO_NS::PrintTerminal("Starting User Tasks0\r\n");
-    // IO_NS::PrintTerminal("Starting User Tasks1\r\n");
-    // for (int i = 0; i < 10; ++i)
-    for (int i = 0; i < 5; ++i)
-    {
-        IO_NS::PrintTerminal("Starting User Tasks %d\r\n", i);
-    }
-
-    // _reboot();
-
-    // IO_NS::PrintTerminal("Starting User Tasks!\r\n");
-    // IO_NS::PrintTerminal("NEXT LINE!\r\n");
-
-    // uassert(false && "FORCED PANIC -- FUT -- REMOVE THIS LINE");
-
-    // uassert(false && "FORCED PANIC -- FUT -- REMOVE THIS LINE");
-    // // uart_printf(CONSOLE, RESTORE_CURSOR "FUT RUNNING AGAIN -- issuing second print\r\n" SAVE_CURSOR);
-    // IO_NS::PrintTerminal("SHOULD BE ON NEXT LINE!\r\n");
-    // uassert(false && "FORCED PANIC -- FUT RUNNING AGAIN! -- REMOVE THIS LINE");
-
-    /*
-    int marklinIoServerTid = CREATE(PRIORITY::P0, MARKLIN_IO_SERVER::startMarklinIOServer); // Start the Marklin IO Server
-    uassert(marklinIoServerTid > 0 && "Error starting Marklin IO Server");
-
-    #if IRQ_ENABLED == 1
-    int clockServerTid = CREATE(PRIORITY::P0, ClockServer); // Start the Clock Server
-    uassert(clockServerTid > 0 && "Error starting Clock Server");
-    #endif
-    */
-
-    // IO_NS::PrintTerminal("Creating UI Task!\r\n");
-    // create sample clients
-    // int ui = CREATE(PRIORITY::P7, UI_NS::start_ui); // this initializes the sensors so must be after the marklin io server
-    // uassert(ui > 0 && "Error starting UI Task");
-    // uassert(false && "FORCED PANIC -- FUT -- REMOVE THIS LINE");
-    // uassert(false && "FORCED PANIC -- FUT about to exit -- REMOVE THIS LINE");
-
-    /*
-    int marklinControllerTid = CREATE(PRIORITY::P3, MARKLIN_NS::start_marklin_controller); // must be called after UI since ui sets sensors
-    uassert(marklinControllerTid > 0 && "Error starting Marklin Controller Task");
-
-    int cmd_prompt = CREATE(PRIORITY::P3, UI_CMD_NS::start_command_prompt);
-    uassert(cmd_prompt >= 0 && "Error starting Command Prompt Task");
-    */
+    IO_SERVER::Putc(ioServerTid, 'A');
+    // IO_SERVER::Putc(ioServerTid, 'A');
+    // for (int i = 0; i < 100; i++)
+    // {
+    //     IO_SERVER::Putc(ioServerTid, 'A');
+    //     if (i % 10 == 0)
+    //     {
+    //         IO_SERVER::Putc(ioServerTid, '\r');
+    //         IO_SERVER::Putc(ioServerTid, '\n');
+    //     }
+    // }
 
     EXIT();
 }

@@ -1,6 +1,8 @@
 .equ IRQ, 12  // define IRQ value
 
 .macro transition_to_kernel isIRQ
+    // disable interrupts
+    // msr daifset, #7
     // x0 and x1 contain arguments to pass to kernel
     ldr x16, [sp], #16 // pop the task context pointer
 
@@ -149,6 +151,8 @@ kernel_to_task_asm:
     ldr x0, [sp] // get the pointer
     ldr x0, [x0] // dereference it (load the value from the address)
 
+    // enable interrupts
+    // msr daifclr, #7
     eret // return from exception: EL1->EL0
     
 

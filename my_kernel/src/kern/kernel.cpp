@@ -38,6 +38,7 @@ extern "C" void *memcpy(void *dest, const void *src, size_t n)
 
 Kernel::Kernel()
 {
+    disable_irq();
     // initialize free_tid
     for (int i = 1; i <= MAX_TASKS; i++)
     {
@@ -57,7 +58,6 @@ Kernel::Kernel(void (*function)()) : Kernel()
 {
     // initilize default task with medium priority
     int tid = Create(PRIORITY::IDLE, function);
-
     // initialize INTERRUPTS
     InitGIC();
     // disable_irq(); // disable interrupts
@@ -374,7 +374,9 @@ int Kernel::DispatchTask(volatile Context *kernel, TaskDescriptor *scheduled_tas
     active_task = scheduled_task;
 
     // call the task
+    // enable_irq();
     int esr_el1 = kernel_to_task_asm(kernel, &scheduled_task->context);
+    // disable_irq();
     return esr_el1;
 }
 
@@ -486,42 +488,10 @@ void Kernel::IRQ_Handler()
     }
     case UART_IRQ:
     {
-        // keep array of interrupt event masks
-        const int NUM_CONSOLE_EVENTS = 2;
-        int CONSOLE_EVENT_MASKS[NUM_CONSOLE_EVENTS] =
-            {
-                TX_INTERRUPT_MASK,
-                RTM_INTERRUPT_MASK,
-                // RX_INTERRUPT_MASK,
-                // CTS_INTERRUPT_MASK,
-            };
-        int CONSOLE_EVENT_INDEX[NUM_CONSOLE_EVENTS] =
-            {
-                UART_TX,
-                UART_RX_TIMEOUT,
-                // UART_RX,
-                // UART_CTS,
-            };
-
         TaskDescriptor *task;
         // read UART_MIS register to find out which interrupt is triggered
         uint32_t uart_mis = UART_REG(CONSOLE, UART_MIS);
-        /*
-        for (int i = 0; i < NUM_CONSOLE_EVENTS; i++)
-        {
-            if (uart_mis & CONSOLE_EVENT_MASKS[i])
-            {
-                UART_IMSC_DISABLE(CONSOLE, CONSOLE_EVENT_MASKS[i]);
-                UART_CLEAR_INTERRUPT(CONSOLE, CONSOLE_EVENT_MASKS[i]);
-                while (event_queues[CONSOLE_EVENT_INDEX[i]].Pop(&task) != -1)
-                {
-                    task->setState(READY);
-                    task->SetRetval(0);
-                    ready_queue.Push(task->tid, task->priority);
-                }
-            }
-        }
-            */
+
         if (uart_mis & TX_INTERRUPT_MASK)
         {
             UART_IMSC_DISABLE(CONSOLE, TX_INTERRUPT_MASK);
@@ -530,11 +500,11 @@ void Kernel::IRQ_Handler()
             int tx_status = TX_STATUS(CONSOLE);
             if (tx_status == 1)
             {
-                kassert(false && "PANIC: UART_TX INTERRUPT HIGH");
+                // kassert(false && "PANIC: UART_TX INTERRUPT HIGH");
             }
             else if (tx_status == 0)
             {
-                kassert(false && "PANIC: UART_TX INTERRUPT LOW"); // halt the system
+                // kassert(false && "PANIC: UART_TX INTERRUPT LOW"); // halt the system
             }
 
             while (event_queues[UART_TX].Pop(&task) != -1)
@@ -547,8 +517,6 @@ void Kernel::IRQ_Handler()
 
                 // INSPECT READY QUEUE
             }
-            // uart_printf(CONSOLE, RESTORE_CURSOR "UART_TX INTERRUPT TRIGGERED -- NO MORE TASKS WAITING\r\n" SAVE_CURSOR);
-            // kassert(false && "PANIC: UART_TX INTERRUPT TRIGGERED");
         }
 
         if (uart_mis & RTM_INTERRUPT_MASK)
@@ -556,30 +524,9 @@ void Kernel::IRQ_Handler()
             UART_IMSC_DISABLE(CONSOLE, RTM_INTERRUPT_MASK);
             UART_CLEAR_INTERRUPT(CONSOLE, RTM_INTERRUPT_MASK);
 
-            kassert(false && "PANIC: UART_RX_TIMEOUT INTERRUPT TRIGGERED");
+            kassert(false && "RECEIVE TIMEOUT INTERRUPT TRIGGERED");
+
             while (event_queues[UART_RX_TIMEOUT].Pop(&task) != -1)
-            {
-                task->setState(READY);
-                task->SetRetval(0);
-                ready_queue.Push(task->tid, task->priority);
-            }
-        }
-
-        if (uart_mis & CTS_INTERRUPT_MASK)
-        {
-            UART_CLEAR_INTERRUPT(CONSOLE, CTS_INTERRUPT_MASK);
-
-            int cts_status = CTS_STATUS(CONSOLE);
-            if (cts_status == 1)
-            {
-                kassert(false && "PANIC: UART_CTS INTERRUPT HIGH");
-            }
-            else if (cts_status == 0)
-            {
-                kassert(false && "PANIC: UART_CTS INTERRUPT LOW");
-            }
-
-            while (event_queues[UART_CTS].Pop(&task) != -1)
             {
                 task->setState(READY);
                 task->SetRetval(0);

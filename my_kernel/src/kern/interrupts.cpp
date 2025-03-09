@@ -26,12 +26,12 @@ static void set_peripheral_target(int m)
 
 void enable_irq()
 {
-    asm volatile("msr daifclr, #2");
+    asm volatile("msr daifclr, #7");
 }
 
 void disable_irq()
 {
-    asm volatile("msr daifset, #2");
+    asm volatile("msr daifset, #7");
 }
 
 void InitGIC()
@@ -47,9 +47,4 @@ void InitGIC()
     // Init UART ->  main ensures UART0/3 is enabled
     set_peripheral_target(UART_IRQ);
     enable_peripheral_interrupt(UART_IRQ);
-
-    // MASK INTERRUPTS
-    UART_REG(CONSOLE, UART_IMSC) = RX_INTERRUPT_MASK | TX_INTERRUPT_MASK | RTM_INTERRUPT_MASK | CTS_INTERRUPT_MASK;
-
-    // enable_irq();
 }
