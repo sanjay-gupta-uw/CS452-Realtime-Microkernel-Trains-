@@ -141,8 +141,8 @@ vectors:
     // ---------------------
     b task_to_kernel_asm  // VBAR_ELx + 0x400
     .balign 0x80
-    //b irq_to_kernel_asm  // VBAR_ELx + 0x480
-    b _dummyHandler3
+    b irq_to_kernel_asm  // VBAR_ELx + 0x480
+    // b _dummyHandler3
     .balign 0x80
     eret   // VBAR_ELx + 0x500
     .balign 0x80
