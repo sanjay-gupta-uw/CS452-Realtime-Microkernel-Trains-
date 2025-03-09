@@ -33,6 +33,7 @@ void IdleTask()
     EXIT();
 }
 
+extern "C" void _reboot(void); // Declare the reboot function implemented in assembly
 // tid 2
 void FirstUserTask()
 {
@@ -41,11 +42,17 @@ void FirstUserTask()
     uassert(nameServerTid > 0 && "Error starting Name Server");
 
     // tid 4
-    int ioServerTid = CREATE(PRIORITY::P0, IO_SERVER::startIOServer); // Start the IO Server
+    int ioServerTid = CREATE(PRIORITY::P2, IO_SERVER::startIOServer); // Start the IO Server
     uassert(ioServerTid > 0 && "Error starting IO Server");
 
-    IO_NS::PrintTerminal("Starting User Tasks!\r\n");
-    IO_NS::PrintTerminal("This should be on the next line!\r\n");
+    // uart_printf(CONSOLE, "First User Task: Starting User Tasks!\r\n");
+    IO_NS::PrintTerminal("Starting User Tasks\r\n");
+    for (int i = 0; i < 7; ++i)
+    {
+        IO_NS::PrintTerminal("Starting User Tasks %d\r\n", i);
+    }
+
+    // _reboot();
 
     // IO_NS::PrintTerminal("Starting User Tasks!\r\n");
     // IO_NS::PrintTerminal("NEXT LINE!\r\n");
@@ -67,11 +74,11 @@ void FirstUserTask()
     #endif
     */
 
+    // IO_NS::PrintTerminal("Creating UI Task!\r\n");
     // create sample clients
-    // int ui = CREATE(PRIORITY::P3, UI_NS::start_ui); // this initializes the sensors so must be after the marklin io server
-    // IO_NS::PrintTerminal("UI Task Created!\r\n");
-    // // uassert(false && "FORCED PANIC -- FUT -- REMOVE THIS LINE");
+    // int ui = CREATE(PRIORITY::P7, UI_NS::start_ui); // this initializes the sensors so must be after the marklin io server
     // uassert(ui > 0 && "Error starting UI Task");
+    // uassert(false && "FORCED PANIC -- FUT -- REMOVE THIS LINE");
     // uassert(false && "FORCED PANIC -- FUT about to exit -- REMOVE THIS LINE");
 
     /*

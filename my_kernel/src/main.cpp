@@ -100,8 +100,9 @@ extern "C" int kmain()
     int cts_status = CTS_STATUS(CONSOLE);
     int tx_status = TX_STATUS(CONSOLE);
     uart_printf(CONSOLE, RESET_FORMATTING CLEAR_SCREEN COLUMN_132 SCROLL_REGION MOVE_CURSOR SMOOTH_SCROLL "Terminal Output Kernel:\r\n" SAVE_CURSOR, SCROLL_ROW_START, SCROLL_ROW_END, SCROLL_ROW_START, 1);
-    uart_printf(CONSOLE, RESTORE_CURSOR "CTS STATUS: %x\r\n" SAVE_CURSOR, cts_status);
-    uart_printf(CONSOLE, RESTORE_CURSOR "TX STATUS: %x\r\n" SAVE_CURSOR, tx_status);
+    // uart_printf(CONSOLE, RESET_FORMATTING CLEAR_SCREEN COLUMN_132 MOVE_CURSOR "Terminal Output Kernel:\r\n" SAVE_CURSOR, 1, 1);
+    // uart_printf(CONSOLE, RESTORE_CURSOR "CTS STATUS: %x\r\n" SAVE_CURSOR, cts_status);
+    // uart_printf(CONSOLE, RESTORE_CURSOR "TX STATUS: %x\r\n" SAVE_CURSOR, tx_status);
 
     UART_IMSC_ENABLE(CONSOLE, (CTS_INTERRUPT_MASK)); // enable CTS interrupt
     // UART_IMSC_ENABLE(MARKLIN, (CTS_INTERRUPT_MASK)); // enable CTS interrupt

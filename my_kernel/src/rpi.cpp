@@ -3,7 +3,6 @@
 #include <stdarg.h>
 #include <stdint.h>
 #include "shared_constants.h"
-
 static char *const MMIO_BASE = (char *)0xFE000000;
 
 /*********** GPIO CONFIGURATION ********************************/

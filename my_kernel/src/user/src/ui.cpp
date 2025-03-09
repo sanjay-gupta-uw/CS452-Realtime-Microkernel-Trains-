@@ -42,23 +42,23 @@ namespace UI_NS
 
     void start_ui()
     {
-        uassert(false && "FORCED PANIC -- UI1 -- REMOVE THIS LINE");
+        // uassert(false && "FORCED PANIC -- UI1 -- REMOVE THIS LINE");
         IO_NS::PrintTerminal("UI TASK STARTED!\r\n");
         // REGISTERAS("UI_TASK");
         // Clock clock;
 
         // sensors.setMarklinIOtid(MARKLIN_IO_SERVER_TID);
-        uassert(false && "FORCED PANIC -- UI2 -- REMOVE THIS LINE");
+        // uassert(false && "FORCED PANIC -- UI2 -- REMOVE THIS LINE");
 
-        for (int i = 1; i <= NUM_COLS; i++)
-        {
-            IO_NS::Print(MOVE_CURSOR "-", SCROLL_ROW_END, i);
-        }
+        // for (int i = 1; i <= NUM_COLS; i++)
+        // {
+        //     IO_NS::Print(MOVE_CURSOR "-", SCROLL_ROW_END, i);
+        // }
 
-        init_switch_display();
-        IO_NS::Print(MOVE_CURSOR "IDLE: %d%%", IDLE_LOCATION, 1, 1);
-        // clock.Display();
-        init_sensor_display();
+        // init_switch_display();
+        // IO_NS::Print(MOVE_CURSOR "IDLE: %d%%", IDLE_LOCATION, 1, 1);
+        // // clock.Display();
+        // init_sensor_display();
 
         EXIT();
     }

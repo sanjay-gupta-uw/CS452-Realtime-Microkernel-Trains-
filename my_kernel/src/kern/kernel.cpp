@@ -500,23 +500,24 @@ void Kernel::IRQ_Handler()
             };
 
         TaskDescriptor *task;
-        uint32_t uart_mis = UART_REG(CONSOLE, UART_MIS); // read UART_MIS register to find out which interrupt is triggered
-                                                         /*
-                                                         for (int i = 0; i < NUM_CONSOLE_EVENTS; i++)
-                                                         {
-                                                             if (uart_mis & CONSOLE_EVENT_MASKS[i])
-                                                             {
-                                                                 UART_IMSC_DISABLE(CONSOLE, CONSOLE_EVENT_MASKS[i]);
-                                                                 UART_CLEAR_INTERRUPT(CONSOLE, CONSOLE_EVENT_MASKS[i]);
-                                                                 while (event_queues[CONSOLE_EVENT_INDEX[i]].Pop(&task) != -1)
-                                                                 {
-                                                                     task->setState(READY);
-                                                                     task->SetRetval(0);
-                                                                     ready_queue.Push(task->tid, task->priority);
-                                                                 }
-                                                             }
-                                                         }
-                                                             */
+        // read UART_MIS register to find out which interrupt is triggered
+        uint32_t uart_mis = UART_REG(CONSOLE, UART_MIS);
+        /*
+        for (int i = 0; i < NUM_CONSOLE_EVENTS; i++)
+        {
+            if (uart_mis & CONSOLE_EVENT_MASKS[i])
+            {
+                UART_IMSC_DISABLE(CONSOLE, CONSOLE_EVENT_MASKS[i]);
+                UART_CLEAR_INTERRUPT(CONSOLE, CONSOLE_EVENT_MASKS[i]);
+                while (event_queues[CONSOLE_EVENT_INDEX[i]].Pop(&task) != -1)
+                {
+                    task->setState(READY);
+                    task->SetRetval(0);
+                    ready_queue.Push(task->tid, task->priority);
+                }
+            }
+        }
+            */
         if (uart_mis & TX_INTERRUPT_MASK)
         {
             UART_IMSC_DISABLE(CONSOLE, TX_INTERRUPT_MASK);
@@ -571,7 +572,6 @@ void Kernel::IRQ_Handler()
                 kassert(false && "PANIC: UART_CTS INTERRUPT LOW");
             }
 
-            kassert(false && "PANIC: UART_CTS INTERRUPT TRIGGERED");
             while (event_queues[UART_CTS].Pop(&task) != -1)
             {
                 task->setState(READY);

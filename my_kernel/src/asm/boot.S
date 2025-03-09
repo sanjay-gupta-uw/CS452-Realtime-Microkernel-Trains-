@@ -112,29 +112,28 @@ vectors:
     // ---------------------
     // Current EL, SP_EL0
     // ---------------------
-    b _dummyHandler1  // VBAR_ELx + 0x000
+    eret  // VBAR_ELx + 0x000
     .balign 0x80
-    b _dummyHandler1  // VBAR_ELx + 0x080
+    eret  // VBAR_ELx + 0x080
     .balign 0x80
-    b _dummyHandler1  // VBAR_ELx + 0x100
+    eret  // VBAR_ELx + 0x100
     .balign 0x80
-    b _dummyHandler1 // VBAR_ELx + 0x180
+    eret // VBAR_ELx + 0x180
     .balign 0x80
 
     // ---------------------
     // Current EL, SP_ELx
     // ---------------------
-    mov x0, #1
-    b _dummyHandler2  // VBAR_ELx + 0x200
+    eret  // VBAR_ELx + 0x200
     .balign 0x80
     mov x0, #2
-    b _dummyHandler1   // VBAR_ELx + 0x280
+    eret   // VBAR_ELx + 0x280
     .balign 0x80
     mov x0, #3
-    b _dummyHandler2   // VBAR_ELx + 0x300
+    eret   // VBAR_ELx + 0x300
     .balign 0x80
     mov x0, #4
-    b _dummyHandler2  // VBAR_ELx + 0x380
+    eret  // VBAR_ELx + 0x380
     .balign 0x80
 
     // ---------------------
@@ -143,23 +142,22 @@ vectors:
     b task_to_kernel_asm  // VBAR_ELx + 0x400
     .balign 0x80
     b irq_to_kernel_asm  // VBAR_ELx + 0x480
-    //b _dummyHandler3
     .balign 0x80
-    b _dummyHandler3   // VBAR_ELx + 0x500
+    eret   // VBAR_ELx + 0x500
     .balign 0x80
-    b _dummyHandler3  // VBAR_ELx + 0x580
+    eret  // VBAR_ELx + 0x580
     .balign 0x80
 
     // ---------------------
     // Lower EL, AArch32
     // ---------------------
-    b _dummyHandler4  // VBAR_ELx + 0x600
+    eret  // VBAR_ELx + 0x600
     .balign 0x80
-    b _dummyHandler4  // VBAR_ELx + 0x680
+    eret  // VBAR_ELx + 0x680
     .balign 0x80
-    b _dummyHandler4   // VBAR_ELx + 0x700
+    eret   // VBAR_ELx + 0x700
     .balign 0x80
-    b _dummyHandler4  // VBAR_ELx + 0x780
+    eret  // VBAR_ELx + 0x780
     .balign 0x80
  
 

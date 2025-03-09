@@ -24,6 +24,7 @@ typedef enum
     P4,
     P5,
     P6,
+    P7,
     IDLE
 } PRIORITY;
 
