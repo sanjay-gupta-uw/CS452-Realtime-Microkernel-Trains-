@@ -47,10 +47,18 @@ void FirstUserTask()
     int nameServerTid = CREATE(PRIORITY::P0, NameServer); // Start the Name Server
     uassert(nameServerTid > 0 && "Error starting Name Server");
 
+    int clockServerTid = CREATE(PRIORITY::P1, ClockServer); // Start the Clock Server
+    uassert(clockServerTid > 0 && "Error starting Clock Server");
+
     // tid 4
     int ioServerTid = CREATE(PRIORITY::P2, IO_SERVER::startIOServer); // Start the IO Server
     uassert(ioServerTid > 0 && "Error starting IO Server");
-
+    IO_NS::PrintTerminal("IO Server started\r\n");
+    for (int i = 0; i < 200; i++)
+    {
+        IO_NS::PrintTerminal("line %d\r\n", i);
+    }
+    /*
     IO_SERVER::Putc(ioServerTid, 'A');
     // IO_SERVER::Putc(ioServerTid, 'A');
     for (int i = 0; i < 100; i++)
@@ -62,6 +70,7 @@ void FirstUserTask()
             IO_SERVER::Putc(ioServerTid, '\n');
         }
     }
+    */
 
     EXIT();
 }

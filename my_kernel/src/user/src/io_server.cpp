@@ -76,6 +76,22 @@ namespace IO_SERVER
                 reply.type = REPLY_TYPE::SUCCESS;
                 break;
             }
+            case IO_REQUEST_TYPE::PUTS:
+            {
+                uart_putc(MARKLIN, 'P');
+                uart_putc(MARKLIN, '-');
+                uart_putc(MARKLIN, 'S');
+
+                unsigned char *str = req.str;
+                while (*str != '\0')
+                {
+                    int ret = transmit_buffer.Push(*str);
+                    uassert(ret >= 0 && "IO_SERVER::run: PANIC, Error pushing to transmit buffer");
+                    str++;
+                }
+                reply.type = REPLY_TYPE::SUCCESS;
+                break;
+            }
             case IO_REQUEST_TYPE::TX_NOTIFIER:
             {
                 uart_putc(MARKLIN, 'T');
@@ -109,7 +125,7 @@ namespace IO_SERVER
                 else if (!awaiting_tx)
                 {
                     awaiting_tx = true;
-                    uassert(false && "IO_SERVER::run: PANIC -- replying to TX to re-enable IRQ");
+                    // uassert(false && "IO_SERVER::run: PANIC -- replying to TX to re-enable IRQ");
                     REPLY(tx_notifier_tid, nullptr, 0);
                 }
             }
@@ -127,15 +143,23 @@ namespace IO_SERVER
     }
     int Putc(int tid, unsigned char ch)
     {
+        int IO_TID = WHOIS("IOServer");
         IO_REQUEST req{IO_REQUEST_TYPE::PUTC, ch, nullptr};
         IO_REPLY reply;
-        SEND(tid, (char *)&req, sizeof(req), (char *)&reply, sizeof(reply));
+        SEND(IO_TID, (char *)&req, sizeof(req), (char *)&reply, sizeof(reply));
         uassert(reply.type != REPLY_TYPE::UNIMPLEMENTED && "IO_SERVER::Putc: PANIC, Unimplemented");
 
         return reply.type == REPLY_TYPE::SUCCESS ? 0 : -1;
     }
     int Puts(int tid, unsigned char *str)
     {
+        int IO_TID = WHOIS("IOServer");
+        IO_REQUEST req{IO_REQUEST_TYPE::PUTS, 0, str};
+        IO_REPLY reply;
+        SEND(IO_TID, (char *)&req, sizeof(req), (char *)&reply, sizeof(reply));
+        uassert(reply.type != REPLY_TYPE::UNIMPLEMENTED && "IO_SERVER::Puts: PANIC, Unimplemented");
+
+        return reply.type == REPLY_TYPE::SUCCESS ? 0 : -1;
     }
 
     void notifier_rxto()

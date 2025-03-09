@@ -500,7 +500,7 @@ void Kernel::IRQ_Handler()
             int tx_status = TX_STATUS(CONSOLE);
             if (tx_status == 1)
             {
-                kassert(false && "PANIC: UART_TX INTERRUPT HIGH");
+                // kassert(false && "PANIC: UART_TX INTERRUPT HIGH");
             }
             else if (tx_status == 0)
             {
