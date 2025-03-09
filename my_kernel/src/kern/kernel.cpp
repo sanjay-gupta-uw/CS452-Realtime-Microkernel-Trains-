@@ -295,6 +295,10 @@ void Kernel::AwaitEvent(int eventType)
     break;
     case UART_TX:
     {
+        // ensure TX is low
+        int tx_status = TX_STATUS(CONSOLE);
+        // uart_printf(CONSOLE, RESTORE_CURSOR "KERNEL AWAIT: TX STATUS: %d\r\n" SAVE_CURSOR, tx_status);
+        // kassert(false && "PANIC: UART_TX ENABLED");
         // ENABLE LEVEL INTERRUPT using IMSC register
         UART_IMSC_ENABLE(CONSOLE, (TX_INTERRUPT_MASK));
         active_task->SetRetval(-1);
@@ -526,19 +530,22 @@ void Kernel::IRQ_Handler()
             int tx_status = TX_STATUS(CONSOLE);
             if (tx_status == 1)
             {
-                // kassert(false && "PANIC: UART_TX INTERRUPT HIGH");
+                kassert(false && "PANIC: UART_TX INTERRUPT HIGH");
             }
             else if (tx_status == 0)
             {
-                kassert(false && "PANIC: UART_TX INTERRUPT LOW");
+                kassert(false && "PANIC: UART_TX INTERRUPT LOW"); // halt the system
             }
 
             while (event_queues[UART_TX].Pop(&task) != -1)
             {
                 // uart_printf(CONSOLE, RESTORE_CURSOR "UART_TX INTERRUPT TRIGGERED -- waking up task {%d}\r\n" SAVE_CURSOR, task->tid);
+                // kassert(false && "WAKING UP TX TASK");
                 task->setState(READY);
                 task->SetRetval(0);
                 ready_queue.Push(task->tid, task->priority);
+
+                // INSPECT READY QUEUE
             }
             // uart_printf(CONSOLE, RESTORE_CURSOR "UART_TX INTERRUPT TRIGGERED -- NO MORE TASKS WAITING\r\n" SAVE_CURSOR);
             // kassert(false && "PANIC: UART_TX INTERRUPT TRIGGERED");

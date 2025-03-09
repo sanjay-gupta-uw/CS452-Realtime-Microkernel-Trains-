@@ -46,8 +46,10 @@ void FirstUserTask()
     uassert(ioServerTid > 0 && "Error starting IO Server");
 
     // uart_printf(CONSOLE, "First User Task: Starting User Tasks!\r\n");
-    IO_NS::PrintTerminal("Starting User Tasks\r\n");
-    for (int i = 0; i < 7; ++i)
+    // IO_NS::PrintTerminal("Starting User Tasks0\r\n");
+    // IO_NS::PrintTerminal("Starting User Tasks1\r\n");
+    // for (int i = 0; i < 10; ++i)
+    for (int i = 0; i < 5; ++i)
     {
         IO_NS::PrintTerminal("Starting User Tasks %d\r\n", i);
     }

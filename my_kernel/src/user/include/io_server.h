@@ -6,8 +6,6 @@
 namespace IO_SERVER
 {
 #define UNDEFINED_CHAR '-'
-#define TX_ASSERTED 1   // buffer is not full
-#define TX_DEASSERTED 0 // buffer is full/above threshold
 #define MAX_QUEUE_SIZE 1000
 
     // REDEFINED QUEUE SIZE TO 32 -> change queue to accept size as a parameter?
@@ -28,8 +26,8 @@ namespace IO_SERVER
 
         void run();
         void spawnNotifiers();
-        void write_to_uart();
-        void transmit_char(unsigned char ch);
+        // void write_to_uart();
+        // void transmit_char(unsigned char ch);
 
         Queue<unsigned char, MAX_QUEUE_SIZE> transmit_buffer;
         Queue<unsigned char, 32> receive_buffer;
