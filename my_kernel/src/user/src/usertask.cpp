@@ -11,6 +11,7 @@
 #include "../include/io.h"
 #include "../include/command.hpp"
 #include "../include/uassert.h"
+#include "../../register.h"
 
 #if IRQEn == 1
 #define IRQ_ENABLED 1
@@ -20,8 +21,8 @@
 
 void IdleTask()
 {
-    // int FUT = CREATE(PRIORITY::P6, FirstUserTask);
-    // uassert(FUT > 0 && "Error starting First User Task");
+    int FUT = CREATE(PRIORITY::P6, FirstUserTask);
+    uassert(FUT > 0 && "Error starting First User Task");
 
     /*
     // REGISTERAS("IdleTask");
@@ -52,15 +53,15 @@ void FirstUserTask()
 
     IO_SERVER::Putc(ioServerTid, 'A');
     // IO_SERVER::Putc(ioServerTid, 'A');
-    // for (int i = 0; i < 100; i++)
-    // {
-    //     IO_SERVER::Putc(ioServerTid, 'A');
-    //     if (i % 10 == 0)
-    //     {
-    //         IO_SERVER::Putc(ioServerTid, '\r');
-    //         IO_SERVER::Putc(ioServerTid, '\n');
-    //     }
-    // }
+    for (int i = 0; i < 100; i++)
+    {
+        IO_SERVER::Putc(ioServerTid, 'A');
+        if (i % 10 == 0)
+        {
+            IO_SERVER::Putc(ioServerTid, '\r');
+            IO_SERVER::Putc(ioServerTid, '\n');
+        }
+    }
 
     EXIT();
 }

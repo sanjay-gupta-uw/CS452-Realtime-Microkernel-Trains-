@@ -190,13 +190,10 @@ void uart_putc(size_t line, char c)
     UART_REG(line, UART_DR) = c;
 }
 
+#include "user/include/uassert.h"
 void uart_putc_non_blocking(size_t line, char c)
 {
-    // check if there is room to write more data
-    if (UART_REG(line, UART_FR) & UART_FR_TXFF)
-    {
-        return;
-    }
+    uassert((UART_REG(line, UART_FR) & UART_FR_TXFF) == 0 && "UART TX FIFO FULL");
     UART_REG(line, UART_DR) = c;
 }
 

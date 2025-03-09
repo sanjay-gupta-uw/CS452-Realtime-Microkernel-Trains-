@@ -36,6 +36,7 @@
 #define UART_FR_CTS_MASK 0x01
 #define UART_FR_RXFE_MASK 0x10
 #define UART_FR_TXFE_MASK 0x80
+#define UART_FR_TXFF_MASK 0x20
 
 #define UART_IMSC 0x38
 #define UART_MIS 0x40

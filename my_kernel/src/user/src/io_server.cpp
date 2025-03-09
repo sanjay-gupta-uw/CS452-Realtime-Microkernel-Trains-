@@ -20,7 +20,7 @@ namespace IO_SERVER
 #define MMIO_BASE 0xFE000000
     static char *const UART0_BASE = (char *)(MMIO_BASE + 0x201000);
     static char *const UART3_BASE = (char *)(MMIO_BASE + 0x201600);
-
+    static const uint32_t UART_DR = 0x00;
 #define UART_FR_TXFE_MASK 0x80
 #define UART_FR_RXTM_MASK 0x40
 #define UART_FR 0x18
@@ -96,19 +96,20 @@ namespace IO_SERVER
 
             // while (!transmit_buffer.IsEmpty())
             // {
-            if (!transmit_buffer.IsEmpty())
+            while (!transmit_buffer.IsEmpty())
             {
-                if (TX_STATUS(CONSOLE))
+                if (!IS_TX_FIFO_FULL(CONSOLE))
                 {
                     // uassert(false && "IO_SERVER::run: PANIC, TRANSMITTED");
                     unsigned char ch;
                     transmit_buffer.Pop(&ch);
-                    // uart_putc_non_blocking(CONSOLE, ch);
+                    uart_putc_non_blocking(CONSOLE, ch);
+                    // uassert(false && "DID DUMMY GET HIT?");
                 }
-                if (!awaiting_tx)
+                else if (!awaiting_tx)
                 {
                     awaiting_tx = true;
-                    // uassert(false && "IO_SERVER::run: PANIC, TRANSMIT BUFFER NOT EMPTY");
+                    uassert(false && "IO_SERVER::run: PANIC -- replying to TX to re-enable IRQ");
                     REPLY(tx_notifier_tid, nullptr, 0);
                 }
             }

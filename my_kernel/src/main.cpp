@@ -107,7 +107,7 @@ extern "C" int kmain()
     // scheduler pops the highest priority task into td
     while ((current_task = kernel.Scheduler()) != nullptr)
     {
-        uart_printf(CONSOLE, RESTORE_CURSOR "ACTIVE TASK: tid{%d} priority{%d}\r\n" SAVE_CURSOR, current_task->getTid(), current_task->getPriority());
+        // uart_printf(CONSOLE, RESTORE_CURSOR "ACTIVE TASK: tid{%d} priority{%d}\r\n" SAVE_CURSOR, current_task->getTid(), current_task->getPriority());
         // kassert(false && "PANIC: Kernel loop");
         // uart_printf(CONSOLE, RESTORE_CURSOR "ACTIVE TASK: tid{%d} priority{%d}\r\n" SAVE_CURSOR, current_task->getTid(), current_task->getPriority());
         // IO_NS::PrintTerminal("ACTIVE TASK: tid{%d} priority{%d}\r\n", current_task->getTid(), current_task->getPriority());
