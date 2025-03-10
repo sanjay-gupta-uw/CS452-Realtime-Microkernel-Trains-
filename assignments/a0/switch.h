@@ -26,7 +26,6 @@ void init_switch_display(int LOCATION);
 void switch_display(int LOCATION);
 
 bool is_valid_switch(int switch_number);
-int switch_num_to_address(int track_node_num);
 void set_switches(const SwitchSetting* switches, int num_switches);
 
 #endif

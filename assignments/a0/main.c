@@ -135,7 +135,7 @@ int kmain()
       			SwitchSetting switches_set[MAX_SWITCHES];
       			int num_switches = 0;
       			int total_distance = 0;
-      			if (find_path(track, start_node, dest_node, switches_set, &num_switches, &total_distance)) {
+      			if (find_path_BFS(track, start_node, dest_node, switches_set, &num_switches, &total_distance)) {
          			set_switches(switches_set, num_switches);
          			uart_printf(CONSOLE, "Initial path found! Distance: %dmm\r\n", total_distance);
       			}
