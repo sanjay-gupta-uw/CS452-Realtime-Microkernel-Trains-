@@ -7,10 +7,10 @@
 extern "C" size_t fetch_sp();
 
 static const char *const group_names[] = {
-    "Exception from a lower EL and all lower ELs are AArch32",
-    "Exception from a lower EL and at least one lower EL is AArch64",
-    "Exception from the current EL while using SP_ELx",
     "Exception from the current EL while using SP_EL0",
+    "Exception from the current EL while using SP_ELx",
+    "Exception from a lower EL and at least one lower EL is AArch64",
+    "Exception from a lower EL and all lower ELs are AArch32",
 };
 
 extern "C" void __SError__(int group)

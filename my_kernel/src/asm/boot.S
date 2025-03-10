@@ -107,13 +107,13 @@ exit:
 
 
 .section ".text.vectors"
-.balign 0x800 // 2KB alignment
+.balign 0x1000 // 4KB alignment
 vectors:
     // ---------------------
     // Current EL, SP_EL0
     // ---------------------
     mov x0, #0
-    b __SError__
+    b __Sync__
     .balign 0x80
     mov x0, #0
     b __IRQ__
@@ -122,14 +122,14 @@ vectors:
     b __FIQ__
     .balign 0x80
     mov x0, #0
-    b __Sync__
+    b __SError__
     .balign 0x80
 
     // ---------------------
     // Current EL, SP_ELx
     // ---------------------
     mov x0, #1
-    b __SError__
+    b __Sync__
     .balign 0x80
     mov x0, #1
     b __IRQ__
@@ -138,9 +138,9 @@ vectors:
     b __FIQ__
     .balign 0x80
     mov x0, #1
-    b __Sync__
+    b __SError__
     .balign 0x80
-
+    
     // ---------------------
     // Lower EL, AArch64
     // ---------------------
@@ -152,14 +152,14 @@ vectors:
     b __FIQ__
     .balign 0x80
     mov x0, #2
-    b __Sync__
+    b __SError__
     .balign 0x80
 
     // ---------------------
     // Lower EL, AArch32
     // ---------------------
     mov x0, #3
-    b __SError__
+    b __Sync__
     .balign 0x80
     mov x0, #3
     b __IRQ__
@@ -168,7 +168,7 @@ vectors:
     b __FIQ__
     .balign 0x80
     mov x0, #3
-    b __Sync__
+    b __SError__
     .balign 0x80
  
 
