@@ -6,22 +6,30 @@
 
 extern "C" size_t fetch_sp();
 
-extern "C" void _dummyHandler1()
-{
-    kassert(false && "Dummy Handler 1" && "IRQ TRIGGERED");
-}
+static const char *const group_names[] = {
+    "Exception from a lower EL and all lower ELs are AArch32",
+    "Exception from a lower EL and at least one lower EL is AArch64",
+    "Exception from the current EL while using SP_ELx",
+    "Exception from the current EL while using SP_EL0",
+};
 
-extern "C" void _dummyHandler2(int x)
+extern "C" void __SError__(int group)
 {
-    kassert(false && "Dummy Handler 2" && "IRQ TRIGGERED");
+    uart_printf(CONSOLE, "SError: %s\r\n", group_names[group]);
+    kassert(false && group_names[group]);
 }
-
-extern "C" void _dummyHandler3()
+extern "C" void __IRQ__(int group)
 {
-    kassert(false && "Dummy Handler 3" && "IRQ TRIGGERED");
+    uart_printf(CONSOLE, "IRQ: %s\r\n", group_names[group]);
+    kassert(false && group_names[group]);
 }
-
-extern "C" void _dummyHandler4()
+extern "C" void __FIQ__(int group)
 {
-    kassert(false && "Dummy Handler 4" && "IRQ TRIGGERED");
+    uart_printf(CONSOLE, "FIQ: %s\r\n", group_names[group]);
+    kassert(false && group_names[group]);
+}
+extern "C" void __Sync__(int group)
+{
+    uart_printf(CONSOLE, "Sync: %s\r\n", group_names[group]);
+    kassert(false && group_names[group]);
 }

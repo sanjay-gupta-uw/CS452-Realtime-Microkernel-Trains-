@@ -13,4 +13,6 @@ void FirstUserTask();
 void ClientTask();
 void MarklinTask();
 void IdleTask();
+void SensorTask();
+
 #endif

@@ -9,7 +9,6 @@ namespace Sensors_NS
         : UPDATE_DISPLAY(false), last_triggered_bank('\0'), last_triggered_id(0)
     {
         IO_NS::PrintTerminal("SensorManager::SensorManager: Initializing SensorManager\r\n");
-        MARKLIN_IO_SERVER_TID = -1;
         last_triggered_bank = '\0';
         last_triggered_id = 0;
 
@@ -23,9 +22,12 @@ namespace Sensors_NS
                 sensor_data[idx].status = SensorState::SEN_OFF;
             }
         }
-        IO_NS::PrintTerminal("Sending Initial Reset to Marklin\r\n");
         // uassert(2 == 3 && "SensorManager::SensorManager: Sending Initial Reset to Marklin");
-        uart_putc(MARKLIN, RESET_MODE_ON); // this will allow the marklin to send cts/tx interrupts
+
+        MARKLIN_IO_SERVER_TID = WHOIS("MarklinIOServer");
+        MarklinRequest request = {COMMAND::READ_SENSOR, -1, -1, RESET_MODE_ON};
+        int ret = MARKLIN_IO_SERVER::SendCmd(MARKLIN_IO_SERVER_TID, &request);
+        // IO_NS::PrintTerminal("Sent Initial Reset to Marklin\r\n");
     }
 
     SensorManager::~SensorManager()
@@ -39,11 +41,6 @@ namespace Sensors_NS
         MarklinRequest request = {COMMAND::READ_SENSOR, -1, -1, reset_on ? RESET_MODE_ON : RESET_MODE_OFF};
         int ret = MARKLIN_IO_SERVER::SendCmd(MARKLIN_IO_SERVER_TID, &request);
         uassert(ret >= 0 && "SensorManager::Reset: command sent to MarklinIOServer failed");
-    }
-
-    void SensorManager::setMarklinIOtid(int tid)
-    {
-        MARKLIN_IO_SERVER_TID = tid;
     }
 
     void SensorManager::ReadBank(int num_bank)

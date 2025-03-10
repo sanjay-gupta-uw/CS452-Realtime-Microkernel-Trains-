@@ -56,7 +56,8 @@ typedef enum
 #define BOX_WIDTH 25
 
 #define SCROLL_ROW_START 1
-#define SCROLL_ROW_END 30
+#define SCROLL_ROW_END 20
+// #define SCROLL_ROW_END 60
 
 #define CLOCK_LENGTH 8
 #define CLOCK_LOCATION_X (NUM_COLS - CLOCK_LENGTH) / 2

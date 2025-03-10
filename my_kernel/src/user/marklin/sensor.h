@@ -35,7 +35,6 @@ namespace Sensors_NS
     public:
         SensorManager();
         ~SensorManager();
-        void setMarklinIOtid(int tid);
         void ReadBank(int num_bank);
         void ReadAll(int num_banks);
         void Reset(bool reset_on);

@@ -98,19 +98,18 @@ extern "C" int kmain()
     Kernel kernel(bootstrap_task); // bootstrap
     TaskDescriptor *current_task = nullptr;
 
-    uart_printf(CONSOLE, CLEAR_SCREEN RESET_FORMATTING MOVE_CURSOR SAVE_CURSOR, 1, 1);
-    uart_printf(CONSOLE, RESTORE_CURSOR "Kernel Started -- enabling interrupts\r\n" SAVE_CURSOR);
+    // uart_printf(CONSOLE, CLEAR_SCREEN RESET_FORMATTING MOVE_CURSOR SAVE_CURSOR, 1, 1);
+    // uart_printf(CONSOLE, RESTORE_CURSOR "Kernel Started -- enabling interrupts\r\n" SAVE_CURSOR);
 
     uint32_t start_time, end_time = 0;
 
-    // UART_IMSC_ENABLE(CONSOLE, (RTM_INTERRUPT_MASK)); // enable receive timeout interrupt
+    UART_IMSC_ENABLE(MARKLIN, (CTS_INTERRUPT_MASK)); // enable receive timeout interrupt
     // scheduler pops the highest priority task into td
     while ((current_task = kernel.Scheduler()) != nullptr)
     {
         // uart_printf(CONSOLE, RESTORE_CURSOR "ACTIVE TASK: tid{%d} priority{%d}\r\n" SAVE_CURSOR, current_task->getTid(), current_task->getPriority());
         // kassert(false && "PANIC: Kernel loop");
         // uart_printf(CONSOLE, RESTORE_CURSOR "ACTIVE TASK: tid{%d} priority{%d}\r\n" SAVE_CURSOR, current_task->getTid(), current_task->getPriority());
-        // IO_NS::PrintTerminal("ACTIVE TASK: tid{%d} priority{%d}\r\n", current_task->getTid(), current_task->getPriority());
         start_time = clock.Time();
 
         // enable_irq(); // enable interrupts

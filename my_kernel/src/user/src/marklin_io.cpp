@@ -1,3 +1,4 @@
+#include "../../register.h"
 #include "../include/marklin_io.h"
 #include "../include/name_server.h"
 #include "../include/clock_server.h"
@@ -29,6 +30,7 @@ namespace MARKLIN_IO_SERVER
 
     MarklinIOServer::MarklinIOServer()
     {
+        total_bytes_transmitted = 0;
         active_command_size = 0;
         bytes_transmitted = 0;
         last_switch_addr = -1;
@@ -36,6 +38,7 @@ namespace MARKLIN_IO_SERVER
         REGISTERAS("MarklinIOServer");
         IO_SERVER_TID = MYTID();
         spawnNotifiers();
+        numSeenCommands = 0;
         run();
     }
 
@@ -46,17 +49,11 @@ namespace MARKLIN_IO_SERVER
     void MarklinIOServer::spawnNotifiers()
     {
         // ensure this runs before tx_notifier
-        rx_notifier_tid = CREATE(PRIORITY::P1, notifier_rx);
+        rx_notifier_tid = CREATE(PRIORITY::P0, notifier_rx);
         uassert(rx_notifier_tid >= 0 && "Error starting RX Notifier");
 
-        tx_notifier_tid = CREATE(PRIORITY::P1, notifier_tx);
+        tx_notifier_tid = CREATE(PRIORITY::P0, notifier_tx);
         uassert(tx_notifier_tid >= 0 && "Error starting TX Notifier");
-
-        cts_notifier_high_tid = CREATE(PRIORITY::P1, notifier_cts_high);
-        uassert(cts_notifier_high_tid >= 0 && "Error starting CTS Notifier");
-
-        cts_notifier_low_tid = CREATE(PRIORITY::P1, notifier_cts_low);
-        uassert(cts_notifier_low_tid >= 0 && "Error starting CTS Notifier");
     }
 
     void notifier_rx()
@@ -77,82 +74,104 @@ namespace MARKLIN_IO_SERVER
             uassert(reply.type != REPLY_TYPE::UNIMPLEMENTED && "RX NOTIFIER REPLY returned error");
         }
     }
-    void notifier_tx()
+    void notifier_cts_high()
     {
-        REGISTERAS("Marklin_TXNotifier");
-        // (CONSOLE, "M-TX Notifier started\r\n");
+        REGISTERAS("Marklin_CTS_HIGH_Notifier");
+        // int transmi
+        // WHOIS()
         while (true)
         {
-            // (CONSOLE, "ENABLING TX INTERRUPT\r\n");
-            int retval = AWAITEVENT(InterruptEvents::UART_MARKLIN_TX);
-            uassert(retval >= 0 && "TX NOTIFIER AWAITEVENT returned error");
-            // (CONSOLE, "TX NOTIFIER AWOKEN\r\n");
+            int retval = AWAITEVENT(InterruptEvents::UART_MARKLIN_CTS_HIGH);
+            uassert(retval >= 0 && "CTS_HIGH NOTIFIER AWAITEVENT returned error");
+            IO_REQUEST req{IO_REQUEST_TYPE::CTS_NOTIFIER_HIGH, 0};
+            IO_REPLY reply;
+            SEND(IO_SERVER_TID, (char *)&req, sizeof(req), (char *)&reply, sizeof(reply));
+            uassert(reply.type != REPLY_TYPE::UNIMPLEMENTED && "CTS_HIGH NOTIFIER REPLY returned error");
+        }
+    }
+
+    void notifier_tx()
+    {
+        int ret = -1;
+        int IO_SERVER_TID = WHOIS("MarklinIOServer");
+
+        REGISTERAS("Marklin_TXNotifier");
+        bool initialized = false;
+
+        while (true)
+        {
+            IO_NS::PrintTerminal("MK-TX::Waiting for Marklin to be ready to transmit\r\n");
+            // uassert(!initialized && "WORKING! -- REMOVE THIS LINE AND IT SHOULD WORK");
+            if (TX_STATUS(MARKLIN) != 1)
+            {
+                ret = AWAITEVENT(InterruptEvents::UART_MARKLIN_TX);
+                uassert(ret >= 0 && "TX NOTIFIER::TX_AWAITEVENT returned error");
+            }
+            IO_NS::PrintTerminal("MK-TX::Marklin TX Status: %d\r\n", TX_STATUS(MARKLIN));
+
+            if (CTS_STATUS(MARKLIN) != 1)
+            {
+                ret = AWAITEVENT(InterruptEvents::UART_MARKLIN_CTS_HIGH);
+                uassert(ret >= 0 && "TX NOTIFIER::CTS_HIGH_AWAITEVENT returned error");
+            }
+            // uassert(false && "TX NOTIFIER::CTS_HIGH_AWAITEVENT FORCED PANIC");
 
             IO_REQUEST req{IO_REQUEST_TYPE::TX_NOTIFIER, 0};
             IO_REPLY reply;
 
-            SEND(IO_SERVER_TID, (char *)&req, sizeof(req), (char *)&reply, sizeof(reply));
+            IO_NS::PrintTerminal("MK-TX::Sending ready to transmit to Marklin Server \r\n");
+            SEND(IO_SERVER_TID, (char *)&req, sizeof(req), (char *)&reply, sizeof(reply)); // Server needs to reply when it writes to the UART
             uassert(reply.type != REPLY_TYPE::UNIMPLEMENTED && "TX NOTIFIER REPLY returned error");
+
+            IO_NS::PrintTerminal("MK-TX::Waiting for CTS LOW\r\n");
+
+            // check if CTS is low
+            if (CTS_STATUS(MARKLIN) != 0)
+            {
+                ret = AWAITEVENT(InterruptEvents::UART_MARKLIN_CTS_LOW);
+                uassert(ret >= 0 && "TX NOTIFIER::CTS_LOW_AWAITEVENT returned error");
+            }
+            // uassert(false && "TX NOTIFIER::CTS_LOW_AWAITEVENT FORCED PANIC");
+            // RECEIVE(&ret, (char *)&req, sizeof(req)); // use receive to notify of CTS HIGH
+
+            // check if CTS is high
+            IO_NS::PrintTerminal("MK-TX::Waiting for CTS HIGH\r\n");
+            // while (CTS_STATUS(MARKLIN) != 1)
+            if (CTS_STATUS(MARKLIN) != 1)
+            {
+
+                ret = AWAITEVENT(InterruptEvents::UART_MARKLIN_CTS_HIGH);
+                uassert(ret >= 0 && "TX NOTIFIER::CTS_HIGH_AWAITEVENT returned error");
+            }
+            // uassert(false && "TX NOTIFIER::CTS_HIGH_AWAITEVENT FORCED PANIC");
+
+            IO_NS::PrintTerminal("MK-TX::CTS HIGH -- SEQUENCE COMPLETE\r\n");
+            // uassert(false && "TX NOTIFIER::CTS_HIGH_AWAITEVENT FORCED PANIC");
+            initialized = true;
         }
-    }
-    void notifier_cts_high()
-    {
-        REGISTERAS("Marklin_CTS_HIGH_Notifier");
-        // (CONSOLE, "M-CTS-HIGH Notifier started\r\n");
-        while (true)
-        {
-            // (CONSOLE, "WAITING FOR CTS HIGH \r\n");
-            int retval = AWAITEVENT(InterruptEvents::UART_MARKLIN_CTS_HIGH);
-            uassert(retval >= 0 && "CTS NOTIFIER AWAITEVENT returned error");
-            // (CONSOLE, "CTS-HIGH NOTIFIER AWOKEN: %d\r\n", retval);
-
-            IO_REQUEST req{IO_REQUEST_TYPE::CTS_NOTIFIER_HIGH};
-            IO_REPLY reply;
-
-            SEND(IO_SERVER_TID, (char *)&req, sizeof(req), (char *)&reply, sizeof(reply));
-            uassert(reply.type != REPLY_TYPE::UNIMPLEMENTED && "CTS NOTIFIER REPLY returned error");
-        }
-    }
-    void notifier_cts_low()
-    {
-        REGISTERAS("Marklin_CTS_LOW_Notifier");
-        // (CONSOLE, "M-CTS-LOW Notifier started\r\n");
-        while (true)
-        {
-            // (CONSOLE, "WAITING FOR CTS LOW\r\n");
-            int retval = AWAITEVENT(InterruptEvents::UART_MARKLIN_CTS_LOW);
-            uassert(retval >= 0 && "CTS NOTIFIER AWAITEVENT returned error");
-            // (CONSOLE, "CTS-LOW NOTIFIER AWOKEN: %d\r\n", retval);
-
-            IO_REQUEST req{IO_REQUEST_TYPE::CTS_NOTIFIER_LOW};
-            IO_REPLY reply;
-
-            SEND(IO_SERVER_TID, (char *)&req, sizeof(req), (char *)&reply, sizeof(reply));
-            uassert(reply.type != REPLY_TYPE::UNIMPLEMENTED && "CTS NOTIFIER REPLY returned error");
-        }
+        // SEND TO MARKLIN TO PROCESS COMMAND
     }
 
     void MarklinIOServer::run()
     {
         int sender_tid;
         IO_REQUEST req;
+        canTransmit = false;
         while (true)
         {
-            // bool isReady = tx_state.isReady();
-            // IO_NS::Print(COLOR_MAGENTA MOVE_CURSOR CLEAR_TO_END_LINE "MarklinIO_server::Ready to Transmit: {%s}\r\n", TRANSMIT_LOCATION + 2, 1, isReady ? "YES" : "NO");
             int retval = RECEIVE(&sender_tid, (char *)&req, sizeof(req));
             // IO_NS::PrintTerminal("MarklinIO_server::run: Received request from tid{%d} of size{%d}\r\n", sender_tid, retval);
 
             IO_REPLY reply;
             reply.type = REPLY_TYPE::FAILURE;
             reply.ch = UNDEFINED_CHAR;
-            bool sentReply = false;
+            bool send_reply = false;
 
             switch (req.type)
             {
             case IO_REQUEST_TYPE::RX_NOTIFIER:
             {
-                unsigned char ch = (unsigned char)uart_getc(MARKLIN);
+                unsigned char ch = (unsigned char)uart_getc_non_blocking(MARKLIN);
                 receive_buffer.Push(ch);
 
                 if (!rx_waiting_tasks.IsEmpty())
@@ -165,60 +184,34 @@ namespace MARKLIN_IO_SERVER
                     GETC_SUCCESS_REPLY(waiting_tid, ch);
                 }
                 reply.type = REPLY_TYPE::SUCCESS;
+                send_reply = true;
                 // REPLY(sender_tid, (char *)&reply, sizeof(reply));
+                break;
             }
-            break;
             case IO_REQUEST_TYPE::TX_NOTIFIER:
             {
-                // tx_state.update_state(STATES::TX_HIGH);
                 reply.type = REPLY_TYPE::SUCCESS;
+                canTransmit = true;
+                IO_NS::PrintTerminal("Total bytes transmitted: %d\r\n", total_bytes_transmitted);
+                // WE CAN TRANSMIT TO MARKLIN
+                break;
             }
-            break;
-            case IO_REQUEST_TYPE::CTS_NOTIFIER_HIGH:
-            {
-                tx_state.update_state(STATES::CTS_HIGH);
-                reply.type = REPLY_TYPE::SUCCESS;
-                REPLY(sender_tid, (char *)&reply, sizeof(reply));
-                sentReply = true;
-            }
-            break;
-
-            case IO_REQUEST_TYPE::CTS_NOTIFIER_LOW:
-            {
-                tx_state.update_state(STATES::CTS_LOW);
-                reply.type = REPLY_TYPE::SUCCESS;
-                REPLY(sender_tid, (char *)&reply, sizeof(reply));
-                sentReply = true;
-            }
-            break;
-
             case IO_REQUEST_TYPE::GETC:
             {
                 if (!receive_buffer.IsEmpty()) // need to reply with CH
                 {
                     unsigned char ch;
                     receive_buffer.Pop(&ch);
-                    GETC_SUCCESS_REPLY(sender_tid, ch);
-                    sentReply = true;
+                    reply.type = REPLY_TYPE::SUCCESS;
+                    reply.ch = ch;
+                    send_reply = true;
                 }
                 else
                 {
                     rx_waiting_tasks.Push(sender_tid);
                 }
+                break;
             }
-            break;
-            case IO_REQUEST_TYPE::PUTC:
-            {
-                // reply.type = REPLY_TYPE::FAILURE; // incase it's full
-                // if (!transmit_buffer.IsFull())    // this will ignore characters if "overwhelmed"
-                // {
-                //     transmit_buffer.Push((uint8_t)(req.data));
-                //     reply.type = REPLY_TYPE::SUCCESS;
-                // }
-
-                // ReplyWithMessage(sender_tid, reply); // sends UNIMPLEMENTED
-            }
-            break;
             case IO_REQUEST_TYPE::SEND_CMD:
             {
                 // IO_NS::PrintTerminal("MarklinIO_server::SEND_CMD\r\n");
@@ -237,12 +230,13 @@ namespace MARKLIN_IO_SERVER
                 {
                 case COMMAND::READ_SENSOR:
                 {
-                    IO_NS::PrintTerminal("MarklinIO_server::SEND_CMD: Reading sensor %d\r\n", m_req.data);
+                    // IO_NS::PrintTerminal("MarklinIO_server::SEND_CMD: Reading sensor %d\r\n", m_req.data);
                     cmd_buffer.Push(COMMAND::READ_SENSOR);
                     transmit_buffer.Push((unsigned char)m_req.data);
                     reply.type = REPLY_TYPE::SUCCESS;
+                    send_reply = true;
+                    break;
                 }
-                break;
                 case COMMAND::SET_SWITCH:
                 {
                     uint8_t switch_addr = m_req.id;
@@ -251,36 +245,35 @@ namespace MARKLIN_IO_SERVER
                     cmd_buffer.Push(COMMAND::SET_SWITCH);
                     transmit_buffer.Push(state);
                     transmit_buffer.Push(switch_addr);
-
-                    // IO_NS::Print(COLOR_MAGENTA MOVE_CURSOR CLEAR_TO_END_LINE "MarklinIO_server::SEND_CMD: Setting switch %d to state %c\r\n", CMD_STATUS_LOCATION, 1, switch_addr, state);
                     last_switch_addr = switch_addr;
 
                     reply.type = REPLY_TYPE::SUCCESS;
+                    send_reply = true;
+                    break;
                 }
-                break;
                 case COMMAND::ACCELERATE_TRAIN:
                 {
-                    // (CONSOLE, "#DEBUG# ~ MarklinIO_server::SEND_CMD: Accelerating train %d to speed %d\r\n", m_req.id, m_req.data);
                     uint8_t train_addr = m_req.id;
                     uint8_t speed = m_req.data;
                     cmd_buffer.Push(COMMAND::ACCELERATE_TRAIN);
                     transmit_buffer.Push(speed);
                     transmit_buffer.Push(train_addr);
-                    // IO_NS::Print(COLOR_MAGENTA MOVE_CURSOR CLEAR_TO_END_LINE "MarklinIO_server::SEND_CMD: Accelerating train %d to speed %d\r\n", CMD_STATUS_LOCATION, 1, train_addr, speed);
 
                     reply.type = REPLY_TYPE::SUCCESS;
+                    send_reply = true;
+                    break;
                 }
-                break;
                 case COMMAND::REVERSE_TRAIN:
                 {
                     uint8_t train_addr = m_req.id;
 
                     transmit_buffer.Push(REVERSE_CMD); // send the speed back
                     transmit_buffer.Push(train_addr);  // send the train address back
-                    // IO_NS::Print(COLOR_MAGENTA MOVE_CURSOR CLEAR_TO_END_LINE "MarklinIO_server::SEND_CMD: Reversing train %d\r\n", CMD_STATUS_LOCATION, 1, train_addr);
+
                     reply.type = REPLY_TYPE::SUCCESS;
+                    send_reply = true;
+                    break;
                 }
-                break;
                 default:
                     break;
                 } // end switch (m_req.type)
@@ -291,10 +284,14 @@ namespace MARKLIN_IO_SERVER
                 break;
             }
 
-            handle_transmission();
-
-            if (!sentReply)
+            if (canTransmit)
             {
+                handle_transmission();
+            }
+
+            if (send_reply)
+            {
+                // IO_NS::PrintTerminal("MarklinIO_server::run: Sending reply to tid{%d}\r\n", sender_tid);
                 REPLY(sender_tid, (char *)&reply, sizeof(reply));
             }
         }
@@ -302,8 +299,7 @@ namespace MARKLIN_IO_SERVER
 
     void MarklinIOServer::handle_transmission()
     {
-        bool isReady = tx_state.isReady();
-        // IO_NS::Print(COLOR_MAGENTA MOVE_CURSOR CLEAR_TO_END_LINE "MarklinIO_server::Ready to Transmit: {%s}\r\n", TRANSMIT_LOCATION + 4, 1, isReady ? "YES" : "NO");
+        uassert(canTransmit && "MarklinIOServer::handle_transmission: PANIC, cannot transmit");
         if (active_command_size == bytes_transmitted)
         {
             // We have processed the entire command, pop the next command
@@ -313,41 +309,36 @@ namespace MARKLIN_IO_SERVER
             }
             COMMAND cmd_type;
             cmd_buffer.Pop(&cmd_type);
-            // (CONSOLE, "Processing next command: %d\r\n", cmd_type);
+            IO_NS::PrintTerminal("Processing next command: %d\r\n", cmd_type);
+            numSeenCommands++;
+            // uassert(numSeenCommands < 5 && "MarklinIOServer::handle_transmission: THIS IS TRYING TO TRANSMIT THE 3+ COMMAND");
+            // uassert((cmd_type == COMMAND::READ_SENSOR) && "MarklinIOServer::handle_transmission: FORCED PANIC -- NON SENSOR COMMAND TRANSMITTING");
 
             active_command_size = (cmd_type == COMMAND::READ_SENSOR) ? 1 : 2;
+            total_bytes_transmitted += active_command_size;
             bytes_transmitted = 0;
         }
-        // check if we can transmit (CTS STATE MACHINE)
-        if (!transmit_buffer.IsEmpty() && tx_state.isReady())
-        {
-            tx_state.begin_transmission();
-            write_to_uart();
-        }
-    }
 
-    // can only send byte
-    void MarklinIOServer::write_to_uart()
-    {
-        unsigned char ch = UNDEFINED_CHAR;
-        transmit_buffer.Pop(&ch);
-        // (CONSOLE, "MarklinIO_server::write_to_uart: {%d} transmitting: %c\r\n", ch);
-        uart_putc(MARKLIN, ch);
-        // IO_NS::Print(COLOR_MAGENTA MOVE_CURSOR CLEAR_TO_END_LINE "MarklinIO_server::write_to_uart: {%d} successfully transmitted.\r\n", TRANSMIT_LOCATION + bytes_transmitted, 1, ch);
-        // (CONSOLE, "MarklinIO_server::write_to_uart: {%d} successfully transmitted.\r\n", ch);
-        bytes_transmitted++;
+        if (!transmit_buffer.IsEmpty())
+        {
+            unsigned char ch;
+            transmit_buffer.Pop(&ch);
+            uart_putc_non_blocking(MARKLIN, ch);
+            bytes_transmitted++;
+            canTransmit = false;
+            // wake up notifier
+            IO_REPLY reply = {REPLY_TYPE::SUCCESS, UNDEFINED_CHAR};
+            REPLY(tx_notifier_tid, (char *)&reply, sizeof(reply));
+        }
     }
 
     int Getc(int tid)
     {
-        if (tid != IO_SERVER_TID) // check if tid if valid uart server
-        {
-            return -1;
-        }
+        int IO_TID = WHOIS("MarklinIOServer");
 
         IO_REQUEST req{IO_REQUEST_TYPE::GETC, 0, nullptr};
         IO_REPLY reply;
-        SEND(IO_SERVER_TID, (char *)&req, sizeof(req), (char *)&reply, sizeof(reply));
+        SEND(IO_TID, (char *)&req, sizeof(req), (char *)&reply, sizeof(reply));
         uassert(reply.type != REPLY_TYPE::UNIMPLEMENTED && "IO_SERVER::Getc: PANIC, Unimplemented");
 
         return reply.type == REPLY_TYPE::SUCCESS ? reply.ch : -1;
@@ -355,14 +346,11 @@ namespace MARKLIN_IO_SERVER
 
     int Putc(int tid, unsigned char ch)
     {
-        if (tid != IO_SERVER_TID) // check if tid if valid uart server
-        {
-            return -1;
-        }
+        int IO_TID = WHOIS("MarklinIOServer");
 
         IO_REQUEST req{IO_REQUEST_TYPE::PUTC, ch, nullptr};
         IO_REPLY reply;
-        SEND(IO_SERVER_TID, (char *)&req, sizeof(req), (char *)&reply, sizeof(reply));
+        SEND(IO_TID, (char *)&req, sizeof(req), (char *)&reply, sizeof(reply));
         uassert(reply.type != REPLY_TYPE::UNIMPLEMENTED && "IO_SERVER::Putc: PANIC, Unimplemented");
 
         return reply.type == REPLY_TYPE::SUCCESS ? 0 : -1;
@@ -370,14 +358,11 @@ namespace MARKLIN_IO_SERVER
 
     int SendCmd(int tid, MarklinRequest *request)
     {
-        if (tid != IO_SERVER_TID) // check if tid if valid uart server
-        {
-            return -1;
-        }
+        int IO_TID = WHOIS("MarklinIOServer");
 
         IO_REQUEST req{IO_REQUEST_TYPE::SEND_CMD, 0, request};
         IO_REPLY reply;
-        SEND(IO_SERVER_TID, (char *)&req, sizeof(req), (char *)&reply, sizeof(reply));
+        SEND(IO_TID, (char *)&req, sizeof(req), (char *)&reply, sizeof(reply));
 
         return reply.type == REPLY_TYPE::FAILURE ? -1 : 0;
     }

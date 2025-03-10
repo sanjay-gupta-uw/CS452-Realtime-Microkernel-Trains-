@@ -15,9 +15,7 @@ namespace MARKLIN_NS
         void run();
 
         int MARKLIN_IO_SERVER_TID;
-        int CLOCK_SERVER_TID;
-
-        void SensorReadAll();
+        // int CLOCK_SERVER_TID;
 
     public:
         MarklinController();
@@ -25,7 +23,6 @@ namespace MARKLIN_NS
     };
 
     void start_marklin_controller();
-    void SensorTask();
 }
 
 #endif

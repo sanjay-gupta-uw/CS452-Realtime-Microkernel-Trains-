@@ -179,19 +179,19 @@ namespace UI_CMD_NS
 
     void CommandPrompt::InitDisplay()
     {
-        IO_NS::Print(MOVE_CURSOR CLEAR_TO_END_LINE COLOR_GREEN "cmd> ", CMD_LOCATION, 0);
+        IO_NS::Print(MOVE_CURSOR CLEAR_TO_END_LINE COLOR_GREEN "cmd> ", CMD_LOCATION, 1);
     }
 
     void CommandPrompt::getInput()
     {
 
-        IO_NS::PrintTerminal("GETTING INPUT\r\n");
+        // IO_NS::PrintTerminal("GETTING INPUT\r\n");
         // const int CONSOLE = 1;
 
-        char c = (char)(IO_SERVER::Getc(IO_SERVER_TID));
-        IO_NS::PrintTerminal("GOT INPUT: %c\r\n", c);
+        unsigned char c = (unsigned char)(IO_SERVER::Getc(IO_SERVER_TID));
+        // IO_NS::PrintTerminal("GOT INPUT: %c\r\n", c);
 
-        IO_NS::Print(MOVE_CURSOR, CMD_LOCATION, BUFFER_INDEX + CMD_PREFIX_LENGTH);
+        // IO_NS::Print(MOVE_CURSOR, CMD_LOCATION, BUFFER_INDEX + CMD_PREFIX_LENGTH);
         switch (c)
         {
         case '\r':

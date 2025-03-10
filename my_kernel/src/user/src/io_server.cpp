@@ -41,8 +41,8 @@ namespace IO_SERVER
 
     void IOServer::spawnNotifiers()
     {
-        // rtm_notifier_tid = CREATE(PRIORITY::P0, notifier_rxto);
-        // uassert(rtm_notifier_tid >= 0 && "IO_SERVER::spawnNotifiers: PANIC, Error starting RTM Notifier");
+        rtm_notifier_tid = CREATE(PRIORITY::P0, notifier_rxto);
+        uassert(rtm_notifier_tid >= 0 && "IO_SERVER::spawnNotifiers: PANIC, Error starting RTM Notifier");
 
         tx_notifier_tid = CREATE(PRIORITY::P0, notifier_tx);
         uassert(tx_notifier_tid >= 0 && "IO_SERVER::spawnNotifiers: PANIC, Error starting TX Notifier");
@@ -58,30 +58,44 @@ namespace IO_SERVER
         while (true)
         {
             int retval = RECEIVE(&sender_tid, (char *)&req, sizeof(req));
-            uart_putc(MARKLIN, 'R');
             // uart_printf(CONSOLE, RESTORE_CURSOR "IO_SERVER::run: Received message from %d, type: %d\r\n" SAVE_CURSOR, sender_tid, req.type);
             uassert(retval >= 0 && "IO_SERVER::run: PANIC, Error receiving message");
 
             IO_REPLY reply;
             reply.type = REPLY_TYPE::FAILURE;
             reply.ch = UNDEFINED_CHAR;
+            bool send_reply = false;
 
             switch (req.type)
             {
+            case IO_REQUEST_TYPE::GETC:
+            {
+                if (!receive_buffer.IsEmpty())
+                {
+                    // uassert(false && "IO_SERVER::run: PANIC, GETC -- receive buffer not empty");
+                    unsigned char ch;
+                    unsigned char ret = receive_buffer.Pop(&ch);
+                    uassert(ret >= 0 && "IO_SERVER::run: PANIC, Error popping from receive buffer");
+                    reply.type = REPLY_TYPE::SUCCESS;
+                    reply.ch = ch;
+                    send_reply = true;
+                }
+                else
+                {
+                    rx_waiting_tasks.Push(sender_tid);
+                }
+                break;
+            }
             case IO_REQUEST_TYPE::PUTC:
             {
-                uart_putc(MARKLIN, 'P');
                 int ret = transmit_buffer.Push(req.ch);
                 uassert(ret >= 0 && "IO_SERVER::run: PANIC, Error pushing to transmit buffer");
                 reply.type = REPLY_TYPE::SUCCESS;
+                send_reply = true;
                 break;
             }
             case IO_REQUEST_TYPE::PUTS:
             {
-                uart_putc(MARKLIN, 'P');
-                uart_putc(MARKLIN, '-');
-                uart_putc(MARKLIN, 'S');
-
                 unsigned char *str = req.str;
                 while (*str != '\0')
                 {
@@ -90,11 +104,11 @@ namespace IO_SERVER
                     str++;
                 }
                 reply.type = REPLY_TYPE::SUCCESS;
+                send_reply = true;
                 break;
             }
             case IO_REQUEST_TYPE::TX_NOTIFIER:
             {
-                uart_putc(MARKLIN, 'T');
                 awaiting_tx = false;
                 count_tx++;
                 // uassert(false && "IO_SERVER::run: PANIC, TX_NOTIFIER received");
@@ -102,7 +116,30 @@ namespace IO_SERVER
             }
             case IO_REQUEST_TYPE::RTM_NOTIFIER:
             {
-                uassert(false && "IO_SERVER::run: PANIC, RTM_NOTIFIER received");
+                unsigned char ch = uart_getc_non_blocking(CONSOLE);
+                uassert(ch != UNDEFINED_CHAR && "IO_SERVER::run: PANIC, Error getting character from console");
+
+                if (!receive_buffer.IsFull())
+                {
+                    int ret = receive_buffer.Push(ch);
+                    uassert(ret >= 0 && "IO_SERVER::run: PANIC, Error pushing to receive buffer");
+                }
+                if (!rx_waiting_tasks.IsEmpty())
+                {
+                    // uassert(false && "IO_SERVER::run: PANIC, RTM_NOTIFIER received and rx_waiting_tasks is not empty");
+                    int waiting_tid;
+                    int ret = rx_waiting_tasks.Pop(&waiting_tid);
+                    uassert(ret >= 0 && "IO_SERVER::run: PANIC, Error popping from rx_waiting_tasks");
+
+                    unsigned char ch;
+                    ret = receive_buffer.Pop(&ch);
+                    uassert(ret >= 0 && "IO_SERVER::run: PANIC, Error popping from receive buffer");
+                    IO_REPLY reply_getc = {REPLY_TYPE::SUCCESS, ch};
+                    REPLY(waiting_tid, (char *)&reply_getc, sizeof(reply_getc));
+                }
+
+                reply.type = REPLY_TYPE::SUCCESS;
+                send_reply = true;
                 break;
             }
 
@@ -132,7 +169,8 @@ namespace IO_SERVER
             // }
 
             // uassert(count_send < 2 && "IO_SERVER::run: PANIC, waking up non TX task");
-            if (sender_tid != tx_notifier_tid)
+            // this doesn't account for the getc
+            if (send_reply)
             {
                 REPLY(sender_tid, (char *)&reply, sizeof(reply));
             }
@@ -140,6 +178,14 @@ namespace IO_SERVER
     }
     int Getc(int tid)
     {
+        int IO_TID = WHOIS("IOServer");
+        IO_REQUEST req{IO_REQUEST_TYPE::GETC, 0, nullptr};
+        IO_REPLY reply;
+        SEND(IO_TID, (char *)&req, sizeof(req), (char *)&reply, sizeof(reply));
+        uassert(reply.type != REPLY_TYPE::UNIMPLEMENTED && "IO_SERVER::Getc: PANIC, Unimplemented");
+        // uassert(false && "IO_SERVER::Getc: IO SERVER FREED");
+
+        return reply.type == REPLY_TYPE::SUCCESS ? reply.ch : -1;
     }
     int Putc(int tid, unsigned char ch)
     {
@@ -184,7 +230,6 @@ namespace IO_SERVER
         REGISTERAS("CONSOLE_TX_Notifier");
         while (true)
         {
-            // uart_putc(MARKLIN, 'A');
             IO_REQUEST req{IO_REQUEST_TYPE::TX_NOTIFIER, 0, nullptr};
             IO_REPLY reply;
 

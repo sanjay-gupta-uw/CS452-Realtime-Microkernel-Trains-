@@ -26,18 +26,21 @@ namespace MARKLIN_IO_SERVER
         // interface for the IO server
 
     private:
+        unsigned int numSeenCommands;
+        bool canTransmit;
         int active_command_size;
         int bytes_transmitted;
         int last_switch_addr;
+        int total_bytes_transmitted;
 
         int rx_notifier_tid;
         int tx_notifier_tid;
         int cts_notifier_high_tid;
         int cts_notifier_low_tid;
 
-        Queue<unsigned char, 32> receive_buffer;
-        Queue<uint8_t, 64> transmit_buffer; // this should be the bytes for commands
-        Queue<COMMAND, 32> cmd_buffer;      // 's', 't', 'r' for switch, train(accel), reverse
+        Queue<unsigned char, 100> receive_buffer;
+        Queue<uint8_t, 100> transmit_buffer; // this should be the bytes for commands
+        Queue<COMMAND, 50> cmd_buffer;       // 's', 't', 'r' for switch, train(accel), reverse
 
         Queue<int, 2> rx_waiting_tasks;
         // pin states for CTS and TX

@@ -67,15 +67,24 @@ namespace Switch_NS
 
     void Switches::Init()
     {
+        // const int COUNT = 6;
+        // const int SWITCH_ADDR[COUNT] = {16, 17, 0x9A, 0x9B, 0x9C, 0x99};
+        // const SWITCH_STATE state[SWITCH_COUNT] = {SWITCH_STATE::STRAIGHT,
+        //   SWITCH_STATE::CURVED};
+
         const int SWITCH_ADDR[SWITCH_COUNT] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 0x9A, 0x9B, 0x9C, 0x99};
 
+        // for (int i = 0; i < COUNT; ++i)
         for (int i = 0; i < SWITCH_COUNT; ++i)
         {
+            IO_NS::PrintTerminal("Switch::Init %d: %d\r\n", i, SWITCH_ADDR[i]);
             switches[i] = Switch();
             switches[i].address = SWITCH_ADDR[i];
             switches[i].SetSwitch(SWITCH_STATE::CURVED);
             PrintSwitchStatus(i, SWITCH_STATE::CURVED);
+            IO_NS::PrintTerminal("Switch::Init SUCCESS FOR %d: %d\r\n", i, SWITCH_ADDR[i]);
         }
+        // }
     }
 
     bool Switches::SetSwitch(int switch_addr, SWITCH_STATE state)

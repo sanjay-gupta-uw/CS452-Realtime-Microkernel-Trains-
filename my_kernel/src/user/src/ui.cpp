@@ -18,10 +18,13 @@ namespace UI_NS
         // IO_NS::Print(COLOR_WHITE MOVE_CURSOR  "--------------------------\r\n", SWITCH_LOCATION + 4, 1);
         for (int i = 0; i < SWITCH_COUNT; ++i)
         {
+            // inal("Switch %d: %d\r\n", i, SWITCH_ADDR[i]);
             // print borders and switch address so display only needs to update the status
             int location_y = SWITCH_LOCATION + 3 + i;
-            IO_NS::Print(COLOR_WHITE MOVE_CURSOR "|" MOVE_CURSOR "%d" MOVE_CURSOR "|" MOVE_CURSOR "|",
-                         location_y, 1, location_y, 6, SWITCH_ADDR[i], location_y, 12, location_y, 25);
+            IO_NS::Print(COLOR_WHITE MOVE_CURSOR "|", location_y, 1);
+            IO_NS::Print(COLOR_WHITE MOVE_CURSOR "%d", location_y, 6, SWITCH_ADDR[i]);
+            IO_NS::Print(COLOR_WHITE MOVE_CURSOR "|", location_y, 12);
+            IO_NS::Print(COLOR_WHITE MOVE_CURSOR "|", location_y, 25);
         }
         IO_NS::Print(COLOR_WHITE MOVE_CURSOR "-------------------------\r\n", SWITCH_LOCATION + 3 + SWITCH_COUNT, 1);
     }
@@ -50,15 +53,15 @@ namespace UI_NS
         // sensors.setMarklinIOtid(MARKLIN_IO_SERVER_TID);
         // uassert(false && "FORCED PANIC -- UI2 -- REMOVE THIS LINE");
 
-        // for (int i = 1; i <= NUM_COLS; i++)
-        // {
-        //     IO_NS::Print(MOVE_CURSOR "-", SCROLL_ROW_END, i);
-        // }
+        for (int i = 1; i <= NUM_COLS; i++)
+        {
+            IO_NS::Print(MOVE_CURSOR "-", SCROLL_ROW_END, i);
+        }
 
-        // init_switch_display();
-        // IO_NS::Print(MOVE_CURSOR "IDLE: %d%%", IDLE_LOCATION, 1, 1);
-        // // clock.Display();
-        // init_sensor_display();
+        init_switch_display();
+        IO_NS::Print(MOVE_CURSOR "IDLE: %d%%", IDLE_LOCATION, 1, 1);
+        // clock.Display();
+        init_sensor_display();
 
         EXIT();
     }

@@ -518,13 +518,12 @@ void Kernel::IRQ_Handler()
                 // INSPECT READY QUEUE
             }
         }
-
         if (uart_mis & RTM_INTERRUPT_MASK)
         {
             UART_IMSC_DISABLE(CONSOLE, RTM_INTERRUPT_MASK);
             UART_CLEAR_INTERRUPT(CONSOLE, RTM_INTERRUPT_MASK);
 
-            kassert(false && "RECEIVE TIMEOUT INTERRUPT TRIGGERED");
+            // kassert(false && "RECEIVE TIMEOUT INTERRUPT TRIGGERED");
 
             while (event_queues[UART_RX_TIMEOUT].Pop(&task) != -1)
             {
@@ -534,6 +533,46 @@ void Kernel::IRQ_Handler()
             }
         }
 
+        uart_mis = UART_REG(MARKLIN, UART_MIS);
+        if (uart_mis & RX_INTERRUPT_MASK)
+        {
+            UART_IMSC_DISABLE(MARKLIN, RX_INTERRUPT_MASK);
+            UART_CLEAR_INTERRUPT(MARKLIN, RX_INTERRUPT_MASK);
+
+            while (event_queues[UART_MARKLIN_RX].Pop(&task) != -1)
+            {
+                task->setState(READY);
+                task->SetRetval(0);
+                ready_queue.Push(task->tid, task->priority);
+            }
+        }
+        if (uart_mis & TX_INTERRUPT_MASK)
+        {
+            UART_IMSC_DISABLE(MARKLIN, TX_INTERRUPT_MASK);
+            UART_CLEAR_INTERRUPT(MARKLIN, TX_INTERRUPT_MASK);
+
+            while (event_queues[UART_MARKLIN_TX].Pop(&task) != -1)
+            {
+                task->setState(READY);
+                task->SetRetval(0);
+                ready_queue.Push(task->tid, task->priority);
+            }
+        }
+        if (uart_mis & CTS_INTERRUPT_MASK)
+        {
+            // UART_IMSC_DISABLE(MARKLIN, CTS_INTERRUPT_MASK);
+            UART_CLEAR_INTERRUPT(MARKLIN, CTS_INTERRUPT_MASK);
+            int cts_status = CTS_STATUS(MARKLIN);
+            int idx = (cts_status == 1) ? UART_MARKLIN_CTS_HIGH : UART_MARKLIN_CTS_LOW;
+            // kassert(idx == UART_MARKLIN_CTS_HIGH && "PANIC: LOW CTS INTERRUPT TRIGGERED");
+            // kassert(idx == UART_MARKLIN_CTS_LOW && "PANIC: HIGH CTS INTERRUPT TRIGGERED");
+            while (event_queues[idx].Pop(&task) != -1)
+            {
+                task->setState(READY);
+                task->SetRetval(0);
+                ready_queue.Push(task->tid, task->priority);
+            }
+        }
         break;
     }
     case SPURIOUS_INTERRUPT:

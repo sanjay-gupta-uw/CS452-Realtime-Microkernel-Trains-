@@ -8,7 +8,7 @@
 namespace UI_CMD_NS
 {
 
-#define CMD_PREFIX_LENGTH 6
+#define CMD_PREFIX_LENGTH 5
 #define INPUT_BUFFER_SIZE 32
 
     class CommandPrompt

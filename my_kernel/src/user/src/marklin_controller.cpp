@@ -14,7 +14,6 @@ namespace MARKLIN_NS
 
     static void print_status(bool success)
     {
-        return;
         const char *msg = success ? "MarklinController:: Command Successfully Sent to MarklinIOServer\r\n" : "MarklinController:: Invalid Command\r\n";
         const char *colour = success ? COLOR_GREEN : COLOR_RED;
         IO_NS::PrintTerminal("%s %s", colour, msg);
@@ -22,15 +21,11 @@ namespace MARKLIN_NS
     MarklinController::MarklinController()
     {
         MARKLIN_IO_SERVER_TID = -1;
-        CLOCK_SERVER_TID = -1;
+        // CLOCK_SERVER_TID = -1;
 
         REGISTERAS("MarklinController");
-        int mytid = WHOIS("MarklinController");
-        uassert(mytid > 0 && "MarklinController:: Failed to register as MarklinController");
 
         MARKLIN_IO_SERVER_TID = WHOIS("MarklinIOServer");
-        // CLOCK_SERVER_TID = WHOIS("ClockServer");
-
         trains.setIOServerTid(MARKLIN_IO_SERVER_TID);
         // for (;;)
         // {
@@ -43,12 +38,9 @@ namespace MARKLIN_NS
         //     uassert(trains.AccelerateTrain(55, 0) && "MarklinController:: Failed to Accelerate Train 54");
         // }
 
-        // uassert(trains.AccelerateTrain(55, 8) && "MarklinController:: Failed to Accelerate Train 54");
-
         switches.setIOServerTid(MARKLIN_IO_SERVER_TID);
         switches.Init();
 
-        // switches.s
         run();
     }
 
@@ -71,11 +63,11 @@ namespace MARKLIN_NS
             {
             case COMMAND::SET_SWITCH:
             {
-                IO_NS::PrintTerminal("MarklinController:: SET_SWITCH: %d %c\r\n", request.id, request.data);
+                // IO_NS::PrintTerminal("MarklinController:: SET_SWITCH: %d %c\r\n", request.id, request.data);
                 int switch_addr = request.id;
                 Switch_NS::SWITCH_STATE state = (request.data == 'S') ? Switch_NS::SWITCH_STATE::STRAIGHT : Switch_NS::SWITCH_STATE::CURVED;
                 bool success = switches.SetSwitch(switch_addr, state);
-                IO_NS::PrintTerminal("set switch result: %d\r\n", success);
+                // IO_NS::PrintTerminal("set switch result: %d\r\n", success);
                 ret = success ? 1 : -1;
                 print_status(success);
             }
@@ -83,7 +75,7 @@ namespace MARKLIN_NS
 
             case COMMAND::REVERSE_TRAIN:
             {
-                IO_NS::PrintTerminal("MarklinController:: REVERSE_TRAIN: %d\r\n", request.id);
+                // IO_NS::PrintTerminal("MarklinController:: REVERSE_TRAIN: %d\r\n", request.id);
                 int train_num = request.id;
                 bool success = trains.ReverseTrain(train_num);
                 ret = success ? 1 : -1;
@@ -93,7 +85,7 @@ namespace MARKLIN_NS
 
             case COMMAND::ACCELERATE_TRAIN:
             {
-                IO_NS::PrintTerminal("MarklinController:: ACCELERATE_TRAIN: %d %d\r\n", request.id, request.data);
+                // IO_NS::PrintTerminal("MarklinController:: ACCELERATE_TRAIN: %d %d\r\n", request.id, request.data);
                 int train_num = request.id;
                 int speed = request.data;
                 bool success = trains.AccelerateTrain(train_num, speed);
@@ -113,25 +105,6 @@ namespace MARKLIN_NS
 
     void start_marklin_controller()
     {
-        int SensorTaskTid = CREATE(PRIORITY::P2, SensorTask);
-        uassert(SensorTaskTid >= 0 && "Error starting Sensor Task");
         MarklinController controller;
-    }
-
-    void SensorTask()
-    {
-        REGISTERAS("SensorTask");
-        // uassert(4 == 5);
-        Sensors_NS::SensorManager sensors;
-        sensors.setMarklinIOtid(WHOIS("MarklinIOServer"));
-        Clock clock;
-        // while (true)
-        {
-            // sensors.ReadAll(NUM_BANKS); // this will put it to sleep until data is ready
-            // sensors.Display();
-            // clock.Delay(1000);
-            // YIELD();
-        }
-        EXIT();
     }
 }
