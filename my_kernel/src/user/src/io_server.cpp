@@ -41,11 +41,14 @@ namespace IO_SERVER
 
     void IOServer::spawnNotifiers()
     {
-        rtm_notifier_tid = CREATE(PRIORITY::P0, notifier_rxto);
-        uassert(rtm_notifier_tid >= 0 && "IO_SERVER::spawnNotifiers: PANIC, Error starting RTM Notifier");
+        if (IRQ_ENABLED)
+        {
+            rtm_notifier_tid = CREATE(PRIORITY::P0, notifier_rxto);
+            uassert(rtm_notifier_tid >= 0 && "IO_SERVER::spawnNotifiers: PANIC, Error starting RTM Notifier");
 
-        tx_notifier_tid = CREATE(PRIORITY::P0, notifier_tx);
-        uassert(tx_notifier_tid >= 0 && "IO_SERVER::spawnNotifiers: PANIC, Error starting TX Notifier");
+            tx_notifier_tid = CREATE(PRIORITY::P0, notifier_tx);
+            uassert(tx_notifier_tid >= 0 && "IO_SERVER::spawnNotifiers: PANIC, Error starting TX Notifier");
+        }
     }
 
     void IOServer::run()

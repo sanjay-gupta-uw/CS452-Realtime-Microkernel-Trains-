@@ -131,6 +131,7 @@ namespace Trains_NS
         if (initial_speed > 0)
         {
             train->Stop();
+            // `
         }
 
         train->Reverse();

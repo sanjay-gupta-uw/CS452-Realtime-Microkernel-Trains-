@@ -393,8 +393,8 @@ void Kernel::Handler(int N, uint32_t idleTime)
         TaskDescriptor *TD = &(task_table[ret_val]);
         kassert(TD->tid == ret_val && "PANIC: TID MISMATCH");
         active_task->SetRetval(ret_val);
+        break;
     }
-    break;
 
     case SVC_MYTID:
         active_task->SetRetval(MyTid());

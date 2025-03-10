@@ -57,7 +57,8 @@
     "__split_buffer": "cpp",
     "bitset": "cpp",
     "ios": "cpp",
-    "print": "cpp"
+    "print": "cpp",
+    "__node_handle": "cpp"
   },
   "makefile.configureOnOpen": false
 }
