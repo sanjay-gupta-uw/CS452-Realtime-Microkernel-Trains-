@@ -1,6 +1,8 @@
 #include "command.h"
 #include "rpi.h"
 #include "switch.h"
+#include "track_data.h"
+#include <string.h>
 
 #define DEBUG 70
 static int BUFFER_INDEX;
@@ -92,6 +94,109 @@ static CommandType process_command(const char *command)
          cmd.param = (direction == 'S' || direction == 's') ? STRAIGHT : CURVED;
       }
    }
+   else if (strncmp(command, "stop", 4) == 0) {
+      const char *p = command + 4;
+      int train_num = 0;
+      while (*p == ' ') p++;
+      while (*p >= '0' && *p <= '9') {
+         train_num = train_num * 10 + (*p - '0');
+         p++;
+      }
+      if (train_num > 0) {
+         cmd.cmd_type = STOP_CMD;
+         cmd.addr = train_num;
+      }
+   }
+   else if (strncmp(command, "change", 6) == 0) {
+      const char *p = command + 6; // Skip "change"
+      int train_num = 0, speed = 0;
+
+      while (*p == ' ')
+         p++; // Skip spaces
+      while (*p >= '0' && *p <= '9')
+      { // Parse train number
+         train_num = train_num * 10 + (*p - '0');
+         p++;
+      }
+      while (*p == ' ')
+         p++; // Skip spaces
+      while (*p >= '0' && *p <= '9')
+      { // Parse speed
+         speed = speed * 10 + (*p - '0');
+         p++;
+      }
+
+      if (train_num > 0 && speed >= 0)
+      {
+         cmd.cmd_type = CHANGE_SPEED_CMD;
+         cmd.addr = train_num;
+         cmd.param = speed;
+      }
+   }
+   else if (strncmp(command, "acstop", 6) == 0) {
+      const char *p = command + 6;
+      int train_num = 0, offset = 0, start = 0, dest = 0, speed = 0;
+      char start_str[10] = {0}, dest_str[10] = {0}, speed_str[10] = {0};
+
+      // Parse train number
+      while (*p == ' ') p++;
+      while (*p >= '0' && *p <= '9') {
+         train_num = train_num * 10 + (*p - '0');
+         p++;
+      }
+
+      // Parse start node
+      while (*p == ' ') p++;
+      int i = 0;
+      while (*p != ' ' && *p != '\0' && i < 9) {
+         start_str[i++] = *p++;
+      }
+      start_str[i] = '\0';
+
+      start = get_node_num_by_name_b(start_str);
+
+
+      // Parse destination node
+      while (*p == ' ') p++;
+      i = 0;
+      while (*p != ' ' && *p != '\0' && i < 9) {
+         dest_str[i++] = *p++;
+      }
+      dest_str[i] = '\0';
+
+      dest = get_node_num_by_name_b(dest_str);
+
+      // Parse offset
+      while (*p == ' ') p++;
+      while (*p >= '0' && *p <= '9') {
+          offset = offset * 10 + (*p - '0');
+          p++;
+      }
+
+      // Parse speed
+      while (*p == ' ') p++;
+      i = 0;
+      while (*p != ' ' && *p != '\0' && i < 9) {
+          speed_str[i++] = *p++;
+      }
+      speed_str[i] = '\0';
+
+      // Convert speed string to value
+      if (strcmp(speed_str, "low") == 0) speed = 6;
+      else if (strcmp(speed_str, "mid") == 0) speed = 9;
+      else if (strcmp(speed_str, "high") == 0) speed = 12;
+      else {
+          cmd.cmd_type = INVALID_CMD;
+          return cmd;
+      }
+
+      cmd.cmd_type = ACCURATE_STOP_CMD;
+      cmd.train_num = train_num;
+      cmd.start = start;
+      cmd.dest = dest;
+      cmd.offset = offset;
+      cmd.speed = speed;
+   }
 
    return cmd;
 }
@@ -166,6 +271,28 @@ static void color_red()
    uart_puts(CONSOLE, "\033[31m"); // red
 }
 
+void actual_stop(int pending_stop_train)
+
+{
+   move_cursor(CONSOLE, COMMAND_STATUS_LOCATION, 1);
+   uart_puts(CONSOLE, "\033[32m");
+   clear_to_end_line(CONSOLE);
+   stop_train(pending_stop_train);
+	uart_printf(CONSOLE, "Train %d stopped by sensor.\r\n", pending_stop_train);
+}
+
+void actual_change_speed(int pending_change_speed_train, int pending_change_speed_speed)
+
+{
+   move_cursor(CONSOLE, COMMAND_STATUS_LOCATION, 1);
+   uart_puts(CONSOLE, "\033[32m");
+   clear_to_end_line(CONSOLE);
+   int idx = is_valid_train(pending_change_speed_train);
+   accelerate_train(pending_change_speed_train, pending_change_speed_speed, false, idx);
+	uart_printf(CONSOLE, "Changing train %d's spped to to %d by sensor.\r\n", pending_change_speed_train, pending_change_speed_speed);
+         
+}
+
 void parse_command(CommandType *cmd)
 
 {
@@ -229,8 +356,16 @@ void parse_command(CommandType *cmd)
       uart_printf(CONSOLE, "INVALID SWITCH SYNTAX", cmd->addr, cmd->param);
       break;
    case QUIT_CMD:
-      // code
       uart_printf(CONSOLE, "QUIT not implemented yet \r\n");
+      break;
+   case STOP_CMD:
+      uart_printf(CONSOLE, "Train %d will stop at next sensor.\r\n", cmd->addr);
+      break;
+   case CHANGE_SPEED_CMD:
+      uart_printf(CONSOLE, "Train %d will change spped to %d at next sensor.\r\n", cmd->addr, cmd->param);
+      break;
+   case ACCURATE_STOP_CMD:
+      uart_printf(CONSOLE, "Finding Path.\r\n");
       break;
    case INVALID_CMD:
    default:

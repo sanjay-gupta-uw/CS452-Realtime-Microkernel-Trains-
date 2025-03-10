@@ -1,4 +1,5 @@
 #include "switch.h"
+#include "track_node.h"
 #include <stdint.h>
 
 #define STRAIGHT_CMD 0x21
@@ -137,4 +138,36 @@ void switch_display(int LOCATION)
 bool is_valid_switch(int switch_number)
 {
    return (find_index(switch_number) < 0) ? false : true;
+}
+
+// Map track node switch numbers to actual Marklin addresses
+int switch_num_to_address(int track_node_num) {
+   // Handle special middle switches (Track B specific)
+   return track_node_num;
+}
+
+void set_switches(const SwitchSetting* switches_set, int num_switches) {
+   for(int i = 0; i < num_switches; i++) {
+       int address = switch_num_to_address(switches_set[i].switch_num);
+       
+       if(!is_valid_switch(address)) {
+           //uart_printf(CONSOLE, "Warning: Invalid switch number %d (mapped to 0x%x)\r\n",
+           //           switches_set[i].switch_num, address);
+           continue;
+       }
+
+       //uart_printf(CONSOLE, "Setting switch %d (addr 0x%x) to %s\r\n",
+       //           switches_set[i].switch_num, address,
+       //           switches_set[i].dir == SWITCH_STRAIGHT ? "straight" : "curved");
+
+       if(switches_set[i].dir == SWITCH_STRAIGHT) {
+           switch_straight(address);
+       } else {
+           switch_branch(address);
+       }
+       
+       // Add verification delay
+       clock_delay(200);
+   }
+   // UPDATE_DISPLAY = true;
 }

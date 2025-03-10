@@ -7,6 +7,7 @@
 #include "clock.h"
 #include "util.h"
 #include "ringbuffer.h"
+#include "track_node.h"
 
 #define NUM_BANKS 5
 #define SENSORS_PER_BANK 16
