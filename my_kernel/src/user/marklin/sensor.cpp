@@ -117,6 +117,7 @@ namespace Sensors_NS
         if (!UPDATE_DISPLAY)
             return;
 
+        Queue<int, MAX_MAX_RECENT_SENSORS> temp_queue;
         for (int i = 0; i < MAX_RECENT_SENSORS; i++)
         {
             if (recent_sensors.IsEmpty())
@@ -125,6 +126,8 @@ namespace Sensors_NS
             }
             int idx;
             recent_sensors.Pop(&idx);
+            temp_queue.Push(idx);
+
             int bank = idx / SENSORS_PER_BANK;
             int sensor = idx % SENSORS_PER_BANK;
             char bank_label = sensor_data[idx].bank;
@@ -133,6 +136,12 @@ namespace Sensors_NS
                          SENSOR_LOCATION + 3 + i, BOX_WIDTH + 5,
                          bank_label, sensor + 1,
                          sensor_data[idx].status == SEN_ON ? "ON" : "OFF");
+        }
+        while (!temp_queue.IsEmpty())
+        {
+            int idx;
+            temp_queue.Pop(&idx);
+            recent_sensors.Push(idx);
         }
 
         UPDATE_DISPLAY = false;
