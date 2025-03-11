@@ -1,5 +1,5 @@
-XDIR:=/opt/aarch64-none-elf
-# XDIR:=/u/cs452/public/xdev
+# XDIR:=/opt/aarch64-none-elf
+XDIR:=/u/cs452/public/xdev
 ARCH=cortex-a72
 TRIPLE=aarch64-none-elf
 XBINDIR:=$(XDIR)/bin

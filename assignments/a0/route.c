@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 #define MAX_QUEUE 144
+#define MAX_DEPTH 100
 
 // Helper functions for switch number <-> bit position mapping
 static int switch_to_bit(int switch_num) {
@@ -71,7 +72,6 @@ bool find_path_BFS(track_node track[], track_node* start, track_node* dest,
             }
 
             if (!(current.configured_switches & (1 << bit))) {
-                // Explore both directions since switch isn't configured yet
                 for (int dir = 0; dir < 2; dir++) {
                     BFSState new_state = current;
                     
@@ -106,7 +106,6 @@ bool find_path_BFS(track_node track[], track_node* start, track_node* dest,
                 }
             }
         } else {
-            // Handle all other node types (follow straight ahead)
             track_edge* edge = &node->edge[DIR_AHEAD];
             BFSState new_state = current;
             new_state.node = edge->dest;
@@ -118,4 +117,84 @@ bool find_path_BFS(track_node track[], track_node* start, track_node* dest,
         }
     }
     return false;
+}
+
+bool find_path_DFS(track_node track[], track_node* start, track_node* dest,
+    SwitchSetting* switches_set, int* num_switches, int* total_dist) {
+DFSState stack[MAX_DEPTH];
+int top = 0;
+
+// Initialize stack with start node
+stack[top++] = (DFSState){start, 0, 0, 0};
+
+while (top > 0) {
+DFSState current = stack[--top];  // Pop from top
+
+// Check if we've reached the destination
+if (current.node == dest) {
+  *total_dist = current.distance;
+  *num_switches = 0;
+
+  // Convert bitmask to switch settings
+  for (int bit = 0; bit < 22; bit++) {
+      if (current.configured_switches & (1 << bit)) {
+          int switch_num = bit_to_switch(bit);
+          if (switch_num != -1) {
+              SwitchDirection dir = (current.switch_directions >> bit) & 1;
+              switches_set[(*num_switches)++] = (SwitchSetting){
+                  .switch_num = switch_num,
+                  .dir = dir
+              };
+          }
+      }
+  }
+  return true;
+}
+
+if (top >= MAX_DEPTH - 2) continue;
+
+track_node* node = current.node;
+
+if (node->type == NODE_BRANCH) {
+  int switch_num = node->num;
+  int bit = switch_to_bit(switch_num);
+  
+  if (bit == -1) continue;
+
+  if (!(current.configured_switches & (1 << bit))) {
+      // Try both directions (prioritize straight first)
+      for (int dir = 1; dir >= 0; dir--) {  // Reverse order for stack
+          DFSState new_state = current;
+          new_state.configured_switches |= (1 << bit);
+          if (dir) {
+              new_state.switch_directions |= (1 << bit);
+          } else {
+              new_state.switch_directions &= ~(1 << bit);
+          }
+          
+          track_edge* edge = &node->edge[dir];
+          new_state.node = edge->dest;
+          new_state.distance += edge->dist;
+          
+          stack[top++] = new_state;  // Push to stack
+      }
+  } else {
+      // Follow existing configuration
+      int dir = (current.switch_directions >> bit) & 1;
+      track_edge* edge = &node->edge[dir];
+      DFSState new_state = current;
+      new_state.node = edge->dest;
+      new_state.distance += edge->dist;
+      stack[top++] = new_state;
+  }
+} else {
+  // Handle other nodes
+  track_edge* edge = &node->edge[DIR_AHEAD];
+  DFSState new_state = current;
+  new_state.node = edge->dest;
+  new_state.distance += edge->dist;
+  stack[top++] = new_state;
+}
+}
+return false;
 }

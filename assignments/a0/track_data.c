@@ -1,6 +1,8 @@
 /* THIS FILE IS GENERATED CODE -- DO NOT EDIT */
 #include <string.h>
 #include "track_data.h"
+#include "sensor.h"
+//#include <stdio.h>
 
 static void *my_memset(void *s, int c, unsigned int n) {
   unsigned char *p = s;
@@ -2365,6 +2367,33 @@ int get_node_num_by_name_b(const char* name) {
     }
   }
   return -1;
+}
+
+void make_sensor_name(char *buf, char bank, uint8_t id) {
+  if(0 < id < 10) {
+    char ones = '0' + (id % 10);
+    buf[0] = bank;
+    buf[1] = ones;
+    buf[2] = '\0';
+  } else if(id <= 16) {
+    char tens = '0' + (id / 10);
+    char ones = '0' + (id % 10);
+    buf[0] = bank;
+    buf[1] = tens;
+    buf[2] = ones;
+    buf[3] = '\0';
+  } else {
+    buf[0] = '\0';
+  }
+}
+
+
+track_node* find_node_by_sensor_index(track_node track[], int idx) {
+  // Implement mapping between sensor_data[idx] and track node names
+  // Example: sensor A4 -> node "A4"
+  char sensor_name[4];
+  make_sensor_name(sensor_name, sensor_data[idx].bank, sensor_data[idx].id);
+  return find_node_by_name(track, sensor_name);
 }
 
 track_node* find_node_by_name(track_node track[], const char* name) {

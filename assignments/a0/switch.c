@@ -168,8 +168,20 @@ void set_switches(const SwitchSetting* switches_set, int num_switches) {
        } else {
            switch_branch(address);
        }
-       
-       clock_delay(200);
    }
    // UPDATE_DISPLAY = true;
+}
+
+void create_loop() {
+   int switches_to_set_straight[] = { 10, 13, 16, 17};
+   int num_switches = sizeof(switches_to_set_straight) / sizeof(switches_to_set_straight[0]);
+
+   for (int i = 0; i < num_switches; i++) {
+       int switch_number = switches_to_set_straight[i];
+       if (is_valid_switch(switch_number)) {
+           switch_straight(switch_number);
+       } else {
+           uart_printf(CONSOLE, "\r\nError: Invalid switch number %d\r\n", switch_number);
+       }
+   }
 }

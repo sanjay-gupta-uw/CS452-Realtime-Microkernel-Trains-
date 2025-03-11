@@ -10,6 +10,7 @@
 void init_tracka(track_node *track);
 void init_trackb(track_node *track);
 int get_node_num_by_name_b(const char* name);
+track_node* find_node_by_sensor_index(track_node track[], int idx);
 track_node* find_node_by_name(track_node track[], const char* name);
 
 

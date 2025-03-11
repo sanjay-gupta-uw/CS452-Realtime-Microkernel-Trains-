@@ -29,10 +29,13 @@ typedef struct {
     SensorState status;
 } Sensor;
 
+extern Sensor sensor_data[NUM_BANKS * SENSORS_PER_BANK];
+
 void sensor_init(bool resetMode);
 void sensor_read_all(int num_banks, RingBuffer *recent_sensors);
 void sensor_reset(bool reset_on);
 void init_sensor_display(int location);
 void sensor_display(int location, RingBuffer *recent_sensors);
+void create_loop();
 
 #endif

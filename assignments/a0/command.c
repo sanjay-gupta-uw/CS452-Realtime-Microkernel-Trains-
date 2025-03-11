@@ -135,44 +135,38 @@ static CommandType process_command(const char *command)
    }
    else if (strncmp(command, "acstop", 6) == 0) {
       const char *p = command + 6;
-      int train_num = 0, offset = 0, start = 0, dest = 0, speed = 0;
-      char start_str[10] = {0}, dest_str[10] = {0}, speed_str[10] = {0};
-
+      int train_num = 0, offset = 0, dest = 0, speed = 0;
+      char dest_str[10] = {0}, speed_str[10] = {0};
+  
       // Parse train number
       while (*p == ' ') p++;
       while (*p >= '0' && *p <= '9') {
-         train_num = train_num * 10 + (*p - '0');
-         p++;
+          train_num = train_num * 10 + (*p - '0');
+          p++;
       }
-
-      // Parse start node
+  
+      // Parse destination node
       while (*p == ' ') p++;
       int i = 0;
       while (*p != ' ' && *p != '\0' && i < 9) {
-         start_str[i++] = *p++;
-      }
-      start_str[i] = '\0';
-
-      start = get_node_num_by_name_b(start_str);
-
-
-      // Parse destination node
-      while (*p == ' ') p++;
-      i = 0;
-      while (*p != ' ' && *p != '\0' && i < 9) {
-         dest_str[i++] = *p++;
+          dest_str[i++] = *p++;
       }
       dest_str[i] = '\0';
-
       dest = get_node_num_by_name_b(dest_str);
-
-      // Parse offset
+  
+      // Parse offset (can be negative)
       while (*p == ' ') p++;
+      int sign = 1;
+      if (*p == '-') {
+          sign = -1;
+          p++;
+      }
       while (*p >= '0' && *p <= '9') {
           offset = offset * 10 + (*p - '0');
           p++;
       }
-
+      offset *= sign;
+  
       // Parse speed
       while (*p == ' ') p++;
       i = 0;
@@ -180,7 +174,7 @@ static CommandType process_command(const char *command)
           speed_str[i++] = *p++;
       }
       speed_str[i] = '\0';
-
+  
       // Convert speed string to value
       if (strcmp(speed_str, "low") == 0) speed = 6;
       else if (strcmp(speed_str, "mid") == 0) speed = 9;
@@ -189,10 +183,9 @@ static CommandType process_command(const char *command)
           cmd.cmd_type = INVALID_CMD;
           return cmd;
       }
-
+  
       cmd.cmd_type = ACCURATE_STOP_CMD;
       cmd.train_num = train_num;
-      cmd.start = start;
       cmd.dest = dest;
       cmd.offset = offset;
       cmd.speed = speed;

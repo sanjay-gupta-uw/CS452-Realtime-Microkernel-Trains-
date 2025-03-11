@@ -21,6 +21,22 @@
 
 #define DEBUG 2
 
+typedef enum {
+    STOP_IDLE,
+    WAITING_FOR_SENSOR,
+    WAITING_FOR_DELAY
+} StopState;
+
+typedef struct {
+    StopState state;
+    int train_num;
+    track_node* dest_node;
+    int offset;
+    int speed_setting;
+    uint32_t trigger_time;  // In microseconds
+    uint32_t delay_micros;
+} PendingAccurateStop;
+
 int kmain()
 {
 	CommandRingBuffer command_buffer;
@@ -47,6 +63,8 @@ int kmain()
 
 	// Initialize track and find nodes
     init_trackb(track);  // Initialize Track B
+
+	create_loop();
     
 	bool pending_stop = false;
 	int pending_stop_train = 0;
@@ -54,40 +72,7 @@ int kmain()
 	int pending_change_speed_train = 0;
 	int pending_change_speed_speed = 0;
 
-	//track_node* start = find_node_by_name(track, "B15");
-			
-    //track_node* dest = find_node_by_name(track, "C11");
-		
-					/*
-			//move_cursor(CONSOLE, PATH_FIND_DISPLAY_LOCATION + 1, 1);
-			//uart_printf(CONSOLE, "Node found! Name: %d\n", start->num);
-			//move_cursor(CONSOLE, PATH_FIND_DISPLAY_LOCATION + 2, 1);
-			//uart_printf(CONSOLE, "Node found! Name: %d\n", dest->num);
-            if(start && dest) {
-                SwitchSetting switches_set[MAX_SWITCHES];
-                int num_switches = 0;
-                int total_distance = 0;
-				
-
-				switches_set[0].switch_num = 10;
-				switches_set[1].switch_num = 11;
-				switches_set[0].dir = SWITCH_STRAIGHT;
-				switches_set[1].dir = SWITCH_STRAIGHT;
-				num_switches = 2;
-			
-
-                set_switches(switches_set, num_switches);
-                if(find_path(track, start, dest, switches_set, &num_switches, &total_distance)) {
-					//move_cursor(CONSOLE, PATH_FIND_DISPLAY_LOCATION + 100, 1);
-                    uart_printf(CONSOLE, "Initial path found! Distance: %dmm\r\n", total_distance);
-                    set_switches(switches_set, num_switches);
-                } else {
-					//move_cursor(CONSOLE, PATH_FIND_DISPLAY_LOCATION + 100, 1);
-                    uart_printf(CONSOLE, "Initial path not found\r\n");
-                }
-				
-            }
-					*/
+	PendingAccurateStop accurate_stop_pending_stop = {STOP_IDLE};
 
 	// main polling loop
 	for (;;)
@@ -130,18 +115,22 @@ int kmain()
             }
 			else if (cmd.cmd_type == ACCURATE_STOP_CMD)
             {
-      			track_node* start_node = &track[cmd.start];
-      			track_node* dest_node = &track[cmd.dest];
-      			SwitchSetting switches_set[MAX_SWITCHES];
-      			int num_switches = 0;
-      			int total_distance = 0;
-      			if (find_path_BFS(track, start_node, dest_node, switches_set, &num_switches, &total_distance)) {
-         			set_switches(switches_set, num_switches);
-         			uart_printf(CONSOLE, "Initial path found! Distance: %dmm\r\n", total_distance);
-      			}
-				else
-				{
-      				uart_printf(CONSOLE, "Path not found.\r\n");
+				
+				//uart_printf(CONSOLE, "1. Jack Ma testing train num: %d. offset: %d.\r\n", cmd.train_num, cmd.offset);
+				if (accurate_stop_pending_stop.state != STOP_IDLE) {
+					uart_printf(CONSOLE, "Another accurate stop is processing.\r\n");
+					continue;
+				} 
+				if (is_valid_train(cmd.train_num)) {
+					//uart_printf(CONSOLE, "2. Jack Ma testing train nun: %d...\r\n", cmd.train_num);
+					accurate_stop_pending_stop.state = WAITING_FOR_SENSOR;
+					accurate_stop_pending_stop.train_num = cmd.train_num;
+					accurate_stop_pending_stop.dest_node = &track[cmd.dest];
+					accurate_stop_pending_stop.offset = cmd.offset;
+					accurate_stop_pending_stop.speed_setting = cmd.speed;
+					uart_printf(CONSOLE, "Awaiting sensor trigger for train %d...\r\n", cmd.train_num);
+				} else {
+					uart_printf(CONSOLE, "Invalid train number.\r\n");
 				}
             }
             else if (val)
@@ -153,14 +142,87 @@ int kmain()
 		{
 			int prev_sensor_count = sensor_buffer.size;
 			sensor_read_all(NUM_BANKS, &sensor_buffer);
+
+			// Process new sensor events
+			if (sensor_buffer.size > prev_sensor_count) {
+				SensorEvent event;
+				remove_from_buffer(&sensor_buffer, &event);
+
+				if (accurate_stop_pending_stop.state == WAITING_FOR_SENSOR) {
+					// Get sensor's node
+					track_node* start_node = find_node_by_sensor_index(track, event.sensor_idx);
+					if (!start_node) continue;
 		
-			if (pending_stop && sensor_buffer.size > prev_sensor_count) {
-				actual_stop(pending_stop_train);
-				pending_stop = false;
+					// Find path to destination
+					SwitchSetting switches_set[MAX_SWITCHES];
+					int num_switches, total_distance;
+					bool found = find_path_BFS(track, start_node, accurate_stop_pending_stop.dest_node, 
+										 switches_set, &num_switches, &total_distance);
+					if (!found) {
+						uart_printf(CONSOLE, "No path found.\r\n");
+						accurate_stop_pending_stop.state = STOP_IDLE;
+						continue;
+					}
+					uart_printf(CONSOLE, "Path found with a total distance of %d mm.\r\n", total_distance);
+		
+					// Set switches
+					set_switches(switches_set, num_switches);
+		
+					// Get calibration data
+					SpeedCalibration cal;
+					bool found_cal = false;
+					for (size_t i = 0; i < sizeof(calibration)/sizeof(calibration[0]); i++) {
+						if (calibration[i].speed_setting == accurate_stop_pending_stop.speed_setting) {
+							cal = calibration[i];
+							found_cal = true;
+							continue;
+						}
+					}
+					if (!found_cal) {
+						uart_printf(CONSOLE, "No calibration for speed %d.\r\n", accurate_stop_pending_stop.speed_setting);
+						accurate_stop_pending_stop.state = STOP_IDLE;
+						continue;
+					}
+					// Calculate adjusted distance and delay
+					int adjusted_distance = total_distance*1000 + (accurate_stop_pending_stop.offset)*1000 - cal.stopping_distance_mm;
+					uart_printf(CONSOLE, "total_distance: %d, offset: %d, stopping_distance: %d.\r\n", 
+						total_distance*1000, (accurate_stop_pending_stop.offset)*1000, cal.stopping_distance_mm);
+					if (adjusted_distance <= 0) {
+						uart_printf(CONSOLE, "Stopping distance too large.\r\n");
+						accurate_stop_pending_stop.state = WAITING_FOR_SENSOR;
+						continue;
+					}
+					uart_printf(CONSOLE, "Distance to stop: %d mm.\r\n", 
+						adjusted_distance / 1000);
+		
+					accurate_stop_pending_stop.delay_micros = (adjusted_distance / cal.actual_speed_mmps);
+					clock_delay(accurate_stop_pending_stop.delay_micros);
+					//uart_printf(CONSOLE, "Adjusted_distance: %d, Actual_speed: %d, delay_micros: %d.\r\n", 
+					//	adjusted_distance, cal.actual_speed_mmps, accurate_stop_pending_stop.delay_micros);
+					accurate_stop_pending_stop.trigger_time = get_current_time();
+					accurate_stop_pending_stop.state = WAITING_FOR_DELAY;
+					
+					uart_printf(CONSOLE, "Stopping train %d in %d ms.\r\n", 
+						accurate_stop_pending_stop.train_num, accurate_stop_pending_stop.delay_micros);
+				} 
+				if (pending_stop) {
+					actual_stop(pending_stop_train);
+					pending_stop = false;
+				}
+				if (pending_change_speed) {
+					actual_change_speed(pending_change_speed_train, pending_change_speed_speed);
+					pending_change_speed = false;
+				}
 			}
-			if (pending_change_speed && sensor_buffer.size > prev_sensor_count) {
-				actual_change_speed(pending_change_speed_train, pending_change_speed_speed);
-				pending_change_speed = false;
+			else if (accurate_stop_pending_stop.state == WAITING_FOR_DELAY) 
+			{
+				uint32_t current_time = get_current_time();
+				if (current_time - accurate_stop_pending_stop.trigger_time >= accurate_stop_pending_stop.delay_micros) {
+					stop_train(accurate_stop_pending_stop.train_num);
+					uart_printf(CONSOLE, "Train %d stopped at target.\r\n", accurate_stop_pending_stop.train_num);
+					accurate_stop_pending_stop.state = STOP_IDLE;
+					continue;
+				}
 			}
 		}
 	}
