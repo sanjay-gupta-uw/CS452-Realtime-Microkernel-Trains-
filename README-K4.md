@@ -1,11 +1,7 @@
 ## 1.0 Overview
 
-This program is written for K2 and implements the desired functionality:
-
-- FirstUserTask runs and creates a name server, rps server, and rps clients
-- RPSClients communication with server to play games
-  OR
-- Change PERF=1 in Makefile and run performance test.
+- This program re-implements A0 but using the Kernel developed throughout CS452, and using interrupt handling to avoid spin waiting
+- To run with IRQ enabled, set flag IRQEn to 1
 
 ## 2.0 Program Operation
 
