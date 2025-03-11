@@ -162,7 +162,6 @@ namespace MARKLIN_IO_SERVER
             // while (CTS_STATUS(MARKLIN) != 1)
             if (CTS_STATUS(MARKLIN) != 1)
             {
-
                 ret = AWAITEVENT(InterruptEvents::UART_MARKLIN_CTS_HIGH);
                 uassert(ret >= 0 && "TX NOTIFIER::CTS_HIGH_AWAITEVENT returned error");
             }
@@ -368,14 +367,15 @@ namespace MARKLIN_IO_SERVER
 
         if (canTransmit && !transmit_buffer.IsEmpty())
         {
+            IO_REPLY reply = {REPLY_TYPE::SUCCESS, UNDEFINED_CHAR};
+            REPLY(tx_notifier_tid, (char *)&reply, sizeof(reply));
+
             unsigned char ch;
             transmit_buffer.Pop(&ch);
             uart_putc_non_blocking(MARKLIN, ch);
             bytes_transmitted++;
             canTransmit = false;
             // wake up notifier
-            IO_REPLY reply = {REPLY_TYPE::SUCCESS, UNDEFINED_CHAR};
-            REPLY(tx_notifier_tid, (char *)&reply, sizeof(reply));
 
             if (active_command == COMMAND::REVERSE_STOP_TRAIN && bytes_transmitted == active_command_size)
             {

@@ -2615,9 +2615,9 @@ void Track::figure_eight()
         switches[i - 1].dir = SWITCH_CURVED;
     }
     // Set 9A to straight
-    switches[18].dir = SWITCH_STRAIGHT;
+    switches[9].dir = SWITCH_STRAIGHT;
     // Set 99 to straight
-    switches[21].dir = SWITCH_STRAIGHT;
+    switches[13].dir = SWITCH_STRAIGHT;
 
     for (int i = 0; i < SWITCH_COUNT; i++)
     {
