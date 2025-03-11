@@ -185,8 +185,8 @@ int kmain()
 					}
 					// Calculate adjusted distance and delay
 					int adjusted_distance = total_distance*1000 + (accurate_stop_pending_stop.offset)*1000 - cal.stopping_distance_mm;
-					uart_printf(CONSOLE, "total_distance: %d, offset: %d, stopping_distance: %d.\r\n", 
-						total_distance*1000, (accurate_stop_pending_stop.offset)*1000, cal.stopping_distance_mm);
+					// uart_printf(CONSOLE, "total_distance: %d, offset: %d, stopping_distance: %d.\r\n", 
+					//	total_distance*1000, (accurate_stop_pending_stop.offset)*1000, cal.stopping_distance_mm);
 					if (adjusted_distance <= 0) {
 						uart_printf(CONSOLE, "Stopping distance too large.\r\n");
 						accurate_stop_pending_stop.state = WAITING_FOR_SENSOR;
@@ -195,7 +195,7 @@ int kmain()
 					uart_printf(CONSOLE, "Distance to stop: %d mm.\r\n", 
 						adjusted_distance / 1000);
 		
-					accurate_stop_pending_stop.delay_micros = (adjusted_distance / cal.actual_speed_mmps);
+					accurate_stop_pending_stop.delay_micros = (adjusted_distance / cal.actual_speed_mmps) * 10;
 					clock_delay(accurate_stop_pending_stop.delay_micros);
 					//uart_printf(CONSOLE, "Adjusted_distance: %d, Actual_speed: %d, delay_micros: %d.\r\n", 
 					//	adjusted_distance, cal.actual_speed_mmps, accurate_stop_pending_stop.delay_micros);
