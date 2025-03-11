@@ -2614,10 +2614,10 @@ void Track::figure_eight()
         switches[i - 1].switch_num = (i < 19) ? (i) : (middle_switches[i - 19]);
         switches[i - 1].dir = SWITCH_CURVED;
     }
-    // Set 9A to straight
-    switches[9].dir = SWITCH_STRAIGHT;
-    // Set 99 to straight
-    switches[13].dir = SWITCH_STRAIGHT;
+
+    // switches[9].dir = SWITCH_STRAIGHT;
+    switches[21].dir = SWITCH_STRAIGHT; // Set 99 to straight
+    switches[21].dir = SWITCH_STRAIGHT; // Set 99 to straight
 
     for (int i = 0; i < SWITCH_COUNT; i++)
     {
@@ -2628,4 +2628,6 @@ void Track::figure_eight()
         request.data = switches[i].dir == SWITCH_STRAIGHT ? 'S' : 'C';
         SEND(CONTROLLER_TID, (char *)&request, sizeof(request), NULL, 0);
     }
+    MarklinRequest request = {COMMAND::SOLENOID_OFF, switches[SWITCH_COUNT - 1].switch_num};
+    SEND(CONTROLLER_TID, (char *)&request, sizeof(request), NULL, 0);
 }

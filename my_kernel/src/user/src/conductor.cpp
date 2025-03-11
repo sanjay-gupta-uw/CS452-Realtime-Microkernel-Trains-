@@ -34,9 +34,6 @@ namespace Conductor_NS
         IO_NS::PrintTerminal("Conductor received request\r\n");
         Conductor conductor(req.ch);
         REPLY(sender_tid, nullptr, 0);
-        conductor.track.find_path("E5");
-        // uassert(false && "Conductor started");
-
         // test
         FindPathRequest find_node_name;
         while (true)

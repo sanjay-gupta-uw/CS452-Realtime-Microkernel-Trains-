@@ -67,19 +67,20 @@ void FirstUserTask()
 
     int clockServerTid = CREATE(PRIORITY::P0, ClockServer); // Start the Clock Server
     uassert(clockServerTid > 0 && "Error starting Clock Server");
-
+    IO_NS::PrintTerminal("Clock Server started\r\n");
     // /*
     // // START MARKLIN SERVER + CONTROLLER
     int marklinIoServerTid = CREATE(PRIORITY::P0, MARKLIN_IO_SERVER::startMarklinIOServer); // Start the Marklin IO Server
     uassert(marklinIoServerTid > 0 && "Error starting Marklin IO Server");
+    IO_NS::PrintTerminal("Marklin IO Server started\r\n");
 
-    int SensorTaskTid = CREATE(PRIORITY::P1, SensorTask);
+    int SensorTaskTid = CREATE(PRIORITY::P4, SensorTask);
     uassert(SensorTaskTid >= 0 && "Error starting Sensor Task");
 
     int marklinControllerTid = CREATE(PRIORITY::P3, MARKLIN_NS::start_marklin_controller); // Start the Marklin Controller
     uassert(marklinControllerTid > 0 && "Error starting Marklin Controller");
     //*/
-    int uiTaskTid = CREATE(PRIORITY::P5, UI_NS::start_ui); // Start the UI Task
+    int uiTaskTid = CREATE(PRIORITY::P1, UI_NS::start_ui); // Start the UI Task
     uassert(uiTaskTid > 0 && "Error starting UI Task");
 
     int cmdTid = CREATE(PRIORITY::P5, UI_CMD_NS::start_command_prompt); // Start the Command Task
@@ -94,11 +95,11 @@ void SensorTask()
     REGISTERAS("SensorTask");
     // uassert(4 == 5);
     Sensors_NS::SensorManager sensors;
-    // while (true)
-    // {
-    // sensors.ReadAll(NUM_BANKS); // this will put it to sleep until data is ready
-    // sensors.Display();
-    // }
+    while (true)
+    {
+        sensors.ReadAll(NUM_BANKS); // this will put it to sleep until data is ready
+        sensors.Display();
+    }
     EXIT();
 }
 

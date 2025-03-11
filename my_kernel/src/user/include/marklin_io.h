@@ -41,6 +41,8 @@ namespace MARKLIN_IO_SERVER
         int cts_notifier_low_tid;
         int clock_notifier_tid;
 
+        uint32_t time_of_last_switch_transmission;
+
         Queue<unsigned char, 100> receive_buffer;
         Queue<uint8_t, 100> transmit_buffer; // this should be the bytes for commands
         Queue<COMMAND, 50> cmd_buffer;       // 's', 't', 'r' for switch, train(accel), reverse

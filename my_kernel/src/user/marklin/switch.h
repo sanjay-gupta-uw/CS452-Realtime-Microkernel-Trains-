@@ -27,6 +27,7 @@ namespace Switch_NS
         Switch();
         ~Switch();
         void SetSwitch(SWITCH_STATE ALIGNMENT);
+        void SetSwitchIsolated(SWITCH_STATE ALIGNMENT);
 
         friend class Switches;
     };

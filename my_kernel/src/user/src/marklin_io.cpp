@@ -30,6 +30,9 @@ namespace MARKLIN_IO_SERVER
 
     MarklinIOServer::MarklinIOServer()
     {
+        IO_NS::Print(MOVE_CURSOR CLEAR_TO_END_LINE COLOR_GREEN "Transmitted Bytes: ", TRANSMITTED_BYTES_LOCATION, 1);
+
+        time_of_last_switch_transmission = 0;
         total_bytes_transmitted = 0;
         active_command_size = 0;
         bytes_transmitted = 0;
@@ -57,7 +60,7 @@ namespace MARKLIN_IO_SERVER
 
         // clock notifier to ensure commands are sent at specific intervals
         clock_notifier_tid = CREATE(PRIORITY::P0, notifier_clock);
-        // uassert(clock_notifier_tid >= 0 && "Error starting Clock Notifier");
+        uassert(clock_notifier_tid >= 0 && "Error starting Clock Notifier");
     }
 
     void notifier_rx()
@@ -214,7 +217,8 @@ namespace MARKLIN_IO_SERVER
             {
                 reply.type = REPLY_TYPE::SUCCESS;
                 canTransmit = true;
-                IO_NS::PrintTerminal("Total bytes transmitted: %d\r\n", total_bytes_transmitted);
+                // IO_NS::PrintTerminal("Total bytes transmitted: %d\r\n", total_bytes_transmitted);
+                IO_NS::Print(MOVE_CURSOR COLOR_GREEN "%d", TRANSMITTED_BYTES_LOCATION, TRANSMITTED_BYTES_COL, total_bytes_transmitted);
                 // WE CAN TRANSMIT TO MARKLIN
                 break;
             }
@@ -246,16 +250,6 @@ namespace MARKLIN_IO_SERVER
             {
                 // IO_NS::PrintTerminal("MarklinIO_server::SEND_CMD\r\n");
                 MarklinRequest m_req = *(req.request);
-                if (m_req.type != COMMAND::SET_SWITCH && last_switch_addr != -1)
-                {
-                    // send off command
-                    cmd_buffer.Push(COMMAND::SOLENOID_OFF);
-                    transmit_buffer.Push(OFF);
-                    transmit_buffer.Push(last_switch_addr);
-
-                    last_switch_addr = -1;
-                }
-
                 switch (m_req.type)
                 {
                 case COMMAND::READ_SENSOR:
@@ -269,6 +263,9 @@ namespace MARKLIN_IO_SERVER
                 }
                 case COMMAND::SET_SWITCH:
                 {
+                    COMMAND last_pushed_cmd;
+                    cmd_buffer.Peek(&last_pushed_cmd);
+
                     uint8_t switch_addr = m_req.id;
                     unsigned char state = m_req.data;
 
@@ -276,6 +273,16 @@ namespace MARKLIN_IO_SERVER
                     transmit_buffer.Push(state);
                     transmit_buffer.Push(switch_addr);
                     last_switch_addr = switch_addr;
+
+                    reply.type = REPLY_TYPE::SUCCESS;
+                    send_reply = true;
+                    break;
+                }
+                case COMMAND::SOLENOID_OFF:
+                {
+                    cmd_buffer.Push(COMMAND::SOLENOID_OFF);
+                    transmit_buffer.Push(OFF);
+                    transmit_buffer.Push(m_req.id);
 
                     reply.type = REPLY_TYPE::SUCCESS;
                     send_reply = true;
@@ -354,14 +361,12 @@ namespace MARKLIN_IO_SERVER
             {
                 return;
             }
+
             cmd_buffer.Pop(&active_command);
+
             // IO_NS::PrintTerminal("Processing next command: %d\r\n", active_command);
             numSeenCommands++;
-            // uassert(numSeenCommands < 5 && "MarklinIOServer::handle_transmission: THIS IS TRYING TO TRANSMIT THE 3+ COMMAND");
-            // uassert((cmd_type == COMMAND::READ_SENSOR) && "MarklinIOServer::handle_transmission: FORCED PANIC -- NON SENSOR COMMAND TRANSMITTING");
-
             active_command_size = (active_command == COMMAND::READ_SENSOR) ? 1 : 2;
-            total_bytes_transmitted += active_command_size;
             bytes_transmitted = 0;
         }
 
@@ -373,10 +378,18 @@ namespace MARKLIN_IO_SERVER
             unsigned char ch;
             transmit_buffer.Pop(&ch);
             uart_putc_non_blocking(MARKLIN, ch);
-            bytes_transmitted++;
-            canTransmit = false;
-            // wake up notifier
 
+            canTransmit = false;
+            bytes_transmitted++;
+            total_bytes_transmitted++;
+
+            if (active_command == COMMAND::SET_SWITCH && bytes_transmitted == active_command_size)
+            {
+                time_of_last_switch_transmission = clock.Time();
+                // IO_NS::PrintTerminal("MarklinIOServer::handle_transmission: SET_SWITCH -- CLOCK_BLOCKED!\r\n");
+            }
+
+            // wake up notifier
             if (active_command == COMMAND::REVERSE_STOP_TRAIN && bytes_transmitted == active_command_size)
             {
                 IO_NS::PrintTerminal("MarklinIOServer::handle_transmission: REVERSE_STOP_TRAIN -- CLOCK_BLOCKED!\r\n");

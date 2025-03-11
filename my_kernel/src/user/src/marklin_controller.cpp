@@ -70,8 +70,14 @@ namespace MARKLIN_NS
                 // IO_NS::PrintTerminal("set switch result: %d\r\n", success);
                 ret = success ? 1 : -1;
                 print_status(success);
+                break;
             }
-            break;
+            case COMMAND::SOLENOID_OFF:
+            {
+                MARKLIN_IO_SERVER::IO_REQUEST req{MARKLIN_IO_SERVER::IO_REQUEST_TYPE::SEND_CMD, 0, &request};
+                SEND(MARKLIN_IO_SERVER_TID, (char *)&req, sizeof(req), (char *)&ret, sizeof(ret));
+                break;
+            }
 
             case COMMAND::REVERSE_TRAIN:
             {
@@ -80,8 +86,8 @@ namespace MARKLIN_NS
                 bool success = trains.ReverseTrain(train_num);
                 ret = success ? 1 : -1;
                 print_status(success);
+                break;
             }
-            break;
 
             case COMMAND::ACCELERATE_TRAIN:
             {
@@ -91,8 +97,8 @@ namespace MARKLIN_NS
                 bool success = trains.AccelerateTrain(train_num, speed);
                 ret = success ? 1 : -1;
                 print_status(success);
+                break;
             }
-            break;
 
             default:
                 print_status(false);

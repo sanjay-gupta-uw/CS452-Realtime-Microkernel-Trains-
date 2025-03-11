@@ -58,7 +58,9 @@
     "bitset": "cpp",
     "ios": "cpp",
     "print": "cpp",
-    "__node_handle": "cpp"
+    "__node_handle": "cpp",
+    "ratio": "cpp",
+    "variant": "cpp"
   },
   "makefile.configureOnOpen": false
 }

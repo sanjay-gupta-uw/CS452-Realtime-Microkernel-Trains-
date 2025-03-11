@@ -54,6 +54,16 @@ namespace Switch_NS
         MARKLIN_IO_SERVER::SendCmd(MARKLIN_IO_SERVER_TID, &request);
     }
 
+    void Switch::SetSwitchIsolated(SWITCH_STATE ALIGNMENT)
+    {
+        this->ALIGNMENT = ALIGNMENT;
+        SetSwitch(ALIGNMENT);
+        // send off command to marklin
+        MarklinRequest request = {COMMAND::SOLENOID_OFF, address, 0, 0};
+        MARKLIN_IO_SERVER::SendCmd(MARKLIN_IO_SERVER_TID, &request);
+        PrintSwitchStatus(address, ALIGNMENT);
+    }
+
     // ********* Switches Class *********
 
     Switches::Switches()
@@ -75,7 +85,7 @@ namespace Switch_NS
         const int SWITCH_ADDR[SWITCH_COUNT] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 0x9A, 0x9B, 0x9C, 0x99};
 
         // for (int i = 0; i < COUNT; ++i)
-        for (int i = 0; i < SWITCH_COUNT; ++i)
+        for (int i = 0; i < SWITCH_COUNT - 1; ++i)
         {
             IO_NS::PrintTerminal("Switch::Init %d: %d\r\n", i, SWITCH_ADDR[i]);
             switches[i] = Switch();
@@ -84,6 +94,10 @@ namespace Switch_NS
             PrintSwitchStatus(i, SWITCH_STATE::CURVED);
             IO_NS::PrintTerminal("Switch::Init SUCCESS FOR %d: %d\r\n", i, SWITCH_ADDR[i]);
         }
+        switches[SWITCH_COUNT - 1] = Switch();
+        switches[SWITCH_COUNT - 1].address = SWITCH_ADDR[SWITCH_COUNT - 1];
+        switches[SWITCH_COUNT - 1].SetSwitchIsolated(SWITCH_STATE::CURVED);
+        PrintSwitchStatus(SWITCH_COUNT - 1, SWITCH_STATE::CURVED);
         // }
     }
 
