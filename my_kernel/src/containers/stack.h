@@ -38,15 +38,6 @@ public:
         return 0;
     }
 
-    int Peek(T *item)
-    {
-        if (size == 0)
-            return -1; // stack is empty.
-
-        *item = buffer[head - 1];
-        return 0;
-    }
-
     // Check if the stack is empty.
     bool IsEmpty() const
     {

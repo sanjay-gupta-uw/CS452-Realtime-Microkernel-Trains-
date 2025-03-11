@@ -10,11 +10,13 @@
 class Track
 {
 private:
+    int CONTROLLER_TID;
     track_node track[TRACK_MAX];
     char track_id;
     void init_tracka();
     void init_trackb();
     void initialize_loop(); // sets noid
+    void figure_eight();
 
 public:
     Track();

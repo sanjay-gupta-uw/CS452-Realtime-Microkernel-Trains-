@@ -14,5 +14,6 @@ void ClientTask();
 void MarklinTask();
 void IdleTask();
 void SensorTask();
+void ComputeIdleTask();
 
 #endif

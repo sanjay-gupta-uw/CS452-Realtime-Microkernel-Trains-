@@ -123,7 +123,7 @@ void Clock::Display()
 
     // IO_NS::PrintTerminal("Clock::Display()\r\n");
 
-    IO_NS::Print(MOVE_CURSOR COLOR_YELLOW "%s:%s:%u", CLOCK_LOCATION_Y, CLOCK_LOCATION_X, min, sec, tenths);
+    IO_NS::Print(COLOR_YELLOW MOVE_CURSOR "%s:%s:%u", CLOCK_LOCATION_Y, CLOCK_LOCATION_X, min, sec, tenths);
     UPDATE_DISPLAY = false;
 }
 

@@ -566,6 +566,7 @@ void Kernel::IRQ_Handler()
             int idx = (cts_status == 1) ? UART_MARKLIN_CTS_HIGH : UART_MARKLIN_CTS_LOW;
             // kassert(idx == UART_MARKLIN_CTS_HIGH && "PANIC: LOW CTS INTERRUPT TRIGGERED");
             // kassert(idx == UART_MARKLIN_CTS_LOW && "PANIC: HIGH CTS INTERRUPT TRIGGERED");
+            kassert(!event_queues[idx].IsEmpty() && "PANIC: NO TASK WAITING FOR CTS INTERRUPT");
             while (event_queues[idx].Pop(&task) != -1)
             {
                 task->setState(READY);

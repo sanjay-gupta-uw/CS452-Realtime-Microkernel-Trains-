@@ -57,9 +57,12 @@ namespace Trains_NS
 
     void Train::Stop()
     {
-        // SendCommand(0);
         train_speed = 0;
-        Accelerate(0);
+        MarklinRequest request;
+        request.type = COMMAND::REVERSE_STOP_TRAIN;
+        request.id = train_num;
+        request.data = 0;
+        MARKLIN_IO_SERVER::SendCmd(MARKLIN_IO_SERVER_TID, &request);
     }
 
     bool Train::isMoving()

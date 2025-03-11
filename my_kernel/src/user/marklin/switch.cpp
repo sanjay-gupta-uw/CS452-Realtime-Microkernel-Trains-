@@ -72,7 +72,7 @@ namespace Switch_NS
         // const SWITCH_STATE state[SWITCH_COUNT] = {SWITCH_STATE::STRAIGHT,
         //   SWITCH_STATE::CURVED};
 
-        const int SWITCH_ADDR[SWITCH_COUNT] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 0x9A, 0x9B, 0x9C, 0x99};
+        const int SWITCH_ADDR[SWITCH_COUNT] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 0x9A, 0x9B, 0x9C, 0x99};
 
         // for (int i = 0; i < COUNT; ++i)
         for (int i = 0; i < SWITCH_COUNT; ++i)

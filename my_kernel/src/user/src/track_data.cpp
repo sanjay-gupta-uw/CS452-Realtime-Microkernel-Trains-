@@ -4,6 +4,9 @@
 #include "../include/track_data.h"
 #include "../include/uassert.h"
 #include "../include/io.h"
+#include "../include/marklin_structs.h"
+#include "../include/name_server.h"
+#include "../include/clock_server.h"
 #include "../../containers/queue.h"
 #include "../../containers/stack.h"
 
@@ -24,6 +27,7 @@ static bool isNodeInLoop(track_node *node)
 
 Track::Track()
 {
+    CONTROLLER_TID = -1;
     memset(track, 0, TRACK_MAX * sizeof(track_node));
 }
 Track::~Track()
@@ -2400,11 +2404,11 @@ void Track::initialize_loop()
 
     // set switch nodes in loop
     const int NUM_LOOP_SWITCHES = 12;
-    const int SWITCH_OFFSET = 86;
+    const int SWITCH_OFFSET = 80;
     const int LOOP_SWITCHES[NUM_LOOP_SWITCHES] = {
-        8,
-        9,
-        10,
+        8,  // 94
+        9,  // 96
+        10, // 98
         13,
         14,
         15,
@@ -2418,7 +2422,9 @@ void Track::initialize_loop()
 
     for (int i = 0; i < NUM_LOOP_SWITCHES; ++i)
     {
-        track[SWITCH_OFFSET + LOOP_SWITCHES[i]].is_node_in_loop = true;
+        int index = SWITCH_OFFSET + ((LOOP_SWITCHES[i] - 1) * 2);
+        track[index].is_node_in_loop = true;
+        // IO_NS::PrintTerminal("Track::initialize_loop: Setting switch %d in loop\r\n", LOOP_SWITCHES[i]);
     }
 
     typedef struct SensorNode
@@ -2479,6 +2485,8 @@ track_node *Track::get_node_by_name(const char *name)
 */
 void Track::find_path(const char *start)
 {
+    figure_eight(); // initial reset
+
     track_node *start_node = get_node_by_name(start);
     if (start_node == NULL)
     {
@@ -2508,59 +2516,67 @@ void Track::find_path(const char *start)
     // 22 switches, each has merge, 5*16 = 80 sensors, 10 enter/exit nodes each
     // 80 should be more than enough
     Stack<PathNode, 80> path;
-    track_node curnode = *start_node->reverse;
+    track_node *curnode = start_node->reverse;
 
-    if (curnode.type == NODE_EXIT)
+    while (!curnode->is_node_in_loop)
     {
-        IO_NS::PrintTerminal("Track::find_path: edge case -- destination is at a start switch\r\n");
-        return;
-    }
-
-    while (!curnode.is_node_in_loop)
-    {
-        IO_NS::PrintTerminal("Track::find_path: Current node: %s\r\n", curnode.name);
-        // IO_NS::PrintTerminal("Track::find_path: Current node: %s\r\n", curnode.name);
-        if (curnode.type == NODE_BRANCH)
+        IO_NS::PrintTerminal("Track::find_path: Current node: %s, Path level: %d\r\n", curnode->name, path_level);
+        // IO_NS::PrintTerminal("Track::find_path: Current node: %s\r\n", curnode->name);
+        if (curnode->type == NODE_BRANCH)
         {
             // save position
-            IO_NS::PrintTerminal("Track::find_path: Pushing Branch node: %s\r\n", curnode.name);
-            path.Push({&curnode, path_level++, false});
+            IO_NS::PrintTerminal("Track::find_path: Pushing Branch node: %s\r\n", curnode->name);
+            path.Push({curnode, path_level++, false});
             // follow down path
-            curnode = *curnode.edge[DIR_STRAIGHT].dest;
+            curnode = curnode->edge[DIR_STRAIGHT].dest;
             continue;
         }
         // follow edge to destination node
 
-        if (curnode.type == NODE_EXIT)
+        if (curnode->type == NODE_EXIT)
         {
-            IO_NS::PrintTerminal("Track::find_path: Reached exit node: %s\r\n", curnode.name);
+            IO_NS::PrintTerminal("Track::find_path: Reached exit node: %s\r\n", curnode->name);
             // need to pop all nodes from this level
             while (!path.IsEmpty())
             {
                 PathNode path_node;
-                path.Peek(&path_node);
+                path.Pop(&path_node);
+                IO_NS::PrintTerminal("Track::find_path: path_node name: %s, path_node level: %d, path_node check_both: %c, path level: %d,\r\n", path_node.node->name, path_node.level, path_node.explored_both ? 'Y' : 'N', path_level);
 
                 if (path_node.level < path_level && !path_node.explored_both)
                 {
+                    if (path_node.node->type != NODE_BRANCH)
+                    {
+                        while (!path.IsEmpty())
+                        {
+                            path.Pop(&path_node);
+                        }
+                        break;
+                    }
                     // unexplored path
                     IO_NS::PrintTerminal("Track::find_path: Exploring other path from %s\r\n", path_node.node->name);
                     path_node.explored_both = true;
+                    path.Push(path_node);
                     path_level = path_node.level + 1;
-                    curnode = *path_node.node->edge[DIR_CURVED].dest;
+                    IO_NS::PrintTerminal("Track::find_path: New path level: %d\r\n", path_level);
+                    curnode = path_node.node->edge[DIR_CURVED].dest;
                     break;
                 }
-                uassert(path.Pop(&path_node) != -1); // otherwise, pop the node
             }
-            continue;
+            if (path.IsEmpty())
+            {
+                IO_NS::PrintTerminal("Track::find_path: Path to %s not found!\r\n", start);
+                return;
+            }
         }
-        IO_NS::PrintTerminal("Track::find_path: Pushing node: %s\r\n", curnode.name);
-        path.Push({&curnode, path_level, false});
+        IO_NS::PrintTerminal("Track::find_path: Pushing node: %s\r\n", curnode->name);
+        path.Push({curnode, path_level, false});
 
-        curnode = *curnode.edge[DIR_AHEAD].dest;
-        IO_NS::PrintTerminal("Track::find_path: Following edge to %s\r\n", curnode.name);
+        curnode = curnode->edge[DIR_AHEAD].dest;
+        IO_NS::PrintTerminal("Track::find_path: Following edge to %s\r\n", curnode->name);
     }
 
-    path.Push({&curnode, path_level, false});
+    path.Push({curnode, path_level, false});
     IO_NS::PrintTerminal("Track::find_path: Path to %s found!\r\n", start);
     while (!path.IsEmpty())
     {
@@ -2570,16 +2586,46 @@ void Track::find_path(const char *start)
     }
 }
 
-// int get_node_num_by_name_b(const char *name)
-// {
-//     track_node track[TRACK_MAX];
-//     init_trackb(track);
-//     for (int i = 0; i < TRACK_MAX; i++)
-//     {
-//         if (track[i].name && strcmp(track[i].name, name) == 0)
-//         {
-//             return i;
-//         }
-//     }
-//     return -1;
-// }
+void Track::figure_eight()
+{
+    IO_NS::PrintTerminal("Track::figure_eight: Setting switches for figure eight\r\n");
+    // middle switch indexes
+    const int SWITCH_OFFSET = 80; // different since we use all switches
+
+    const int middle_switches[4] = {0x9a, 0x9b, 0x9c, 0x99};
+
+    // const int LEFT_CURVE[2] = {0x9c, 0x9a};
+    // const int RIGHT_CURVE[2] = {0x99, 0x9b};
+
+    if (CONTROLLER_TID < 0)
+    {
+        CONTROLLER_TID = WHOIS("MarklinController");
+        if (CONTROLLER_TID < 0)
+        {
+            IO_NS::PrintTerminal("Track::figure_eight: MarklinController not found!\r\n");
+            return;
+        }
+    }
+
+    const int SWITCH_COUNT = 22;
+    SwitchSetting switches[SWITCH_COUNT];
+    for (int i = 1; i <= SWITCH_COUNT; i++)
+    {
+        switches[i - 1].switch_num = (i < 19) ? (i) : (middle_switches[i - 19]);
+        switches[i - 1].dir = SWITCH_CURVED;
+    }
+    // Set 9A to straight
+    switches[18].dir = SWITCH_STRAIGHT;
+    // Set 99 to straight
+    switches[21].dir = SWITCH_STRAIGHT;
+
+    for (int i = 0; i < SWITCH_COUNT; i++)
+    {
+        // send command to controller
+        MarklinRequest request;
+        request.type = COMMAND::SET_SWITCH;
+        request.id = switches[i].switch_num;
+        request.data = switches[i].dir == SWITCH_STRAIGHT ? 'S' : 'C';
+        SEND(CONTROLLER_TID, (char *)&request, sizeof(request), NULL, 0);
+    }
+}

@@ -4,6 +4,7 @@
 #include "../../shared_constants.h"
 #include "../../rpi.h"
 #include "../include/uassert.h"
+#include "../include/conductor.h"
 
 extern "C" void _reboot(void); // Declare the reboot function implemented in assembly
 
@@ -11,12 +12,14 @@ namespace UI_CMD_NS
 {
     static int IO_SERVER_TID;
     static int MARKLIN_CONTROLLER_TID;
+    static int CONDUCTOR_TID;
 
     CommandPrompt::CommandPrompt()
     {
         REGISTERAS("CommandPrompt");
         IO_SERVER_TID = WHOIS("IOServer");
         MARKLIN_CONTROLLER_TID = WHOIS("MarklinController");
+        CONDUCTOR_TID = WHOIS("Conductor");
 
         BUFFER_INDEX = 0;
         clearInputBuffer();
@@ -159,6 +162,24 @@ namespace UI_CMD_NS
             MarklinRequest request = {COMMAND::REVERSE_TRAIN, train_num, -1, '\0'};
             SEND(MARKLIN_CONTROLLER_TID, (char *)&request, sizeof(MarklinRequest), (char *)command_received, sizeof(int));
         }
+        else if ((first == 'G' || first == 'g') &&
+                 (second == 'O' || second == 'o'))
+        {
+            // ignore spaces
+            const char *ptr = str + 2;
+            while (*ptr == ' ')
+            {
+                ptr++;
+            }
+
+            const char *node_name = ptr;
+            FindPathRequest request = {(unsigned char *)node_name};
+
+            // send node name to conductor
+            IO_NS::PrintTerminal("Attempting to find path to %s, sending to Conductor tid: %d\r\n", node_name, CONDUCTOR_TID);
+            SEND(CONDUCTOR_TID, (char *)&request, sizeof(FindPathRequest), nullptr, 0);
+        }
+
         else
         {
             IO_NS::PrintTerminal("Invalid Command\r\n");
@@ -184,7 +205,6 @@ namespace UI_CMD_NS
 
     void CommandPrompt::getInput()
     {
-
         // IO_NS::PrintTerminal("GETTING INPUT\r\n");
         // const int CONSOLE = 1;
 

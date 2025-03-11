@@ -26,8 +26,10 @@ namespace MARKLIN_IO_SERVER
         // interface for the IO server
 
     private:
+        COMMAND active_command;
         unsigned int numSeenCommands;
         bool canTransmit;
+        bool clock_blocked;
         int active_command_size;
         int bytes_transmitted;
         int last_switch_addr;
@@ -37,6 +39,7 @@ namespace MARKLIN_IO_SERVER
         int tx_notifier_tid;
         int cts_notifier_high_tid;
         int cts_notifier_low_tid;
+        int clock_notifier_tid;
 
         Queue<unsigned char, 100> receive_buffer;
         Queue<uint8_t, 100> transmit_buffer; // this should be the bytes for commands
@@ -62,6 +65,7 @@ namespace MARKLIN_IO_SERVER
         TX_NOTIFIER,
         CTS_NOTIFIER_HIGH,
         CTS_NOTIFIER_LOW,
+        CLOCK_NOTIFIER,
     };
 
     enum class REPLY_TYPE
@@ -92,6 +96,7 @@ namespace MARKLIN_IO_SERVER
     void notifier_tx();
     void notifier_cts_high();
     void notifier_cts_low();
+    void notifier_clock();
 
     // bool initialized;
 

@@ -59,10 +59,10 @@ namespace UI_NS
         }
 
         init_switch_display();
-        IO_NS::Print(MOVE_CURSOR "IDLE: %d%%", IDLE_LOCATION, 1, 1);
+        IO_NS::Print(MOVE_CURSOR "IDLE: %d%%", IDLE_LOCATION, 1, 0);
         // clock.Display();
         init_sensor_display();
-
+        IO_NS::PrintTerminal("UI TASK INITIALIZED!\r\n");
         EXIT();
     }
 

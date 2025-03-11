@@ -3,9 +3,14 @@
 
 #include "track_data.h"
 #include "../../include/syscall.h"
+
+typedef struct FindPathRequest
+{
+    unsigned char *node_name;
+};
+
 namespace Conductor_NS
 {
-
     class Conductor
     {
     public:

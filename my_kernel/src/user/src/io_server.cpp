@@ -181,6 +181,12 @@ namespace IO_SERVER
     }
     int Getc(int tid)
     {
+        if (!IRQ_ENABLED)
+        {
+            // IO_NS::PrintTerminal("GETC -- IRQ DISABLED\r\n");
+            unsigned char ch = uart_getc(CONSOLE);
+            return ch;
+        }
         int IO_TID = WHOIS("IOServer");
         IO_REQUEST req{IO_REQUEST_TYPE::GETC, 0, nullptr};
         IO_REPLY reply;

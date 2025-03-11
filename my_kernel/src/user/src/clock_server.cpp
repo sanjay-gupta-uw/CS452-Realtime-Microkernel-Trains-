@@ -5,6 +5,8 @@
 #include "../../rpi.h"
 #include "../../include/syscall.h"
 #include "../include/uassert.h"
+#include "../include/io.h"
+#include "../../clock.h"
 static int CLOCK_SERVER_TID = -1;
 
 class TimeServer
@@ -73,8 +75,9 @@ private:
         int waiting_tid, trigger_time;
         while (!waitingTasks.isEmpty() && waitingTasks.Peek(&waiting_tid, &trigger_time) == 0 && (uint32_t)trigger_time <= TOTAL_TICKS)
         {
+            int ret = 1;
             waitingTasks.Pop(&waiting_tid);
-            REPLY(waiting_tid, "U R FREE", 8);
+            REPLY(waiting_tid, (char *)&ret, sizeof(ret));
         }
         REPLY(sender_tid, nullptr, 0); // FREE THE CLOCK NOTIFIER
     }
@@ -109,7 +112,7 @@ int DELAY(int tid, int ticks)
     ClockRequest req{ClockRequestType::DELAY, ticks};
     int reply;
     SEND(CLOCK_SERVER_TID, (char *)&req, sizeof(req), (char *)&reply, sizeof(reply));
-    uassert(reply == 0 && "Error in delay");
+    uassert(reply >= 0 && "Error in delay");
     return TIME(tid); // return current Time()
 }
 
@@ -139,10 +142,14 @@ void ClockServer()
 void ClockNotifier()
 {
     REGISTERAS("ClockNotifier");
+    Clock clock;
     int clockServerTid = WHOIS("ClockServer");
     while (true)
     {
         int ret = AWAITEVENT(TIMER_TICK);
+        // IO_NS::PrintTerminal("ClockNotifier::Tick\r\n");
+        clock.Display();
+
         if (ret < 0)
         {
             // delay until the next tick
