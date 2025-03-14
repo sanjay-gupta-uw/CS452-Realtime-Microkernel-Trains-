@@ -10,8 +10,6 @@
 
 namespace MARKLIN_NS
 {
-#define RECEIVE_BYTE_COUNT 8
-
     static void print_status(bool success)
     {
         const char *msg = success ? "MarklinController:: Command Successfully Sent to MarklinIOServer\r\n" : "MarklinController:: Invalid Command\r\n";

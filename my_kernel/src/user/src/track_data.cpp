@@ -36,9 +36,9 @@ Track::~Track()
 
 void Track::init(char track_id)
 {
-    uassert((track_id == 'A' || track_id == 'B') && "Invalid track id");
+    uassert((track_id == 'A' || track_id == 'B' || track_id == 'a' || track_id == 'b') && "Invalid track ID");
     this->track_id = track_id;
-    if (track_id == 'A')
+    if (track_id == 'A' || track_id == 'a')
         init_tracka();
     else
         init_trackb();

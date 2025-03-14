@@ -10,23 +10,18 @@ extern "C" void _reboot(void); // Declare the reboot function implemented in ass
 
 namespace UI_CMD_NS
 {
-    static int IO_SERVER_TID;
-    static int MARKLIN_CONTROLLER_TID;
-    static int CONDUCTOR_TID;
-
     CommandPrompt::CommandPrompt()
     {
+        IO_NS::PrintTerminal("Starting Command Prompt\r\n");
         REGISTERAS("CommandPrompt");
         IO_SERVER_TID = WHOIS("IOServer");
-        MARKLIN_CONTROLLER_TID = WHOIS("MarklinController");
         CONDUCTOR_TID = WHOIS("Conductor");
-
         BUFFER_INDEX = 0;
         clearInputBuffer();
         InitDisplay();
     }
 
-    static void Commandify(const char *str)
+    void CommandPrompt::Commandify(const char *str)
     {
         int command_received = -3;
         // if (str == nullptr)
@@ -86,7 +81,7 @@ namespace UI_CMD_NS
             // create marklin request
             IO_NS::PrintTerminal("Attempting to set Switch %d to %c\r\n", switch_num, switch_state);
             MarklinRequest request = {COMMAND::SET_SWITCH, switch_num, -1, switch_state};
-            SEND(MARKLIN_CONTROLLER_TID, (char *)&request, sizeof(MarklinRequest), nullptr, 0);
+            SEND(CONDUCTOR_TID, (char *)&request, sizeof(MarklinRequest), nullptr, 0);
         }
         else if ((first == 'T' || first == 't') &&
                  (second == 'R' || second == 'r'))
@@ -129,7 +124,7 @@ namespace UI_CMD_NS
             // create marklin request
             IO_NS::PrintTerminal("Attempting to accelerate Train %d to %d\r\n", train_num, train_speed);
             MarklinRequest request = {COMMAND::ACCELERATE_TRAIN, train_num, -1, (unsigned char)train_speed};
-            SEND(MARKLIN_CONTROLLER_TID, (char *)&request, sizeof(MarklinRequest), (char *)command_received, sizeof(int));
+            SEND(CONDUCTOR_TID, (char *)&request, sizeof(MarklinRequest), (char *)command_received, sizeof(int));
         }
         else if ((first == 'R' || first == 'r') &&
                  (second == 'V' || second == 'v'))
@@ -160,7 +155,7 @@ namespace UI_CMD_NS
             // create marklin request
             IO_NS::PrintTerminal("Attempting to reverse Train %d\r\n", train_num);
             MarklinRequest request = {COMMAND::REVERSE_TRAIN, train_num, -1, '\0'};
-            SEND(MARKLIN_CONTROLLER_TID, (char *)&request, sizeof(MarklinRequest), (char *)command_received, sizeof(int));
+            SEND(CONDUCTOR_TID, (char *)&request, sizeof(MarklinRequest), (char *)command_received, sizeof(int));
         }
         else if ((first == 'G' || first == 'g') &&
                  (second == 'O' || second == 'o'))
@@ -252,6 +247,27 @@ namespace UI_CMD_NS
     void start_command_prompt()
     {
         CommandPrompt commandPrompt;
+
+        IO_NS::PrintTerminal("Please enter the Track ID: ");
+        while (true)
+        {
+            unsigned char track_id = (unsigned char)(IO_SERVER::Getc(commandPrompt.IO_SERVER_TID));
+            IO_NS::PrintTerminal("%c\r\n", track_id);
+            if (track_id == 'A' || track_id == 'a' || track_id == 'B' || track_id == 'b')
+            {
+                // create conductor
+                IO_NS::PrintTerminal("Attempting to start Conductor with track ID: %c, CONDUCTOR_TID: %d\r\n", track_id, commandPrompt.CONDUCTOR_TID);
+                SEND(commandPrompt.CONDUCTOR_TID, (char *)&track_id, sizeof(char), nullptr, 0);
+                // send message to conductor
+                break;
+            }
+            else
+            {
+                IO_NS::PrintTerminal("Invalid Track ID. Please enter A or B (case ignored)\r\n");
+            }
+        }
+
+        IO_NS::PrintTerminal("Command Prompt started\r\n");
 
         while (true)
         {

@@ -126,10 +126,12 @@ extern "C" int kmain()
             TOTAL_IDLE_TIME += task_time;
         }
 
+        uint32_t total_idle = (uint32_t)(((uint64_t)(TOTAL_IDLE_TIME) * 100) / TOTAL_TIME);
+
         // apply mask to ESR to get SVC number
         int N = esr_el1 & 0xFFFF;
         kassert(N >= 0 && "UNEXPECTED ERROR DECODING SVC NUMBER");
-        kernel.Handler(N, (uint32_t)((TOTAL_IDLE_TIME * 100) / TOTAL_TIME));
+        kernel.Handler(N, total_idle);
         // IO_NS::Print(MOVE_CURSOR CLEAR_TO_END_LINE, IDLE_LOCATION, 1);
         // IO_NS::Print(MOVE_CURSOR COLOR_CYAN "IDLE: %d%%", IDLE_LOCATION, 1, (uint32_t)((TOTAL_IDLE_TIME * 100) / TOTAL_TIME));
     }

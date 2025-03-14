@@ -13,11 +13,10 @@ namespace Conductor_NS
 
     Conductor::Conductor()
     {
+        IO_NS::PrintTerminal("Starting Conductor\r\n");
         // Track track;
-    }
-    Conductor::Conductor(char track_id) : Conductor()
-    {
-        track.init(track_id);
+        REGISTERAS("Conductor");
+        IO_NS::PrintTerminal("Conductor started\r\n");
     }
     Conductor::~Conductor()
     {
@@ -25,14 +24,14 @@ namespace Conductor_NS
 
     void start_conductor()
     {
-        REGISTERAS("Conductor");
-        IO_NS::PrintTerminal("Conductor started\r\n");
+        Conductor conductor;
         int sender_tid;
-        IO_NS::PrintTerminal("Conductor waiting for request\r\n");
-        IO_REQUEST req;
-        int retval = RECEIVE(&sender_tid, (char *)&req, sizeof(req));
-        IO_NS::PrintTerminal("Conductor received request\r\n");
-        Conductor conductor(req.ch);
+        unsigned char track_id;
+        int retval = RECEIVE(&sender_tid, (char *)&track_id, sizeof(track_id));
+        IO_NS::PrintTerminal("Conductor received request for track %c\r\n", track_id);
+        uassert(track_id == 'A' || track_id == 'B' || track_id == 'a' || track_id == 'b');
+        conductor.track.init(track_id);
+
         REPLY(sender_tid, nullptr, 0);
         // test
         FindPathRequest find_node_name;

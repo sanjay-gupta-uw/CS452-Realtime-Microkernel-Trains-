@@ -56,7 +56,7 @@ Kernel::Kernel()
 
 Kernel::Kernel(void (*function)()) : Kernel()
 {
-    // initilize default task with medium priority
+    // initilize default task with idle priority
     int tid = Create(PRIORITY::IDLE, function);
     // initialize INTERRUPTS
     InitGIC();

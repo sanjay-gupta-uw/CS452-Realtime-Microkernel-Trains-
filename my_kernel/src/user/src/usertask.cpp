@@ -34,10 +34,7 @@ void IdleTask()
     uassert(IdleCompute > 0 && "Error starting Compute Idle Task");
     for (;;)
     {
-        // IO_NS::PrintTerminal("IdleTask -- \r\n");
-        // uassert(false && "IdleTask -- PANIC: Idle Task");
-        // IO_NS::PrintTerminal("IdleTask -- updating clock\r\n");
-        // clock.Update();
+        // IO_NS::PrintTerminal("Idle Task\r\n");
         asm volatile("wfi");
     }
     EXIT();
@@ -59,16 +56,20 @@ void FirstUserTask()
     IO_NS::PrintTerminal("IO Server started\r\n");
     // uart_printf(CONSOLE, RESET_FORMATTING CLEAR_SCREEN COLUMN_132 SCROLL_REGION MOVE_CURSOR SMOOTH_SCROLL "Terminal Output Kernel:\r\n" SAVE_CURSOR, SCROLL_ROW_START, SCROLL_ROW_END, SCROLL_ROW_START, 1);
 
-    int ConductorTid = CREATE(PRIORITY::P3, Conductor_NS::start_conductor);
-    uassert(ConductorTid > 0 && "Error starting Conductor");
-    IO_NS::PrintTerminal("Sending track id to Conductor\r\n");
-    SEND(ConductorTid, "A", 1, nullptr, 0);
-    IO_NS::PrintTerminal("First User Task -- Conductor replied\r\n");
-
     int clockServerTid = CREATE(PRIORITY::P0, ClockServer); // Start the Clock Server
     uassert(clockServerTid > 0 && "Error starting Clock Server");
     IO_NS::PrintTerminal("Clock Server started\r\n");
-    // /*
+
+    int ConductorTid = CREATE(PRIORITY::P3, Conductor_NS::start_conductor);
+    uassert(ConductorTid > 0 && "Error starting Conductor");
+    IO_NS::PrintTerminal("Conductor started\r\n");
+
+    int cmdTid = CREATE(PRIORITY::P5, UI_CMD_NS::start_command_prompt); // Start the Command Task
+    uassert(cmdTid > 0 && "Error starting Command Task");
+    IO_NS::PrintTerminal("Command Task started\r\n");
+
+    /*
+
     // // START MARKLIN SERVER + CONTROLLER
     int marklinIoServerTid = CREATE(PRIORITY::P0, MARKLIN_IO_SERVER::startMarklinIOServer); // Start the Marklin IO Server
     uassert(marklinIoServerTid > 0 && "Error starting Marklin IO Server");
@@ -77,14 +78,11 @@ void FirstUserTask()
     int SensorTaskTid = CREATE(PRIORITY::P4, SensorTask);
     uassert(SensorTaskTid >= 0 && "Error starting Sensor Task");
 
-    int marklinControllerTid = CREATE(PRIORITY::P3, MARKLIN_NS::start_marklin_controller); // Start the Marklin Controller
-    uassert(marklinControllerTid > 0 && "Error starting Marklin Controller");
-    //*/
+    // int marklinControllerTid = CREATE(PRIORITY::P3, MARKLIN_NS::start_marklin_controller); // Start the Marklin Controller
+    // uassert(marklinControllerTid > 0 && "Error starting Marklin Controller");
     int uiTaskTid = CREATE(PRIORITY::P1, UI_NS::start_ui); // Start the UI Task
     uassert(uiTaskTid > 0 && "Error starting UI Task");
-
-    int cmdTid = CREATE(PRIORITY::P5, UI_CMD_NS::start_command_prompt); // Start the Command Task
-    uassert(cmdTid > 0 && "Error starting Command Task");
+    */
 
     EXIT();
 }
@@ -108,9 +106,9 @@ void ComputeIdleTask()
     int CLOCK_SERVER_TID = WHOIS("ClockServer");
     while (true)
     {
-        int idle = GETIDLEPERCENT();
-        IO_NS::Print(MOVE_CURSOR COLOR_CYAN "%d", IDLE_LOCATION, 1 + 6, idle);
-        DELAY(CLOCK_SERVER_TID, 10);
+        uint32_t idle = GETIDLEPERCENT();
+        IO_NS::Print(MOVE_CURSOR CLEAR_TO_END_LINE "%d%%", IDLE_LOCATION, 1 + 6, idle);
+        DELAY(CLOCK_SERVER_TID, 50);
     }
     EXIT();
 }

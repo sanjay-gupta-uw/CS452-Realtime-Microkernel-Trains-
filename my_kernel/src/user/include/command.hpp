@@ -17,11 +17,15 @@ namespace UI_CMD_NS
         char inputBuffer[INPUT_BUFFER_SIZE];
 
         void clearInputBuffer();
+        void Commandify(const char *str);
+        void InitDisplay();
 
     public:
         CommandPrompt();
-        void InitDisplay();
         void getInput();
+
+        int IO_SERVER_TID;
+        int CONDUCTOR_TID;
     };
 
     void start_command_prompt();
