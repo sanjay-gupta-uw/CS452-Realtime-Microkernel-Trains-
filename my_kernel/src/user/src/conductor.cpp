@@ -3,6 +3,7 @@
 #include "../include/uassert.h"
 #include "../include/name_server.h"
 #include "../include/marklin_structs.h"
+#include "../marklin/sensor.h"
 
 typedef struct IO_REQUEST
 {
@@ -104,6 +105,9 @@ namespace Conductor_NS
         REPLY(sender_tid, nullptr, 0);
         // test
 
+        // spawn sensor task
+        int sensor_server_tid = CREATE(PRIORITY::P0, Sensors_NS::SensorServer);
+
         MarklinRequest req;
         while (true)
         {
@@ -133,8 +137,10 @@ namespace Conductor_NS
         // get location of train
 
         // FOR NOW ASSUME TRAIN IS AT START (hit A1)
-        TrainQuery query = {"A1", DIRECTION::FORWARD};
+        TrainQuery query = {{BANKS::A, 1}, DIRECTION::FORWARD};
 
+        int sensor_server_tid = WHOIS("SensorServer");
+        uassert(sensor_server_tid > 0 && "Error finding SensorServer");
         // train loop
         while (true)
         {
@@ -163,6 +169,12 @@ namespace Conductor_NS
 
             // Reply contains the next sensor node to query for
             // Poll from next expected sensor bank
+            SensorQuery sensor_query = {SENSOR_COMMAND::READ_BANK, response.sensor_req};
+            retval = SEND(sensor_server_tid, (char *)&sensor_query, sizeof(SensorQuery), nullptr, 0);
+            uassert(retval > 0 && "Error sending SensorQuery to SensorServer");
+
+            // send waits for the sensor to be hit (not robust incase sensor is broken)
+            query.sensor = response.sensor_req;
         }
     }
 

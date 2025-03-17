@@ -3,6 +3,7 @@
 #define MARKLIN 2
 #include <stdbool.h>
 #include "../include/marklin_structs.h"
+#include "../marklin/sensor.h"
 // #include "rpi.h"
 
 enum class TRAIN_COMMAND
@@ -21,13 +22,13 @@ enum class DIRECTION
 // train query to conductor
 struct TrainQuery
 {
-    char *name;          // sensor node name
+    SensorReq sensor;
     DIRECTION direction; // direction of the train
 };
 
 struct TrainResponse
 {
-    char *name;            // next expected sensor node name
+    SensorReq sensor_req;
     TRAIN_COMMAND command; // command to be executed, if any
     int speed;             // assume stop is only issued when next sensor is the destination
 };

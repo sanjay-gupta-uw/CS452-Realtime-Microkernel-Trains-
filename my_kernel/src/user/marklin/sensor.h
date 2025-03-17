@@ -9,6 +9,11 @@
 #include "../include/name_server.h"
 #include "../../shared_constants.h"
 
+struct BANK_MASK
+{
+    bool sensor[16];
+};
+
 enum class BANKS
 {
     A,
@@ -26,21 +31,21 @@ enum class SENSOR_COMMAND
     TICK,
 };
 
-struct Sensor
+struct SensorReq
 {
-    BANKS bank;    // A, B, C, D, E
-    int sensor_id; // 1-16
+    BANKS bank; // A, B, C, D, E
+    int id;     // 1-16
 };
 // train query to conductor
 struct SensorQuery
 {
     SENSOR_COMMAND command;
-    Sensor sensor;
+    SensorReq sensor;
 };
 
 struct SensorResponse
 {
-    int sensor_id; // -1 if no sensor triggered
+    int id; // -1 if no sensor triggered
 };
 namespace Sensors_NS
 {
@@ -68,12 +73,13 @@ namespace Sensors_NS
     public:
         SensorManager();
         ~SensorManager();
-        void ReadBank(int bank_num);
+        void ReadBank(int bank_num, BANK_MASK *bank_mask);
         void ReadAll(int num_banks);
         void Reset(bool reset_on);
         void Display();
 
     private:
+        void processSensorData(int bank, uint8_t byte1, uint8_t byte2, BANK_MASK *bank_mask);
         Queue<int, MAX_RECENT_SENSORS> recent_sensors;
         struct Sensor
         {
@@ -87,8 +93,6 @@ namespace Sensors_NS
         char last_triggered_bank;
         uint8_t last_triggered_id;
         int MARKLIN_IO_SERVER_TID;
-
-        void processSensorData(int bank, uint8_t byte1, uint8_t byte2);
     };
 
     void SensorServer();
