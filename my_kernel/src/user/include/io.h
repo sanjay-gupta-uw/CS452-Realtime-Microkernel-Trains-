@@ -29,6 +29,9 @@ namespace IO_NS
 #define COLUMN_132 "\033[?3h"
 #define AUTO_WRAP "\033[?7h"
 
+#define HIDE_CURSOR "\033[?25l"
+#define SHOW_CURSOR "\033[?25h"
+
 #define CHANGE_COLUMN "\033[%dG"
 
     // #define LIGHT_MODE "\033[?5h"

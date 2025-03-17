@@ -26,18 +26,21 @@ namespace Conductor_NS
     class Conductor
     {
     private:
-        // Sensors_NS::SensorManager sensors[NUM_BANKS * SENSORS_PER_BANK];
-        Switch_NS::Switch switches[SWITCH_COUNT];
-        Trains_NS::Train trains[NUM_TRAINS];
+        Sensors_NS::SensorManager sensors;
+        Switch_NS::Switches switches;
+        Trains_NS::Trains trains;
 
     public:
         Conductor();
-        Conductor(char track_id);
         ~Conductor();
+
+        void ProcessRequest(MarklinRequest *req);
+
         Track track;
     };
 
     void start_conductor();
+    void spawn_train();
 }
 
 #endif // _CONDUCTOR_H_

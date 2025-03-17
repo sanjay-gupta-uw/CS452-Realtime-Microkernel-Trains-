@@ -54,11 +54,14 @@ void FirstUserTask()
     uassert(ioServerTid > 0 && "Error starting IO Server");
     // IO_NS::Print(CLEAR_SCREEN RESET_FORMATTING COLUMN_132 SCROLL_REGION MOVE_CURSOR SAVE_CURSOR, SCROLL_ROW_START, SCROLL_ROW_END, 1, 1);
     IO_NS::PrintTerminal("IO Server started\r\n");
-    // uart_printf(CONSOLE, RESET_FORMATTING CLEAR_SCREEN COLUMN_132 SCROLL_REGION MOVE_CURSOR SMOOTH_SCROLL "Terminal Output Kernel:\r\n" SAVE_CURSOR, SCROLL_ROW_START, SCROLL_ROW_END, SCROLL_ROW_START, 1);
 
-    int clockServerTid = CREATE(PRIORITY::P0, ClockServer); // Start the Clock Server
+    int clockServerTid = CREATE(PRIORITY::P1, ClockServer); // Start the Clock Server
     uassert(clockServerTid > 0 && "Error starting Clock Server");
     IO_NS::PrintTerminal("Clock Server started\r\n");
+    // // START MARKLIN SERVER + CONTROLLER
+    int marklinIoServerTid = CREATE(PRIORITY::P0, MARKLIN_IO_SERVER::startMarklinIOServer); // Start the Marklin IO Server
+    uassert(marklinIoServerTid > 0 && "Error starting Marklin IO Server");
+    IO_NS::PrintTerminal("Marklin IO Server started\r\n");
 
     int ConductorTid = CREATE(PRIORITY::P3, Conductor_NS::start_conductor);
     uassert(ConductorTid > 0 && "Error starting Conductor");
@@ -68,20 +71,15 @@ void FirstUserTask()
     uassert(cmdTid > 0 && "Error starting Command Task");
     IO_NS::PrintTerminal("Command Task started\r\n");
 
+    int uiTaskTid = CREATE(PRIORITY::P1, UI_NS::start_ui); // Start the UI Task
+    uassert(uiTaskTid > 0 && "Error starting UI Task");
+
     /*
-
-    // // START MARKLIN SERVER + CONTROLLER
-    int marklinIoServerTid = CREATE(PRIORITY::P0, MARKLIN_IO_SERVER::startMarklinIOServer); // Start the Marklin IO Server
-    uassert(marklinIoServerTid > 0 && "Error starting Marklin IO Server");
-    IO_NS::PrintTerminal("Marklin IO Server started\r\n");
-
     int SensorTaskTid = CREATE(PRIORITY::P4, SensorTask);
     uassert(SensorTaskTid >= 0 && "Error starting Sensor Task");
 
     // int marklinControllerTid = CREATE(PRIORITY::P3, MARKLIN_NS::start_marklin_controller); // Start the Marklin Controller
     // uassert(marklinControllerTid > 0 && "Error starting Marklin Controller");
-    int uiTaskTid = CREATE(PRIORITY::P1, UI_NS::start_ui); // Start the UI Task
-    uassert(uiTaskTid > 0 && "Error starting UI Task");
     */
 
     EXIT();

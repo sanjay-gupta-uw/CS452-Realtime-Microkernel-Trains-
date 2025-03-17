@@ -254,7 +254,7 @@ namespace MARKLIN_IO_SERVER
                 {
                 case COMMAND::READ_SENSOR:
                 {
-                    // IO_NS::PrintTerminal("MarklinIO_server::SEND_CMD: Reading sensor %d\r\n", m_req.data);
+                    IO_NS::PrintTerminal("MarklinIO_server::SEND_CMD: Reading sensor %d\r\n", m_req.data);
                     cmd_buffer.Push(COMMAND::READ_SENSOR);
                     transmit_buffer.Push((unsigned char)m_req.data);
                     reply.type = REPLY_TYPE::SUCCESS;
@@ -263,6 +263,7 @@ namespace MARKLIN_IO_SERVER
                 }
                 case COMMAND::SET_SWITCH:
                 {
+                    IO_NS::PrintTerminal("MarklinIO_server::SEND_CMD: Setting switch %d to %c\r\n", m_req.id, m_req.data);
                     COMMAND last_pushed_cmd;
                     cmd_buffer.Peek(&last_pushed_cmd);
 
@@ -280,6 +281,7 @@ namespace MARKLIN_IO_SERVER
                 }
                 case COMMAND::SOLENOID_OFF:
                 {
+                    IO_NS::PrintTerminal("MarklinIO_server::SEND_CMD: Turning off solenoid %d\r\n", m_req.id);
                     cmd_buffer.Push(COMMAND::SOLENOID_OFF);
                     transmit_buffer.Push(OFF);
                     transmit_buffer.Push(m_req.id);
@@ -290,6 +292,7 @@ namespace MARKLIN_IO_SERVER
                 }
                 case COMMAND::ACCELERATE_TRAIN:
                 {
+                    IO_NS::PrintTerminal("MarklinIO_server::SEND_CMD: Accelerating train %d to %d\r\n", m_req.id, m_req.data);
                     uint8_t train_addr = m_req.id;
                     uint8_t speed = m_req.data;
                     cmd_buffer.Push(COMMAND::ACCELERATE_TRAIN);
@@ -302,6 +305,7 @@ namespace MARKLIN_IO_SERVER
                 }
                 case COMMAND::REVERSE_STOP_TRAIN:
                 {
+                    IO_NS::PrintTerminal("MarklinIO_server::SEND_CMD: Stopping train %d\r\n", m_req.id);
                     uint8_t train_addr = m_req.id;
                     cmd_buffer.Push(COMMAND::REVERSE_STOP_TRAIN);
                     transmit_buffer.Push(0);          // send the speed back
@@ -313,6 +317,7 @@ namespace MARKLIN_IO_SERVER
                 }
                 case COMMAND::REVERSE_TRAIN:
                 {
+                    IO_NS::PrintTerminal("MarklinIO_server::SEND_CMD: Reversing train %d\r\n", m_req.id);
                     uint8_t train_addr = m_req.id;
                     cmd_buffer.Push(COMMAND::REVERSE_TRAIN);
                     transmit_buffer.Push(REVERSE_CMD); // send the speed back
@@ -372,6 +377,7 @@ namespace MARKLIN_IO_SERVER
 
         if (canTransmit && !transmit_buffer.IsEmpty())
         {
+            IO_NS::PrintTerminal("MarklinIOServer::handle_transmission: Transmitting\r\n");
             IO_REPLY reply = {REPLY_TYPE::SUCCESS, UNDEFINED_CHAR};
             REPLY(tx_notifier_tid, (char *)&reply, sizeof(reply));
 

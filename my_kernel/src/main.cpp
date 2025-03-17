@@ -102,7 +102,7 @@ extern "C" int kmain()
     // uart_printf(CONSOLE, RESTORE_CURSOR "Kernel Started -- enabling interrupts\r\n" SAVE_CURSOR);
 
     uint32_t start_time, end_time = 0;
-    uart_printf(CONSOLE, CLEAR_SCREEN RESET_FORMATTING COLUMN_132 SCROLL_REGION MOVE_CURSOR SAVE_CURSOR, SCROLL_ROW_START, SCROLL_ROW_END, 1, 1);
+    uart_printf(CONSOLE, CLEAR_SCREEN RESET_FORMATTING HIDE_CURSOR COLUMN_132 SCROLL_REGION MOVE_CURSOR SAVE_CURSOR, SCROLL_ROW_START, SCROLL_ROW_END, 1, 1);
 
     UART_IMSC_ENABLE(MARKLIN, (CTS_INTERRUPT_MASK)); // enable receive timeout interrupt
     // scheduler pops the highest priority task into td

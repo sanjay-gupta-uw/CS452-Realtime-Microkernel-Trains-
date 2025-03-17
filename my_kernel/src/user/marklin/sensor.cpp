@@ -1,5 +1,7 @@
 #include "sensor.h"
 #include "../include/uassert.h"
+#include "../include/clock_server.h"
+#include "../marklin/train.h"
 namespace Sensors_NS
 {
 
@@ -43,12 +45,12 @@ namespace Sensors_NS
         uassert(ret >= 0 && "SensorManager::Reset: command sent to MarklinIOServer failed");
     }
 
-    void SensorManager::ReadBank(int num_bank)
+    void SensorManager::ReadBank(int bank_num)
     {
-        num_bank = VALIDATE_BANK(num_bank);
+        bank_num = VALIDATE_BANK(bank_num);
 
         // send command to marklin
-        MarklinRequest request = {COMMAND::READ_SENSOR, -1, -1, READ_ONE_SENSOR_BASE + num_bank};
+        MarklinRequest request = {COMMAND::READ_SENSOR, -1, -1, READ_ONE_SENSOR_BASE + bank_num};
         int ret = MARKLIN_IO_SERVER::SendCmd(MARKLIN_IO_SERVER_TID, &request);
         uassert(ret >= 0 && "SensorManager::ReadBank: command sent to MarklinIOServer failed");
 
@@ -60,7 +62,7 @@ namespace Sensors_NS
             bytes[i] = MARKLIN_IO_SERVER::Getc(MARKLIN_IO_SERVER_TID);
             uassert(bytes[i] >= 0 && "SensorManager::ReadBank: Getc failed");
         }
-        processSensorData(num_bank, bytes[0], bytes[1]);
+        processSensorData(bank_num, bytes[0], bytes[1]);
     }
 
     void SensorManager::ReadAll(int num_banks)
@@ -145,5 +147,90 @@ namespace Sensors_NS
         }
 
         UPDATE_DISPLAY = false;
+    }
+
+    void SensorServer()
+    {
+        REGISTERAS("SensorServer");
+        SensorManager sensors;
+
+        struct SensorTaskPair
+        {
+            int tid;
+            int sensor;
+        };
+
+        // create sensor ticker
+        int sensor_ticker_tid = CREATE(PRIORITY::P1, SensorTicker);
+        Queue<SensorTaskPair, NUM_TRAINS> awaiting_for_sensor[NUM_TRAINS];
+
+        int sender_tid;
+        SensorQuery query;
+        while (true)
+        {
+            int retval = RECEIVE(&sender_tid, (char *)&query, sizeof(query));
+            uassert(retval > 0 && "SensorServer: Error receiving SensorQuery");
+
+            switch (query.command)
+            {
+            case SENSOR_COMMAND::TICK:
+                // IO_NS::PrintTerminal("SensorServer: Received TICK request\r\n");
+                break;
+            case SENSOR_COMMAND::READ_BANK:
+                IO_NS::PrintTerminal("SensorServer: Received READ_BANK request for bank %d\r\n", query.sensor.bank);
+                // sensors.ReadBank(query.bank_num);
+                awaiting_for_sensor[(int)query.sensor.bank].Push({sender_tid, query.sensor.sensor_id});
+                break;
+            // case SENSOR_COMMAND::READ_ALL:
+            //     IO_NS::PrintTerminal("SensorServer: Received READ_ALL request for %d banks\r\n", query.bank_num);
+            //     sensors.ReadAll(NUM_BANKS);
+            //     break;
+            case SENSOR_COMMAND::RESET:
+                IO_NS::PrintTerminal("SensorServer: Received RESET request\r\n");
+                sensors.Reset(true);
+                break;
+            default:
+                break;
+            }
+
+            for (int i = 0; i < NUM_BANKS; ++i)
+            {
+                if (!awaiting_for_sensor[i].IsEmpty())
+                {
+                    // update readbank to return physical sensors hit
+                    sensors.ReadBank(i);
+                    int tid;
+
+                    // CHECK IF TRIPPED SENSOR MATCHES WHAT IS BEING WAITED FOR
+
+                    // awaiting_for_sensor[i].Pop(&tid);
+                    REPLY(tid, nullptr, 0);
+                }
+            }
+
+            // CHANGE SO THAT SENSOR SERVER MAINTAINS QUEUE OF TRAIN TASKS WAITING FOR SENSOR DATA
+            // SensorResponse response = {sensors.last_triggered_id};
+
+            sensors.Display();
+            REPLY(sender_tid, nullptr, 0);
+        }
+    }
+
+    // sensor notifier
+    void SensorTicker()
+    {
+        REGISTERAS("SensorTicker");
+        int sensor_server_tid = WHOIS("SensorServer");
+        uassert(sensor_server_tid > 0 && "SensorTicker: Error finding SensorServer");
+        int CLOCK_SERVER_TID = WHOIS("ClockServer");
+        uassert(CLOCK_SERVER_TID > 0 && "SensorTicker: Error finding ClockServer");
+
+        SensorQuery query = {SENSOR_COMMAND::TICK};
+        while (true)
+        {
+            int retval = SEND(sensor_server_tid, (char *)&query, sizeof(query), nullptr, 0);
+            uassert(retval > 0 && "SensorTicker: Error sending SensorQuery to SensorServer");
+            DELAY(CLOCK_SERVER_TID, 5);
+        }
     }
 } // namespace Sensors_NS

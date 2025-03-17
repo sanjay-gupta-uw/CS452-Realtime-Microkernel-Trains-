@@ -8,6 +8,8 @@
 
 enum class COMMAND
 {
+    SPAWN_TRAIN,
+    GOTO,
     READ_SENSOR,
     SET_SWITCH,
     ACCELERATE_TRAIN,
@@ -16,6 +18,7 @@ enum class COMMAND
     SOLENOID_OFF,
     INVALID,
 };
+
 struct MarklinRequest
 {
     COMMAND type = COMMAND::INVALID;

@@ -9,9 +9,42 @@
 #include "../include/name_server.h"
 #include "../../shared_constants.h"
 
+enum class BANKS
+{
+    A,
+    B,
+    C,
+    D,
+    E,
+};
+
+enum class SENSOR_COMMAND
+{
+    READ_BANK,
+    READ_ALL,
+    RESET,
+    TICK,
+};
+
+struct Sensor
+{
+    BANKS bank;    // A, B, C, D, E
+    int sensor_id; // 1-16
+};
+// train query to conductor
+struct SensorQuery
+{
+    SENSOR_COMMAND command;
+    Sensor sensor;
+};
+
+struct SensorResponse
+{
+    int sensor_id; // -1 if no sensor triggered
+};
 namespace Sensors_NS
 {
-#define VALIDATE_BANK(bank) (int)(bank >= 0 && bank < NUM_BANKS ? bank : NUM_BANKS)
+#define VALIDATE_BANK(bank) (int)(bank >= 0 && bank < NUM_BANKS ? bank : NUM_BANKS - 1)
 #define SENSOR_TRIGGERED(byte, sensor) ((byte >> (7 - sensor)) & 1)
 
 #define NUM_BANKS 5
@@ -35,7 +68,7 @@ namespace Sensors_NS
     public:
         SensorManager();
         ~SensorManager();
-        void ReadBank(int num_bank);
+        void ReadBank(int bank_num);
         void ReadAll(int num_banks);
         void Reset(bool reset_on);
         void Display();
@@ -57,6 +90,9 @@ namespace Sensors_NS
 
         void processSensorData(int bank, uint8_t byte1, uint8_t byte2);
     };
+
+    void SensorServer();
+    void SensorTicker();
 } // namespace Sensors_NS
 
 #endif // SENSOR_H

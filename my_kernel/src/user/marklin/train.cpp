@@ -1,7 +1,7 @@
 #include "train.h"
 // #include "../clock.h" // this includes util which includes rpi.h
 #include "../include/marklin_io.h"
-
+#include "../include/name_server.h"
 namespace Trains_NS
 {
     static int MARKLIN_IO_SERVER_TID;
@@ -38,8 +38,8 @@ namespace Trains_NS
         MarklinRequest request;
         request.type = COMMAND::ACCELERATE_TRAIN;
         request.id = train_num;
-        // request.data = speed + 16; // turn on the lights
-        request.data = speed;
+        request.data = speed + 16; // turn on the lights
+        // request.data = speed;
         MARKLIN_IO_SERVER::SendCmd(MARKLIN_IO_SERVER_TID, &request);
     }
 
@@ -84,6 +84,8 @@ namespace Trains_NS
         {
             trains[i] = Train(TRAIN_NUMS[i]);
         }
+        // set MARKLIN_IO_SERVER_TID
+        MARKLIN_IO_SERVER_TID = WHOIS("MarklinIOServer");
     }
 
     Trains::~Trains()
