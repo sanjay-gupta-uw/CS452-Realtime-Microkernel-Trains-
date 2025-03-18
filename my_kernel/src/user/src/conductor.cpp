@@ -86,6 +86,7 @@ namespace Conductor_NS
                 IO_NS::PrintTerminal("Train %d not found or initialized.\r\n", train_num);
                 return;
             }
+            IO_NS::PrintTerminal("Train %d found, sending ACCELERATE command with speed %d\r\n", train_num, speed);
             TrainResponse response = {TRAIN_COMMAND::ACCELERATE, speed};
             int retval = REPLY(train_tid, (char *)&response, sizeof(TrainResponse));
             uassert(retval > 0);

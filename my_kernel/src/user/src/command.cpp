@@ -31,12 +31,12 @@ namespace UI_CMD_NS
     static void PrintCommandHelp()
     {
         IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Command List:", CMD_INFO_LOCATION, 1);
-        IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Switch Command: SW <switch_num> <S/C>", CMD_INFO_LOCATION, 1);
-        IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Train Accelerate Command: TR <train_num> <speed>", CMD_INFO_LOCATION, 1);
-        IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Train Reverse Command: RV <train_num>", CMD_INFO_LOCATION, 1);
-        IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Train Spawn Command: SPAWN <train_num>", CMD_INFO_LOCATION, 1);
-        IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Go Command: GO <node_name>", CMD_INFO_LOCATION, 1);
-        IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Quit Command: q", CMD_INFO_LOCATION, 1);
+        IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Switch Command: SW <switch_num> <S/C>", CMD_INFO_LOCATION + 1, 1);
+        IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Train Accelerate Command: TR <train_num> <speed>", CMD_INFO_LOCATION + 2, 1);
+        IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Train Reverse Command: RV <train_num>", CMD_INFO_LOCATION + 3, 1);
+        IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Train Spawn Command: SPAWN <train_num>", CMD_INFO_LOCATION + 4, 1);
+        IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Go Command: GO <node_name>", CMD_INFO_LOCATION + 5, 1);
+        IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Quit Command: q", CMD_INFO_LOCATION + 6, 1);
     }
 
     CommandPrompt::CommandPrompt()
