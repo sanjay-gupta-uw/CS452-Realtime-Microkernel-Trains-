@@ -20,17 +20,18 @@ enum class DIRECTION
 };
 
 // train query to conductor
-struct TrainQuery
+struct TrainQuery // FIX THIS -- DOESNT INCLUDE COMAND
+// CONDUCTOR TAKES MARKLIN REQUEST?
 {
-    SensorReq sensor;
+    SensorStruct sensor;
     DIRECTION direction; // direction of the train
 };
 
 struct TrainResponse
 {
-    SensorReq sensor_req;
     TRAIN_COMMAND command; // command to be executed, if any
     int speed;             // assume stop is only issued when next sensor is the destination
+    SensorStruct sensor;
 };
 
 namespace Trains_NS
@@ -38,46 +39,31 @@ namespace Trains_NS
 #define NUM_TRAINS 5
 #define MAX_SPEED 14
 #define MIN_SPEED 0
-
-    class Trains;
     class Train
     {
     private:
-        int train_num;
+        int MARKLIN_IO_SERVER_TID;
+        int CLOCK_SERVER_TID;
         int train_speed; // between 0 and 14
-        bool headlight_on;
         bool isReversed;
-        void HeadlightOn();
+
+        void Reverse(); // sends reverse train command to marklin
 
     public:
+        int train_num;
         Train();
-        Train(int train_num);
+        Train(int train_num, int MARKLIN_IO_SERVER_TID, int CLOCK_SERVER_TID);
         ~Train();
 
-        void Accelerate(int speed);
-        void Reverse();
-        void Stop();
+        void Accelerate(int speed); // sends accelerate train command to marklin
+        void ReverseTrain();        // stops train, reverses, then accelerates
+        void Stop();                // sends stop train command to marklin
+
         bool isMoving();
         int getSpeed();
-
-        friend class Trains;
     };
 
-    class Trains
-    {
-    private:
-        Train trains[NUM_TRAINS];
-        void init_trains();
-        Train *isTrainValid(int train_num);
-        bool isSpeedValid(int speed);
-
-    public:
-        Trains();
-        ~Trains();
-        bool AccelerateTrain(int train_num, int speed);
-        bool ReverseTrain(int train_num);
-        void setIOServerTid(int tid);
-    };
+    void spawn_train(); // individual train tasks
 
 };
 

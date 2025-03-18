@@ -2,6 +2,9 @@
 // #include "../clock.h" // this includes util which includes rpi.h
 #include "../include/marklin_io.h"
 #include "../include/name_server.h"
+#include "../include/clock_server.h"
+#include "../include/uassert.h"
+#include "../../include/syscall.h"
 namespace Trains_NS
 {
     static int MARKLIN_IO_SERVER_TID;
@@ -11,7 +14,6 @@ namespace Trains_NS
     {
         train_num = -1;
         train_speed = 0;
-        headlight_on = false;
         MARKLIN_IO_SERVER_TID = -1;
         isReversed = false;
     }
@@ -21,47 +23,47 @@ namespace Trains_NS
     }
 
     // use this constructor to set the train number
-    Train::Train(int train_num) : train_num(train_num)
+    Train::Train(int train_num, int MARKLIN_IO_SERVER_TID, int CLOCK_SERVER_TID)
+        : train_num(train_num), MARKLIN_IO_SERVER_TID(MARKLIN_IO_SERVER_TID), CLOCK_SERVER_TID(CLOCK_SERVER_TID)
     {
         train_speed = 0;
-        headlight_on = false;
-    }
-
-    void Train::HeadlightOn()
-    {
-        headlight_on = true;
+        isReversed = false;
     }
 
     void Train::Accelerate(int speed)
     {
         train_speed = speed;
-        MarklinRequest request;
-        request.type = COMMAND::ACCELERATE_TRAIN;
-        request.id = train_num;
-        request.data = speed + 16; // turn on the lights
-        // request.data = speed;
+        MarklinRequest request = {false, train_speed + 16, train_num};
         MARKLIN_IO_SERVER::SendCmd(MARKLIN_IO_SERVER_TID, &request);
+    }
+
+    void Train::ReverseTrain()
+    {
+        int initial_speed = train_speed;
+        if (initial_speed == 0)
+        {
+            // cannot reverse a stopped train
+            return;
+        }
+
+        Stop();
+        DELAY(CLOCK_SERVER_TID, 200); // stop for 2 seconds
+        Reverse();
+
+        Accelerate(initial_speed);
     }
 
     void Train::Reverse()
     {
-        // int data = 15;
-        // SendCommand(data);
         isReversed = !isReversed;
-        MarklinRequest request;
-        request.type = COMMAND::REVERSE_TRAIN;
-        request.id = train_num;
-        // request.data = REVERSE_CMD;
+        MarklinRequest request = {false, REVERSE_CMD, train_num};
         MARKLIN_IO_SERVER::SendCmd(MARKLIN_IO_SERVER_TID, &request);
     }
 
     void Train::Stop()
     {
         train_speed = 0;
-        MarklinRequest request;
-        request.type = COMMAND::REVERSE_STOP_TRAIN;
-        request.id = train_num;
-        request.data = 0;
+        MarklinRequest request = {false, train_speed, train_num};
         MARKLIN_IO_SERVER::SendCmd(MARKLIN_IO_SERVER_TID, &request);
     }
 
@@ -76,81 +78,78 @@ namespace Trains_NS
     }
 
     // ********* End Train Class *********
-    Trains::Trains()
+    static bool isTrainValid(int train_num)
     {
-        const int TRAIN_NUMS[5] = {1, 54, 55, 58, 77};
-
+        int valid_trains[NUM_TRAINS] = {1, 54, 55, 58, 77};
         for (int i = 0; i < NUM_TRAINS; ++i)
         {
-            trains[i] = Train(TRAIN_NUMS[i]);
-        }
-        // set MARKLIN_IO_SERVER_TID
-        MARKLIN_IO_SERVER_TID = WHOIS("MarklinIOServer");
-    }
-
-    Trains::~Trains()
-    {
-    }
-
-    // check if the supplied train number is supported (returns -1 if not found)
-    Train *Trains::isTrainValid(int train_num)
-    {
-        for (int i = 0; i < NUM_TRAINS; ++i)
-        {
-            if (trains[i].train_num == train_num)
+            if (valid_trains[i] == train_num)
             {
-                return &trains[i];
+                return true;
             }
         }
-        return nullptr;
+        return false;
     }
 
-    // check if the supplied speed is valid (range 0-14)
-    bool Trains::isSpeedValid(int speed)
+    void spawn_train()
     {
-        return (speed >= MIN_SPEED && speed <= MAX_SPEED);
+        // only conductor should be interacting with this
+        int conductor_tid;
+        int train_num;
+        int retval = RECEIVE(&conductor_tid, (char *)&train_num, sizeof(train_num));
+        uassert(retval > 0 && "Error receiving train_num from Conductor");
+        IO_NS::PrintTerminal("Train %d spawned\r\n", train_num);
+        REPLY(conductor_tid, (char *)true, sizeof(bool));
+
+        int MARKLIN_IO_SERVER_TID = WHOIS("MarklinIOServer");
+        uassert(MARKLIN_IO_SERVER_TID > 0 && "Error finding MarklinIOServer");
+        int CLOCK_SERVER_TID = WHOIS("ClockServer");
+        uassert(CLOCK_SERVER_TID > 0 && "Error finding ClockServer");
+        // initialize train: get location of train
+        Trains_NS::Train train(train_num, MARKLIN_IO_SERVER_TID, CLOCK_SERVER_TID);
+        // readall/reverse/accelerate to determine location of train
+        TrainQuery query = {{BANKS::A, 1}, DIRECTION::FORWARD}; // FOR NOW ASSUME TRAIN IS AT START (hit A1)
+
+        // DETERMINE PATH TO NAVIGATE LOOP
+        TrainQuery loop_query = {{BANKS::A, 1}, DIRECTION::FORWARD};
+
+        int sensor_server_tid = WHOIS("SensorServer");
+        uassert(sensor_server_tid > 0 && "Error finding SensorServer");
+        // train loop
+        while (true)
+        {
+            // Send to the conductor with the current position and direction of travel
+            TrainResponse response;
+            int retval = SEND(conductor_tid, (char *)&query, sizeof(TrainQuery), (char *)&response, sizeof(TrainResponse));
+            uassert(retval > 0 && "Error sending TrainQuery to Conductor");
+            switch (response.command)
+            {
+            case TRAIN_COMMAND::ACCELERATE:
+                uassert(response.speed >= 0 && response.speed <= 14);
+                train.Accelerate(response.speed);
+                break;
+            case TRAIN_COMMAND::REVERSE:
+                train.ReverseTrain();
+                IO_NS::PrintTerminal("Train::Reverse called, please implement delay in train.cpp\r\n");
+                break;
+            case TRAIN_COMMAND::STOP:
+                // USE BIJECTION METHOD TO HAVE FINAL STOP AS CLOSE TO SENSOR AS POSSIBLE
+                train.Stop();
+                IO_NS::PrintTerminal("Train::Stop called, please implement precision stop\r\n");
+                break;
+            default:
+                break;
+            }
+
+            // Reply contains the next sensor node to query for
+            // Poll from next expected sensor bank
+            SensorQuery sensor_query = {SENSOR_COMMAND::READ_BANK, response.sensor};
+            retval = SEND(sensor_server_tid, (char *)&sensor_query, sizeof(SensorQuery), nullptr, 0);
+            uassert(retval > 0 && "Error sending SensorQuery to SensorServer");
+
+            // send waits for the sensor to be hit (not robust incase sensor is broken)
+            query.sensor = response.sensor;
+        }
     }
 
-    bool Trains::AccelerateTrain(int train_num, int speed)
-    {
-        Train *train = isTrainValid(train_num);
-        if (train == nullptr || !isSpeedValid(speed))
-        {
-            return false;
-        }
-
-        train->Accelerate(speed);
-        return true;
-    }
-
-    bool Trains::ReverseTrain(int train_num)
-    {
-        Train *train = isTrainValid(train_num);
-        if (train == nullptr)
-        {
-            return false;
-        }
-
-        // current speed:
-        int initial_speed = train->getSpeed();
-        if (initial_speed > 0)
-        {
-            train->Stop();
-            // `
-        }
-
-        train->Reverse();
-
-        // if the train was moving, start it again
-        if (initial_speed > 0)
-        {
-            train->Accelerate(initial_speed);
-        }
-        return true;
-    }
-
-    void Trains::setIOServerTid(int tid)
-    {
-        MARKLIN_IO_SERVER_TID = tid;
-    }
 } // namespace Trains_NS

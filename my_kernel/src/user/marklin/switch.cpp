@@ -6,27 +6,19 @@
 #include "../include/clock_server.h"
 #include "../../shared_constants.h"
 #include "../include/uassert.h"
-
+#include "../include/name_server.h"
 namespace Switch_NS
 {
-    static int MARKLIN_IO_SERVER_TID;
-
-    static void PrintSwitchStatus(int switch_addr, SWITCH_STATE state)
-    {
-        if (state == SWITCH_STATE::STRAIGHT)
-        {
-            IO_NS::Print(MOVE_CURSOR COLOR_GREEN "S", SWITCH_LOCATION + 3 + switch_addr, SWITCH_STATUS_COL);
-        }
-        else
-        {
-            IO_NS::Print(MOVE_CURSOR COLOR_RED "C", SWITCH_LOCATION + 3 + switch_addr, SWITCH_STATUS_COL);
-        }
-    }
     // ********* Switch Class *********
     Switch::Switch()
     {
         address = -1;
-        ALIGNMENT = SWITCH_STATE::STRAIGHT; // should not matter at init
+        MARKLIN_IO_SERVER_TID = -1;
+    }
+
+    Switch::Switch(int address, int MARKLIN_IO_SERVER_TID)
+        : address(address), MARKLIN_IO_SERVER_TID(MARKLIN_IO_SERVER_TID)
+    {
     }
 
     Switch::~Switch()
@@ -35,90 +27,84 @@ namespace Switch_NS
 
     void Switch::SetSwitch(SWITCH_STATE ALIGNMENT)
     {
-
-        this->ALIGNMENT = ALIGNMENT;
-        MarklinRequest request;
-        request.type = COMMAND::SET_SWITCH;
-        request.id = address;
-        request.data = (ALIGNMENT == SWITCH_STATE::STRAIGHT) ? STRAIGHT_CMD : CURVED_CMD;
-
-        bool is_straight = (ALIGNMENT == SWITCH_STATE::STRAIGHT);
-        if (ALIGNMENT == SWITCH_STATE::STRAIGHT)
-        {
-            // IO_NS::PrintTerminal(COLOR_GREEN "Setting Switch-%d to %c\r\n", address, 'S');
-        }
-        else
-        {
-            // IO_NS::PrintTerminal(COLOR_RED "Setting Switch-%d to %c\r\n", address, 'C');
-        }
+        uint32_t switch_cmd = (ALIGNMENT == SWITCH_STATE::STRAIGHT) ? STRAIGHT_CMD : CURVED_CMD;
+        MarklinRequest request = {false, switch_cmd, address};
         MARKLIN_IO_SERVER::SendCmd(MARKLIN_IO_SERVER_TID, &request);
     }
 
-    void Switch::SetSwitchIsolated(SWITCH_STATE ALIGNMENT)
+    void Switch::SendOffCommand()
     {
-        this->ALIGNMENT = ALIGNMENT;
-        SetSwitch(ALIGNMENT);
-        // send off command to marklin
-        MarklinRequest request = {COMMAND::SOLENOID_OFF, address, 0, 0};
+        MarklinRequest request = {false, SOLENOID_OFF_CMD, address};
         MARKLIN_IO_SERVER::SendCmd(MARKLIN_IO_SERVER_TID, &request);
-        PrintSwitchStatus(address, ALIGNMENT);
     }
 
-    // ********* Switches Class *********
+    // ********* End Switch Class *********
 
-    Switches::Switches()
+    // Switch server
+    void SwitchServer()
     {
-        MARKLIN_IO_SERVER_TID = -1;
-    }
+        REGISTERAS("SwitchServer");
+        int MARKLIN_IO_SERVER_TID = WHOIS("MarklinIOServer");
+        uassert(MARKLIN_IO_SERVER_TID >= 0 && "SwitchServer: WHOIS failed");
 
-    Switches::~Switches()
-    {
-    }
+        const int switch_addrs[NUM_SWITCHES] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+                                                11, 12, 13, 14, 15, 16, 17, 18,
+                                                0x9A, 0x9B, 0x9C, 0x99};
 
-    void Switches::Init()
-    {
-        // const int COUNT = 6;
-        // const int SWITCH_ADDR[COUNT] = {16, 17, 0x9A, 0x9B, 0x9C, 0x99};
-        // const SWITCH_STATE state[SWITCH_COUNT] = {SWITCH_STATE::STRAIGHT,
-        //   SWITCH_STATE::CURVED};
-
-        const int SWITCH_ADDR[SWITCH_COUNT] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 0x9A, 0x9B, 0x9C, 0x99};
-
-        // for (int i = 0; i < COUNT; ++i)
-        for (int i = 0; i < SWITCH_COUNT - 1; ++i)
+        Switch switches[NUM_SWITCHES];
+        for (int i = 0; i < NUM_SWITCHES; ++i)
         {
-            IO_NS::PrintTerminal("Switch::Init %d: %d\r\n", i, SWITCH_ADDR[i]);
-            switches[i] = Switch();
-            switches[i].address = SWITCH_ADDR[i];
-            switches[i].SetSwitch(SWITCH_STATE::CURVED);
-            PrintSwitchStatus(i, SWITCH_STATE::CURVED);
-            IO_NS::PrintTerminal("Switch::Init SUCCESS FOR %d: %d\r\n", i, SWITCH_ADDR[i]);
+            switches[i] = Switch(switch_addrs[i], MARKLIN_IO_SERVER_TID);
         }
-        switches[SWITCH_COUNT - 1] = Switch();
-        switches[SWITCH_COUNT - 1].address = SWITCH_ADDR[SWITCH_COUNT - 1];
-        switches[SWITCH_COUNT - 1].SetSwitchIsolated(SWITCH_STATE::CURVED);
-        PrintSwitchStatus(SWITCH_COUNT - 1, SWITCH_STATE::CURVED);
-        // }
-    }
 
-    bool Switches::SetSwitch(int switch_addr, SWITCH_STATE state)
-    {
-        for (int i = 0; i < SWITCH_COUNT; ++i)
+        int timer_tid = CREATE(PRIORITY::P0, switch_timer);
+        uassert(timer_tid >= 0 && "SwitchServer: failed to CREATE timer");
+        bool isTimerActive = false;
+
+        int sender_tid;
+        int last_switch_index = -1;
+        SwitchRequest request;
+        while (true)
         {
-            if (switches[i].address == switch_addr)
+            int ret = RECEIVE(&sender_tid, (char *)&request, sizeof(SwitchRequest));
+            uassert(ret >= 0 && "SwitchServer: RECEIVE failed");
+            if (request.isTimer && last_switch_index >= 0)
             {
-                switches[i].SetSwitch(state);
-                PrintSwitchStatus(i, state);
-                return true;
+                isTimerActive = false;
+                switches[last_switch_index].SendOffCommand();
+                // verify this is sending off command
+            }
+            else
+            {
+                // ASSUME SWITCH COMMANDS ARE VALIDATED ALREADY
+                last_switch_index = request.switch_index;
+                switches[request.switch_index].SetSwitch(request.switch_state == 'S' ? SWITCH_STATE::STRAIGHT : SWITCH_STATE::CURVED);
+                if (!isTimerActive)
+                {
+                    isTimerActive = true;
+                    REPLY(timer_tid, nullptr, 0);
+                }
+                REPLY(sender_tid, nullptr, 0);
             }
         }
-        IO_NS::PrintTerminal("Switches::SetSwitch: Switch-%d not found\r\n", switch_addr);
-
-        return false;
     }
 
-    void Switches::setIOServerTid(int tid)
+    void switch_timer()
     {
-        MARKLIN_IO_SERVER_TID = tid;
+        REGISTERAS("SwitchTimer");
+        int CLOCK_SERVER_TID = WHOIS("ClockServer");
+        uassert(CLOCK_SERVER_TID >= 0 && "SwitchTimer: WHOIS failed");
+        int switch_server_tid = WHOIS("SwitchServer");
+        uassert(switch_server_tid >= 0 && "SwitchTimer: WHOIS failed");
+
+        SwitchRequest request = {true};
+        while (true)
+        {
+            int ret = SEND(switch_server_tid, (char *)&request, sizeof(SwitchRequest), nullptr, 0);
+
+            // delay for 20 ticks when freed
+            DELAY(CLOCK_SERVER_TID, 20);
+        }
     }
+
 }

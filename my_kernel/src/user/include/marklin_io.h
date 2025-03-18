@@ -9,12 +9,6 @@ namespace MARKLIN_IO_SERVER
 {
 #define UNDEFINED_CHAR '-'
 
-    enum class STATUS
-    {
-        ACTIVE,
-        INACTIVE
-    };
-
     // REDEFINED QUEUE SIZE TO 32 -> change queue to accept size as a parameter?
     // #define RECEIVE_SIZE 32 // 32 chars/bytes
     class MarklinIOServer
@@ -26,31 +20,18 @@ namespace MARKLIN_IO_SERVER
         // interface for the IO server
 
     private:
-        COMMAND active_command;
-        unsigned int numSeenCommands;
         bool canTransmit;
-        bool clock_blocked;
-        int active_command_size;
-        int bytes_transmitted;
-        int last_switch_addr;
         int total_bytes_transmitted;
 
         int rx_notifier_tid;
         int tx_notifier_tid;
         int cts_notifier_high_tid;
         int cts_notifier_low_tid;
-        int clock_notifier_tid;
-
-        uint32_t time_of_last_switch_transmission;
 
         Queue<unsigned char, 100> receive_buffer;
         Queue<uint8_t, 100> transmit_buffer; // this should be the bytes for commands
-        Queue<COMMAND, 50> cmd_buffer;       // 's', 't', 'r' for switch, train(accel), reverse
 
-        Queue<int, 2> rx_waiting_tasks;
-        // pin states for CTS and TX
-        // PIN_STATE tx_state;
-        TransmitMachine tx_state;
+        Queue<int, 2> rx_waiting_tasks; // only sensor manager should be in here realistically
 
         void run();
         void spawnNotifiers();
@@ -67,7 +48,6 @@ namespace MARKLIN_IO_SERVER
         TX_NOTIFIER,
         CTS_NOTIFIER_HIGH,
         CTS_NOTIFIER_LOW,
-        CLOCK_NOTIFIER,
     };
 
     enum class REPLY_TYPE
@@ -96,9 +76,6 @@ namespace MARKLIN_IO_SERVER
 
     void notifier_rx();
     void notifier_tx();
-    void notifier_cts_high();
-    void notifier_cts_low();
-    void notifier_clock();
 
     // bool initialized;
 

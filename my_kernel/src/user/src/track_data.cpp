@@ -2588,6 +2588,7 @@ void Track::find_path(const char *start)
 
 void Track::figure_eight()
 {
+    /*
     IO_NS::PrintTerminal("Track::figure_eight: Setting switches for figure eight\r\n");
     // middle switch indexes
     const int SWITCH_OFFSET = 80; // different since we use all switches
@@ -2630,4 +2631,5 @@ void Track::figure_eight()
     }
     MarklinRequest request = {COMMAND::SOLENOID_OFF, switches[SWITCH_COUNT - 1].switch_num};
     SEND(CONTROLLER_TID, (char *)&request, sizeof(request), NULL, 0);
+    */
 }

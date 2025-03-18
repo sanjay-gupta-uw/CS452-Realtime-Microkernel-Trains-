@@ -6,7 +6,6 @@
 #include "../../shared_constants.h"
 // #include "../../rpi.h"
 #include "../include/ui.h"
-#include "../include/marklin_controller.h"
 #include "../include/clock_server.h"
 #include "../include/io.h"
 #include "../include/command.hpp"
@@ -73,14 +72,6 @@ void FirstUserTask()
 
     int uiTaskTid = CREATE(PRIORITY::P1, UI_NS::start_ui); // Start the UI Task
     uassert(uiTaskTid > 0 && "Error starting UI Task");
-
-    /*
-    int SensorTaskTid = CREATE(PRIORITY::P4, SensorTask);
-    uassert(SensorTaskTid >= 0 && "Error starting Sensor Task");
-
-    // int marklinControllerTid = CREATE(PRIORITY::P3, MARKLIN_NS::start_marklin_controller); // Start the Marklin Controller
-    // uassert(marklinControllerTid > 0 && "Error starting Marklin Controller");
-    */
 
     EXIT();
 }

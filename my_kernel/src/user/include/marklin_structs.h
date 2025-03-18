@@ -1,30 +1,36 @@
 #ifndef _marklin_structs_h_
 #define _marklin_structs_h_
 
+#include <cstdint>
+
 #define STRAIGHT_CMD 0x21
 #define CURVED_CMD 0x22
-#define OFF 0x20
+#define SOLENOID_OFF_CMD 0x20
 #define REVERSE_CMD 0xF
 
 enum class COMMAND
 {
-    SPAWN_TRAIN,
-    GOTO,
-    READ_SENSOR,
     SET_SWITCH,
     ACCELERATE_TRAIN,
-    REVERSE_STOP_TRAIN,
     REVERSE_TRAIN,
-    SOLENOID_OFF,
+    SPAWN_TRAIN,
+    GOTO,
+    NAVIGATE_LOOP, // NEED TO IMPLEMENT IN COMMAND.cpp
     INVALID,
+};
+
+struct ConductorRequest
+{
+    COMMAND command;
+    int id; // physical ID of train, or index of switch
+    int data;
 };
 
 struct MarklinRequest
 {
-    COMMAND type = COMMAND::INVALID;
-    int id = -1;  // physcial id on the track
-    int idx = -1; // index in the array
-    unsigned char data = '\0';
+    bool isSingleByteCommand;
+    uint8_t byte1;
+    uint8_t byte2;
 };
 
 #endif // _marklin_structs_h_

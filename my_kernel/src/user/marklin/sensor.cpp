@@ -24,12 +24,9 @@ namespace Sensors_NS
                 sensor_data[idx].status = SensorState::SEN_OFF;
             }
         }
-        // uassert(2 == 3 && "SensorManager::SensorManager: Sending Initial Reset to Marklin");
 
         MARKLIN_IO_SERVER_TID = WHOIS("MarklinIOServer");
-        MarklinRequest request = {COMMAND::READ_SENSOR, -1, -1, RESET_MODE_ON};
-        int ret = MARKLIN_IO_SERVER::SendCmd(MARKLIN_IO_SERVER_TID, &request);
-        // IO_NS::PrintTerminal("Sent Initial Reset to Marklin\r\n");
+        Reset(true); // send reset command to the marklin
     }
 
     SensorManager::~SensorManager()
@@ -38,9 +35,7 @@ namespace Sensors_NS
 
     void SensorManager::Reset(bool reset_on)
     {
-        // first thing sent to marklin
-        // int ret = MARKLIN_IO_SERVER::Putc(MARKLIN_IO_SERVER_TID, MARKLIN, reset_on ? RESET_MODE_ON : RESET_MODE_OFF);
-        MarklinRequest request = {COMMAND::READ_SENSOR, -1, -1, reset_on ? RESET_MODE_ON : RESET_MODE_OFF};
+        MarklinRequest request = {true, reset_on ? RESET_MODE_ON : RESET_MODE_OFF};
         int ret = MARKLIN_IO_SERVER::SendCmd(MARKLIN_IO_SERVER_TID, &request);
         uassert(ret >= 0 && "SensorManager::Reset: command sent to MarklinIOServer failed");
     }
@@ -55,7 +50,8 @@ namespace Sensors_NS
         bank_num = VALIDATE_BANK(bank_num);
 
         // send command to marklin
-        MarklinRequest request = {COMMAND::READ_SENSOR, -1, -1, READ_ONE_SENSOR_BASE + bank_num};
+        // MarklinRequest request = {COMMAND::READ_SENSOR, -1, -1, READ_ONE_SENSOR_BASE + bank_num};
+        MarklinRequest request = {true, READ_ONE_SENSOR_BASE + bank_num};
         int ret = MARKLIN_IO_SERVER::SendCmd(MARKLIN_IO_SERVER_TID, &request);
         uassert(ret >= 0 && "SensorManager::ReadBank: command sent to MarklinIOServer failed");
 
@@ -74,7 +70,7 @@ namespace Sensors_NS
     {
         num_banks = VALIDATE_BANK(num_banks);
 
-        MarklinRequest request = {COMMAND::READ_SENSOR, -1, -1, READ_ALL_SENSOR_BASE + num_banks};
+        MarklinRequest request = {true, READ_ALL_SENSOR_BASE + num_banks};
         int ret = MARKLIN_IO_SERVER::SendCmd(MARKLIN_IO_SERVER_TID, &request);
         uassert(ret >= 0 && "SensorManager::ReadAll: command sent to MarklinIOServer failed");
 
@@ -173,12 +169,11 @@ namespace Sensors_NS
         int sensor_ticker_tid = CREATE(PRIORITY::P1, SensorTicker);
         Queue<SensorTaskPair, NUM_TRAINS> awaiting_for_sensor[NUM_TRAINS];
 
+        bool is_ticker_available = false;
         int sender_tid;
         SensorQuery query;
-        bool send_reply;
         while (true)
         {
-            send_reply = false;
             int retval = RECEIVE(&sender_tid, (char *)&query, sizeof(query));
             uassert(retval > 0 && "SensorServer: Error receiving SensorQuery");
 
@@ -186,36 +181,23 @@ namespace Sensors_NS
             {
             case SENSOR_COMMAND::TICK:
                 // IO_NS::PrintTerminal("SensorServer: Received TICK request\r\n");
-                send_reply = true;
+                is_ticker_available = true;
                 break;
             case SENSOR_COMMAND::READ_BANK:
-                IO_NS::PrintTerminal("SensorServer: Received READ_BANK request for bank %d\r\n", query.sensor.bank);
-                // sensors.ReadBank(query.bank_num);
+                // IO_NS::PrintTerminal("SensorServer: Received READ_BANK request for bank %d\r\n", query.sensor.bank);
                 awaiting_for_sensor[(int)query.sensor.bank].Push({sender_tid, query.sensor.id});
-                break;
-            // case SENSOR_COMMAND::READ_ALL:
-            //     IO_NS::PrintTerminal("SensorServer: Received READ_ALL request for %d banks\r\n", query.bank_num);
-            //     sensors.ReadAll(NUM_BANKS);
-            //     break;
-            case SENSOR_COMMAND::RESET:
-                IO_NS::PrintTerminal("SensorServer: Received RESET request\r\n");
-                sensors.Reset(true);
-                send_reply = true;
                 break;
             default:
                 break;
             }
 
             BANK_MASK bank_mask;
+            bool awaken_ticker = false;
             for (int i = 0; i < NUM_BANKS; ++i)
             {
                 if (!awaiting_for_sensor[i].IsEmpty())
                 {
-                    // update readbank to return physical sensors hit
-
-                    sensors.ReadBank(i, &bank_mask);
-                    int tid;
-
+                    sensors.ReadBank(i, &bank_mask); // bank mask will be updated to have 1's where sensor is triggered
                     SensorTaskPair s_t_pair;
                     while (awaiting_for_sensor[i].Pop(&s_t_pair))
                     {
@@ -226,17 +208,19 @@ namespace Sensors_NS
                         }
                         else
                         {
-                            IO_NS::PrintTerminal("SensorServer: Sensor %c%d not triggered\r\n", BANK_LABELS[i], s_t_pair.sensor);
+                            awaken_ticker = true;
                         }
                     }
                 }
             }
 
-            sensors.Display();
-            if (send_reply)
+            if (is_ticker_available && awaken_ticker)
             {
-                REPLY(sender_tid, nullptr, 0);
+                is_ticker_available = false;
+                REPLY(sensor_ticker_tid, nullptr, 0);
             }
+
+            sensors.Display(); // this can block the server until IO is ready
         }
     }
 
@@ -254,7 +238,7 @@ namespace Sensors_NS
         {
             int retval = SEND(sensor_server_tid, (char *)&query, sizeof(query), nullptr, 0);
             uassert(retval > 0 && "SensorTicker: Error sending SensorQuery to SensorServer");
-            DELAY(CLOCK_SERVER_TID, 5);
+            DELAY(CLOCK_SERVER_TID, 1);
         }
     }
 } // namespace Sensors_NS

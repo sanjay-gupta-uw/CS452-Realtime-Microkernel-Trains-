@@ -31,7 +31,7 @@ enum class SENSOR_COMMAND
     TICK,
 };
 
-struct SensorReq
+struct SensorStruct
 {
     BANKS bank; // A, B, C, D, E
     int id;     // 1-16
@@ -40,7 +40,7 @@ struct SensorReq
 struct SensorQuery
 {
     SENSOR_COMMAND command;
-    SensorReq sensor;
+    SensorStruct sensor;
 };
 
 struct SensorResponse

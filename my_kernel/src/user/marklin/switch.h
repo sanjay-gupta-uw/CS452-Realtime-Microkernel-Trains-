@@ -10,40 +10,37 @@
 
 namespace Switch_NS
 {
+#define NUM_SWITCHES 22
+
+    struct SwitchRequest
+    {
+        bool isTimer;
+        int switch_index;
+        char switch_state;
+    };
+
     typedef enum
     {
         STRAIGHT, // green
         CURVED,   // red
     } SWITCH_STATE;
 
-    class Switches;
     class Switch
     {
     private:
-        SWITCH_STATE ALIGNMENT;
+        int MARKLIN_IO_SERVER_TID;
+        int address;
 
     public:
-        int address;
         Switch();
+        Switch(int address, int MARKLIN_IO_SERVER_TID);
         ~Switch();
         void SetSwitch(SWITCH_STATE ALIGNMENT);
-        void SetSwitchIsolated(SWITCH_STATE ALIGNMENT);
-
-        friend class Switches;
+        void SendOffCommand();
     };
 
-    class Switches
-    {
-    private:
-        Switch switches[SWITCH_COUNT];
-
-    public:
-        Switches();
-        ~Switches();
-        void Init();
-        bool SetSwitch(int switch_addr, SWITCH_STATE state);
-        void setIOServerTid(int tid);
-    };
+    void SwitchServer();
+    void switch_timer();
     // ui.h for switch display
 };
 

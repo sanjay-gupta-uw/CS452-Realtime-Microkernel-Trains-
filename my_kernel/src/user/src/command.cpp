@@ -10,6 +10,35 @@ extern "C" void _reboot(void); // Declare the reboot function implemented in ass
 
 namespace UI_CMD_NS
 {
+
+    static int getSwitchIndex(int switch_num)
+    {
+        if (switch_num > 0 && switch_num < 19)
+        {
+            return switch_num - 1;
+        }
+        int middle_switches[4] = {0x9A, 0x9B, 0x9C, 0x99};
+        for (int i = 0; i < 4; i++)
+        {
+            if (switch_num == middle_switches[i])
+            {
+                return 18 + i;
+            }
+        }
+        return -1;
+    }
+
+    static void PrintCommandHelp()
+    {
+        IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Command List:", CMD_INFO_LOCATION, 1);
+        IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Switch Command: SW <switch_num> <S/C>", CMD_INFO_LOCATION, 1);
+        IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Train Accelerate Command: TR <train_num> <speed>", CMD_INFO_LOCATION, 1);
+        IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Train Reverse Command: RV <train_num>", CMD_INFO_LOCATION, 1);
+        IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Train Spawn Command: SPAWN <train_num>", CMD_INFO_LOCATION, 1);
+        IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Go Command: GO <node_name>", CMD_INFO_LOCATION, 1);
+        IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Quit Command: q", CMD_INFO_LOCATION, 1);
+    }
+
     CommandPrompt::CommandPrompt()
     {
         IO_NS::PrintTerminal("Starting Command Prompt\r\n");
@@ -19,6 +48,7 @@ namespace UI_CMD_NS
         BUFFER_INDEX = 0;
         clearInputBuffer();
         InitDisplay();
+        PrintCommandHelp();
     }
 
     void CommandPrompt::Commandify(const char *str)
@@ -71,8 +101,18 @@ namespace UI_CMD_NS
             {
                 switch_state = 'C';
             }
+            else
+            {
+                switch_state = ' ';
+            }
+            int switch_index = -1;
+            if (set_switch_num)
+            {
+                // check if switch num is valid
+                switch_index = getSwitchIndex(switch_num);
+            }
 
-            if (!set_switch_num || switch_state == ' ')
+            if (!set_switch_num || switch_state == ' ' || switch_index == -1)
             {
                 IO_NS::PrintTerminal("Invalid Switch Command\r\n");
                 return;
@@ -80,8 +120,8 @@ namespace UI_CMD_NS
 
             // create marklin request
             IO_NS::PrintTerminal("Attempting to set Switch %d to %c\r\n", switch_num, switch_state);
-            MarklinRequest request = {COMMAND::SET_SWITCH, switch_num, -1, switch_state};
-            SEND(CONDUCTOR_TID, (char *)&request, sizeof(MarklinRequest), nullptr, 0);
+            ConductorRequest request = {COMMAND::SET_SWITCH, switch_index, switch_state};
+            SEND(CONDUCTOR_TID, (char *)&request, sizeof(ConductorRequest), nullptr, 0);
         }
         else if ((first == 'T' || first == 't') &&
                  (second == 'R' || second == 'r'))
@@ -115,7 +155,7 @@ namespace UI_CMD_NS
                 speed_set = true;
             }
 
-            if (!num_set || !speed_set)
+            if (!num_set || !speed_set || train_speed > 15 || train_speed < 0)
             {
                 IO_NS::PrintTerminal("Invalid Train Command\r\n");
                 return;
@@ -123,8 +163,8 @@ namespace UI_CMD_NS
 
             // create marklin request
             IO_NS::PrintTerminal("Attempting to accelerate Train %d to %d\r\n", train_num, train_speed);
-            MarklinRequest request = {COMMAND::ACCELERATE_TRAIN, train_num, -1, (unsigned char)train_speed};
-            SEND(CONDUCTOR_TID, (char *)&request, sizeof(MarklinRequest), (char *)command_received, sizeof(int));
+            ConductorRequest request = {COMMAND::ACCELERATE_TRAIN, train_num, train_speed};
+            SEND(CONDUCTOR_TID, (char *)&request, sizeof(ConductorRequest), (char *)command_received, sizeof(int));
         }
         else if ((first == 'R' || first == 'r') &&
                  (second == 'V' || second == 'v'))
@@ -154,9 +194,49 @@ namespace UI_CMD_NS
 
             // create marklin request
             IO_NS::PrintTerminal("Attempting to reverse Train %d\r\n", train_num);
-            MarklinRequest request = {COMMAND::REVERSE_TRAIN, train_num, -1, '\0'};
-            SEND(CONDUCTOR_TID, (char *)&request, sizeof(MarklinRequest), (char *)command_received, sizeof(int));
+            ConductorRequest request = {COMMAND::REVERSE_TRAIN, train_num};
+            SEND(CONDUCTOR_TID, (char *)&request, sizeof(ConductorRequest), (char *)command_received, sizeof(int));
         }
+        else if ((first == 'S' || first == 's') &&
+                 (second == 'P' || second == 'p'))
+        {
+            // read next two characters
+            char third = str[2];
+            char fourth = str[3];
+            char fifth = str[4];
+
+            if ((third == 'A' || third == 'a') &&
+                (fourth == 'W' || fourth == 'w') &&
+                (fifth == 'N' || fifth == 'n'))
+            {
+                // read the trian being spawned
+                int train_num = 0;
+                bool num_set = false;
+                const char *ptr = str + 5;
+                while (*ptr == ' ')
+                {
+                    ptr++;
+                }
+                // extract train num
+                while (*ptr >= '0' && *ptr <= '9')
+                {
+                    train_num = train_num * 10 + (*ptr - '0');
+                    ptr++;
+                    num_set = true;
+                }
+
+                // try to spawn train
+                if (!num_set || train_num < 0 || train_num > 80)
+                {
+                    IO_NS::PrintTerminal("Invalid Train Spawn Command\r\n");
+                    return;
+                }
+                IO_NS::PrintTerminal("Attempting to spawn Train %d\r\n", train_num);
+                ConductorRequest request = {COMMAND::SPAWN_TRAIN, train_num};
+                SEND(CONDUCTOR_TID, (char *)&request, sizeof(ConductorRequest), (char *)command_received, sizeof(int));
+            }
+        }
+
         else if ((first == 'G' || first == 'g') &&
                  (second == 'O' || second == 'o'))
         {
