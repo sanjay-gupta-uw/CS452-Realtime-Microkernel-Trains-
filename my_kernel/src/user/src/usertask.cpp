@@ -49,18 +49,21 @@ void FirstUserTask()
     uassert(nameServerTid > 0 && "Error starting Name Server");
 
     // tid 4
-    int ioServerTid = CREATE(PRIORITY::P4, IO_SERVER::startIOServer); // Start the IO Server
-    uassert(ioServerTid > 0 && "Error starting IO Server");
-    // IO_NS::Print(CLEAR_SCREEN RESET_FORMATTING COLUMN_132 SCROLL_REGION MOVE_CURSOR SAVE_CURSOR, SCROLL_ROW_START, SCROLL_ROW_END, 1, 1);
-    IO_NS::PrintTerminal("IO Server started\r\n");
+    {
+        int ioServerTid = CREATE(PRIORITY::P4, IO_SERVER::startIOServer); // Start the IO Server
+        uassert(ioServerTid > 0 && "Error starting IO Server");
+        // IO_NS::Print(CLEAR_SCREEN RESET_FORMATTING COLUMN_132 SCROLL_REGION MOVE_CURSOR SAVE_CURSOR, SCROLL_ROW_START, SCROLL_ROW_END, 1, 1);
+        IO_NS::PrintTerminal("IO Server started\r\n");
+
+        int marklinIoServerTid = CREATE(PRIORITY::P0, MARKLIN_IO_SERVER::startMarklinIOServer); // Start the Marklin IO Server
+        uassert(marklinIoServerTid > 0 && "Error starting Marklin IO Server");
+        IO_NS::PrintTerminal("Marklin IO Server started\r\n");
+    }
 
     int clockServerTid = CREATE(PRIORITY::P1, ClockServer); // Start the Clock Server
     uassert(clockServerTid > 0 && "Error starting Clock Server");
     IO_NS::PrintTerminal("Clock Server started\r\n");
     // // START MARKLIN SERVER + CONTROLLER
-    int marklinIoServerTid = CREATE(PRIORITY::P0, MARKLIN_IO_SERVER::startMarklinIOServer); // Start the Marklin IO Server
-    uassert(marklinIoServerTid > 0 && "Error starting Marklin IO Server");
-    IO_NS::PrintTerminal("Marklin IO Server started\r\n");
 
     int ConductorTid = CREATE(PRIORITY::P3, Conductor_NS::start_conductor);
     uassert(ConductorTid > 0 && "Error starting Conductor");

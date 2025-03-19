@@ -118,7 +118,7 @@ namespace MARKLIN_IO_SERVER
         while (true)
         {
             int retval = RECEIVE(&sender_tid, (char *)&req, sizeof(req));
-            // IO_NS::PrintTerminal("MarklinIO_server::run: Received request from tid{%d} of size{%d}\r\n", sender_tid, retval);
+            IO_NS::PrintTerminal("MarklinIO_server::run: Received request from tid{%d} of size{%d}\r\n", sender_tid, retval);
 
             IO_REPLY reply;
             reply.type = REPLY_TYPE::FAILURE;
@@ -177,6 +177,8 @@ namespace MARKLIN_IO_SERVER
                 {
                     transmit_buffer.Push(m_req.byte2);
                 }
+                reply.type = REPLY_TYPE::SUCCESS;
+                send_reply = true;
             }
 
             default:
@@ -246,6 +248,7 @@ namespace MARKLIN_IO_SERVER
         IO_REQUEST req{IO_REQUEST_TYPE::SEND_CMD, 0, request};
         IO_REPLY reply;
         SEND(IO_TID, (char *)&req, sizeof(req), (char *)&reply, sizeof(reply));
+        // IO_NS::PrintTerminal("MarklinIO::SendCmd: Successfully sent request to MarklinIOServer\r\n");
 
         return reply.type == REPLY_TYPE::FAILURE ? -1 : 0;
     }

@@ -37,7 +37,14 @@ namespace Trains_NS
         int getSpeed();
     };
 
-    void spawn_train(); // individual train tasks
+    struct TrainParams
+    {
+        int train_num;
+        int speed;
+    };
+
+    void
+    spawn_train(); // individual train tasks
 
 };
 

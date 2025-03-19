@@ -21,20 +21,24 @@ namespace Conductor_NS
         int SENSOR_SERVER_TID;
         // Switch_NS::Switches switches;
 
+        int get_train_index(int train_num);
+
     public:
         Conductor();
         ~Conductor();
 
         void ProcessRequest(CMDRequest *req);
+        void DispatchTrainCommand();
         struct train_task_mapping
         {
             /* data */
-            int data;
-            int train_num;
+            bool isWaitingForCommand;
+            int task_id;   // TID
+            int train_num; // train number
+            Queue<TrainResponse, 8> train_response_queue;
         };
 
-        Queue<train_task_mapping, NUM_TRAINS> sleeping_trains;
-
+        train_task_mapping train_arr[NUM_TRAINS];
         Track track;
     };
 

@@ -43,6 +43,7 @@ namespace Trains_NS
         if (initial_speed == 0)
         {
             // cannot reverse a stopped train
+            // IO_NS::PrintTerminal("Cannot reverse a stopped train\r\n");
             return;
         }
 
@@ -95,8 +96,12 @@ namespace Trains_NS
     {
         // only conductor should be interacting with this
         int conductor_tid;
-        int train_num;
-        int retval = RECEIVE(&conductor_tid, (char *)&train_num, sizeof(train_num));
+
+        TrainParams train_params;
+        int retval = RECEIVE(&conductor_tid, (char *)&train_params, sizeof(TrainParams));
+
+        int train_num = train_params.train_num;
+        // SET SPEED TO 0
         uassert(retval > 0 && "Error receiving train_num from Conductor");
         IO_NS::PrintTerminal("Train %d spawned\r\n", train_num);
         REPLY(conductor_tid, (char *)true, sizeof(bool));
@@ -127,12 +132,11 @@ namespace Trains_NS
                 break;
             case TRAIN_COMMAND::REVERSE:
                 train.ReverseTrain();
-                IO_NS::PrintTerminal("Train::Reverse called, please implement delay in train.cpp\r\n");
                 break;
             case TRAIN_COMMAND::STOP:
                 // USE BIJECTION METHOD TO HAVE FINAL STOP AS CLOSE TO SENSOR AS POSSIBLE
+                // SHOULD COMPUTE MEAN STOPPING DISTANCE/VELOCITY
                 train.Stop();
-                IO_NS::PrintTerminal("Train::Stop called, please implement precision stop\r\n");
                 break;
             default:
                 break;
