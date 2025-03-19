@@ -19,18 +19,86 @@ enum class COMMAND
     INVALID,
 };
 
-struct ConductorRequest
+struct CMDRequest
 {
     COMMAND command;
-    int id; // physical ID of train, or index of switch
+    int id;
     int data;
 };
 
-struct MarklinRequest
+enum class RequestType
 {
-    bool isSingleByteCommand;
-    uint8_t byte1;
-    uint8_t byte2;
+    CMD,
+    TRAIN
+};
+
+enum class BANKS
+{
+    A,
+    B,
+    C,
+    D,
+    E,
+};
+struct SensorStruct
+{
+    BANKS bank; // A, B, C, D, E
+    int id;     // 1-16
+};
+
+enum class DIRECTION
+{
+    FORWARD,
+    REVERSE,
+};
+struct TrainQuery
+{
+    SensorStruct sensor;
+    DIRECTION direction; // direction of the train
+};
+
+enum class TRAIN_COMMAND
+{
+    ACCELERATE,
+    REVERSE,
+    STOP,
+};
+struct TrainResponse
+{
+    TRAIN_COMMAND command; // command to be executed, if any
+    int speed;             // assume stop is only issued when next sensor is the destination
+    SensorStruct sensor;
+};
+struct ConductorRequest
+{
+    RequestType requestType; // To track which union member is valid
+
+    union Data
+    {
+        CMDRequest cmdRequest;
+        TrainQuery trainQuery;
+
+        // Add a constructor to avoid potential undefined behavior
+        Data() {}  // Default constructor
+        ~Data() {} // Destructor
+    } data;        // Named union member
+
+    // default constructor
+    ConductorRequest() {}
+
+    // Constructor for CMDRequest
+    ConductorRequest(COMMAND command, int id, int requestData)
+        : requestType(RequestType::CMD)
+    {
+        data.cmdRequest = {command, id, requestData};
+    }
+
+    // Constructor for TrainQuery
+    ConductorRequest(SensorStruct sensor, DIRECTION direction)
+        : requestType(RequestType::TRAIN)
+    {
+        data.trainQuery = {sensor, direction};
+    }
 };
 
 #endif // _marklin_structs_h_

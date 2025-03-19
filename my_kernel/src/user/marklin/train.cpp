@@ -33,7 +33,7 @@ namespace Trains_NS
     void Train::Accelerate(int speed)
     {
         train_speed = speed;
-        MarklinRequest request = {false, train_speed + 16, train_num};
+        MARKLIN_IO_SERVER::MarklinRequest request = {false, train_speed + 16, train_num};
         MARKLIN_IO_SERVER::SendCmd(MARKLIN_IO_SERVER_TID, &request);
     }
 
@@ -56,14 +56,14 @@ namespace Trains_NS
     void Train::Reverse()
     {
         isReversed = !isReversed;
-        MarklinRequest request = {false, REVERSE_CMD, train_num};
+        MARKLIN_IO_SERVER::MarklinRequest request = {false, REVERSE_CMD, train_num};
         MARKLIN_IO_SERVER::SendCmd(MARKLIN_IO_SERVER_TID, &request);
     }
 
     void Train::Stop()
     {
         train_speed = 0;
-        MarklinRequest request = {false, train_speed, train_num};
+        MARKLIN_IO_SERVER::MarklinRequest request = {false, train_speed, train_num};
         MARKLIN_IO_SERVER::SendCmd(MARKLIN_IO_SERVER_TID, &request);
     }
 
@@ -106,12 +106,9 @@ namespace Trains_NS
         int CLOCK_SERVER_TID = WHOIS("ClockServer");
         uassert(CLOCK_SERVER_TID > 0 && "Error finding ClockServer");
         // initialize train: get location of train
-        Trains_NS::Train train(train_num, MARKLIN_IO_SERVER_TID, CLOCK_SERVER_TID);
-        // readall/reverse/accelerate to determine location of train
-        TrainQuery query = {{BANKS::A, 1}, DIRECTION::FORWARD}; // FOR NOW ASSUME TRAIN IS AT START (hit A1)
-
         // DETERMINE PATH TO NAVIGATE LOOP
-        TrainQuery loop_query = {{BANKS::A, 1}, DIRECTION::FORWARD};
+        Trains_NS::Train train(train_num, MARKLIN_IO_SERVER_TID, CLOCK_SERVER_TID);
+        ConductorRequest train_query({BANKS::A, 1}, DIRECTION::FORWARD);
 
         int sensor_server_tid = WHOIS("SensorServer");
         uassert(sensor_server_tid > 0 && "Error finding SensorServer");
@@ -120,7 +117,7 @@ namespace Trains_NS
         {
             // Send to the conductor with the current position and direction of travel
             TrainResponse response;
-            int retval = SEND(conductor_tid, (char *)&query, sizeof(TrainQuery), (char *)&response, sizeof(TrainResponse));
+            int retval = SEND(conductor_tid, (char *)&train_query, sizeof(train_query), (char *)&response, sizeof(TrainResponse));
             uassert(retval > 0 && "Error sending TrainQuery to Conductor");
             switch (response.command)
             {
@@ -143,12 +140,12 @@ namespace Trains_NS
 
             // Reply contains the next sensor node to query for
             // Poll from next expected sensor bank
-            SensorQuery sensor_query = {SENSOR_COMMAND::READ_BANK, response.sensor};
-            retval = SEND(sensor_server_tid, (char *)&sensor_query, sizeof(SensorQuery), nullptr, 0);
-            uassert(retval > 0 && "Error sending SensorQuery to SensorServer");
+            // SensorQuery sensor_query = {SENSOR_COMMAND::READ_BANK, response.sensor};
+            // retval = SEND(sensor_server_tid, (char *)&sensor_query, sizeof(SensorQuery), nullptr, 0);
+            // uassert(retval > 0 && "Error sending SensorQuery to SensorServer");
 
-            // send waits for the sensor to be hit (not robust incase sensor is broken)
-            query.sensor = response.sensor;
+            // // send waits for the sensor to be hit (not robust incase sensor is broken)
+            // train_query.data.trainQuery.sensor = response.sensor;
         }
     }
 

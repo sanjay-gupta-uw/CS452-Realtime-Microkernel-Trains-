@@ -120,7 +120,7 @@ namespace UI_CMD_NS
 
             // create marklin request
             IO_NS::PrintTerminal("Attempting to set Switch %d to %c\r\n", switch_num, switch_state);
-            ConductorRequest request = {COMMAND::SET_SWITCH, switch_index, switch_state};
+            ConductorRequest request(COMMAND::SET_SWITCH, switch_index, switch_state);
             SEND(CONDUCTOR_TID, (char *)&request, sizeof(ConductorRequest), nullptr, 0);
         }
         else if ((first == 'T' || first == 't') &&
@@ -163,7 +163,7 @@ namespace UI_CMD_NS
 
             // create marklin request
             IO_NS::PrintTerminal("Attempting to accelerate Train %d to %d\r\n", train_num, train_speed);
-            ConductorRequest request = {COMMAND::ACCELERATE_TRAIN, train_num, train_speed};
+            ConductorRequest request(COMMAND::ACCELERATE_TRAIN, train_num, train_speed);
             SEND(CONDUCTOR_TID, (char *)&request, sizeof(ConductorRequest), (char *)command_received, sizeof(int));
         }
         else if ((first == 'R' || first == 'r') &&
@@ -194,7 +194,7 @@ namespace UI_CMD_NS
 
             // create marklin request
             IO_NS::PrintTerminal("Attempting to reverse Train %d\r\n", train_num);
-            ConductorRequest request = {COMMAND::REVERSE_TRAIN, train_num};
+            ConductorRequest request(COMMAND::REVERSE_TRAIN, train_num, 0);
             SEND(CONDUCTOR_TID, (char *)&request, sizeof(ConductorRequest), (char *)command_received, sizeof(int));
         }
         else if ((first == 'S' || first == 's') &&
@@ -232,7 +232,7 @@ namespace UI_CMD_NS
                     return;
                 }
                 IO_NS::PrintTerminal("Attempting to spawn Train %d\r\n", train_num);
-                ConductorRequest request = {COMMAND::SPAWN_TRAIN, train_num};
+                ConductorRequest request(COMMAND::SPAWN_TRAIN, train_num, 0);
                 SEND(CONDUCTOR_TID, (char *)&request, sizeof(ConductorRequest), (char *)command_received, sizeof(int));
             }
         }

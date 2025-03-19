@@ -5,6 +5,7 @@
 #include "../marklin/sensor.h"
 #include "../marklin/switch.h"
 #include "../marklin/train.h"
+#include "../include/marklin_structs.h"
 
 typedef struct FindPathRequest
 {
@@ -24,7 +25,7 @@ namespace Conductor_NS
         Conductor();
         ~Conductor();
 
-        void ProcessRequest(ConductorRequest *req);
+        void ProcessRequest(CMDRequest *req);
         struct train_task_mapping
         {
             /* data */

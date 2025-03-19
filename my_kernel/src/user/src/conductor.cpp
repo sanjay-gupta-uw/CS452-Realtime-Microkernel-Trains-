@@ -61,7 +61,7 @@ namespace Conductor_NS
     {
     }
 
-    void Conductor::ProcessRequest(ConductorRequest *req)
+    void Conductor::ProcessRequest(CMDRequest *req)
     {
         switch (req->command)
         {
@@ -115,7 +115,7 @@ namespace Conductor_NS
             int spawned_train = CREATE(PRIORITY::P0, Trains_NS::spawn_train);
             uassert(spawned_train > 0);
             bool reply = false;
-            SEND(spawned_train, (char *)req->data, sizeof(req->data), (char *)&reply, sizeof(reply));
+            SEND(spawned_train, (char *)req->id, sizeof(req->data), (char *)&reply, sizeof(reply));
             uassert(reply && "Error spawning train");
 
             sleeping_trains.Push({spawned_train, req->id});
@@ -161,7 +161,18 @@ namespace Conductor_NS
         {
             // receive request from terminal
             retval = RECEIVE(&sender_tid, (char *)&req, sizeof(ConductorRequest));
-            conductor.ProcessRequest(&req);
+            uassert(retval > 0 && "Error receiving request from terminal");
+
+            if (req.requestType == RequestType::CMD)
+            {
+                IO_NS::PrintTerminal("Conductor received cmd request\r\n");
+                conductor.ProcessRequest(&(req.data.cmdRequest));
+            }
+            else
+            {
+                IO_NS::PrintTerminal("Conductor received non-cmd request\r\n");
+                // process train request
+            }
 
             // find path to node
             // conductor.track.find_path((char *)find_node_name.node_name);

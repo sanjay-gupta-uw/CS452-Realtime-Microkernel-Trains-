@@ -9,40 +9,6 @@
 #include "../include/name_server.h"
 #include "../../shared_constants.h"
 
-struct BANK_MASK
-{
-    bool sensor[16];
-};
-
-enum class BANKS
-{
-    A,
-    B,
-    C,
-    D,
-    E,
-};
-
-enum class SENSOR_COMMAND
-{
-    READ_BANK,
-    READ_ALL,
-    RESET,
-    TICK,
-};
-
-struct SensorStruct
-{
-    BANKS bank; // A, B, C, D, E
-    int id;     // 1-16
-};
-// train query to conductor
-struct SensorQuery
-{
-    SENSOR_COMMAND command;
-    SensorStruct sensor;
-};
-
 struct SensorResponse
 {
     int id; // -1 if no sensor triggered
@@ -61,6 +27,26 @@ namespace Sensors_NS
 
 #define RESET_MODE_ON READ_ONE_SENSOR_BASE
 #define RESET_MODE_OFF READ_ALL_SENSOR_BASE
+
+    struct BANK_MASK
+    {
+        bool sensor[16];
+    };
+
+    enum class SENSOR_COMMAND
+    {
+        READ_BANK,
+        READ_ALL,
+        RESET,
+        TICK,
+    };
+
+    // train query to conductor
+    struct SensorQuery
+    {
+        SENSOR_COMMAND command;
+        SensorStruct sensor;
+    };
 
     typedef enum
     {

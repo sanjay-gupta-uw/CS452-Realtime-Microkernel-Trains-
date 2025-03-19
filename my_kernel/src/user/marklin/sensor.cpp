@@ -35,7 +35,7 @@ namespace Sensors_NS
 
     void SensorManager::Reset(bool reset_on)
     {
-        MarklinRequest request = {true, reset_on ? RESET_MODE_ON : RESET_MODE_OFF};
+        MARKLIN_IO_SERVER::MarklinRequest request = {true, reset_on ? RESET_MODE_ON : RESET_MODE_OFF};
         int ret = MARKLIN_IO_SERVER::SendCmd(MARKLIN_IO_SERVER_TID, &request);
         uassert(ret >= 0 && "SensorManager::Reset: command sent to MarklinIOServer failed");
     }
@@ -51,7 +51,7 @@ namespace Sensors_NS
 
         // send command to marklin
         // MarklinRequest request = {COMMAND::READ_SENSOR, -1, -1, READ_ONE_SENSOR_BASE + bank_num};
-        MarklinRequest request = {true, READ_ONE_SENSOR_BASE + bank_num};
+        MARKLIN_IO_SERVER::MarklinRequest request = {true, READ_ONE_SENSOR_BASE + bank_num};
         int ret = MARKLIN_IO_SERVER::SendCmd(MARKLIN_IO_SERVER_TID, &request);
         uassert(ret >= 0 && "SensorManager::ReadBank: command sent to MarklinIOServer failed");
 
@@ -70,7 +70,7 @@ namespace Sensors_NS
     {
         num_banks = VALIDATE_BANK(num_banks);
 
-        MarklinRequest request = {true, READ_ALL_SENSOR_BASE + num_banks};
+        MARKLIN_IO_SERVER::MarklinRequest request = {true, READ_ALL_SENSOR_BASE + num_banks};
         int ret = MARKLIN_IO_SERVER::SendCmd(MARKLIN_IO_SERVER_TID, &request);
         uassert(ret >= 0 && "SensorManager::ReadAll: command sent to MarklinIOServer failed");
 

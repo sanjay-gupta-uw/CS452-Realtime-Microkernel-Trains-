@@ -28,13 +28,13 @@ namespace Switch_NS
     void Switch::SetSwitch(SWITCH_STATE ALIGNMENT)
     {
         uint32_t switch_cmd = (ALIGNMENT == SWITCH_STATE::STRAIGHT) ? STRAIGHT_CMD : CURVED_CMD;
-        MarklinRequest request = {false, switch_cmd, address};
+        MARKLIN_IO_SERVER::MarklinRequest request = {false, switch_cmd, address};
         MARKLIN_IO_SERVER::SendCmd(MARKLIN_IO_SERVER_TID, &request);
     }
 
     void Switch::SendOffCommand()
     {
-        MarklinRequest request = {false, SOLENOID_OFF_CMD, address};
+        MARKLIN_IO_SERVER::MarklinRequest request = {false, SOLENOID_OFF_CMD, address};
         MARKLIN_IO_SERVER::SendCmd(MARKLIN_IO_SERVER_TID, &request);
     }
 

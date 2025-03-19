@@ -6,33 +6,7 @@
 #include "../marklin/sensor.h"
 // #include "rpi.h"
 
-enum class TRAIN_COMMAND
-{
-    ACCELERATE,
-    REVERSE,
-    STOP,
-};
-
-enum class DIRECTION
-{
-    FORWARD,
-    REVERSE,
-};
-
 // train query to conductor
-struct TrainQuery // FIX THIS -- DOESNT INCLUDE COMAND
-// CONDUCTOR TAKES MARKLIN REQUEST?
-{
-    SensorStruct sensor;
-    DIRECTION direction; // direction of the train
-};
-
-struct TrainResponse
-{
-    TRAIN_COMMAND command; // command to be executed, if any
-    int speed;             // assume stop is only issued when next sensor is the destination
-    SensorStruct sensor;
-};
 
 namespace Trains_NS
 {

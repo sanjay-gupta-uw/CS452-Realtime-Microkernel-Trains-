@@ -7,6 +7,13 @@
 
 namespace MARKLIN_IO_SERVER
 {
+    struct MarklinRequest
+    {
+        bool isSingleByteCommand;
+        uint8_t byte1;
+        uint8_t byte2;
+    };
+
 #define UNDEFINED_CHAR '-'
 
     // REDEFINED QUEUE SIZE TO 32 -> change queue to accept size as a parameter?
