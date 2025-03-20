@@ -179,12 +179,13 @@ namespace MARKLIN_IO_SERVER
                 // IO_NS::PrintTerminal("MarklinIO_server::SEND_CMD\r\n");
                 MarklinRequest m_req = *(req.request);
                 transmit_buffer.Push(m_req.byte1);
-                sequence_length = 1;
+                int len = 1;
                 if (!m_req.isSingleByteCommand)
                 {
                     transmit_buffer.Push(m_req.byte2);
-                    sequence_length = 4;
+                    len = 2;
                 }
+                sequence_length_buffer.Push(len);
                 reply.type = REPLY_TYPE::SUCCESS;
                 send_reply = true;
             }
@@ -211,13 +212,15 @@ namespace MARKLIN_IO_SERVER
         uassert(canTransmit && "MarklinIOServer::handle_transmission: PANIC, cannot transmit");
         if (canTransmit && !transmit_buffer.IsEmpty())
         {
-            if (count == 0)
-            {
-                start_time = clock.Time();
-            }
             // IO_NS::PrintTerminal("MarklinIOServer::handle_transmission: Transmitting\r\n");
             IO_REPLY reply = {REPLY_TYPE::SUCCESS, UNDEFINED_CHAR};
             REPLY(tx_notifier_tid, (char *)&reply, sizeof(reply));
+
+            if (count == 0)
+            {
+                sequence_length_buffer.Pop(&sequence_length);
+                start_time = clock.Time();
+            }
 
             unsigned char ch;
             transmit_buffer.Pop(&ch);
@@ -229,8 +232,7 @@ namespace MARKLIN_IO_SERVER
             if (count == sequence_length)
             {
                 end_time = clock.Time();
-                IO_NS::PrintTerminal("MarklinIOServer::handle_transmission: Time to send 4-byte sequence: %d\r\n", end_time - start_time);
-
+                IO_NS::PrintTerminal("MarklinIOServer::handle_transmission: Time to send 4-byte sequence: %d ms\r\n", (end_time - start_time) / 1000);
                 count = 0;
                 // IO_NS::PrintTerminal("MarklinIOServer::handle_transmission: Finished transmitting sequence\r\n");
             }

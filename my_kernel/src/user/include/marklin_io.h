@@ -29,6 +29,7 @@ namespace MARKLIN_IO_SERVER
     private:
         uint32_t start_time;
         uint32_t end_time;
+        Queue<int, 32> sequence_length_buffer;
         int sequence_length;
         int count;
         bool canTransmit;

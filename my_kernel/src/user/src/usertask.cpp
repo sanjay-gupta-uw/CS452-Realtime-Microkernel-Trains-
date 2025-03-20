@@ -22,7 +22,7 @@
 
 void IdleTask()
 {
-    int FUT = CREATE(PRIORITY::P6, FirstUserTask);
+    int FUT = CREATE(PRIORITY::P4, FirstUserTask);
     uassert(FUT > 0 && "Error starting First User Task");
     /*
     // REGISTERAS("IdleTask");
@@ -42,7 +42,7 @@ extern "C" void _reboot(void); // Declare the reboot function implemented in ass
 
 static void CreateIOServers()
 {
-    int ioServerTid = CREATE(PRIORITY::P4, IO_SERVER::startIOServer); // Start the IO Server
+    int ioServerTid = CREATE(PRIORITY::P3, IO_SERVER::startIOServer); // Start the IO Server
     uassert(ioServerTid > 0 && "Error starting IO Server");
     IO_NS::PrintTerminal("IO Server started with TID %d\r\n", ioServerTid);
 
@@ -69,24 +69,24 @@ void FirstUserTask()
     IO_NS::PrintTerminal("Clock Server started with TID %d\r\n", clockServerTid);
 
     // create conductor for communicating between trains/sensors/switches
-    int ConductorTid = CREATE(PRIORITY::P3, Conductor_NS::start_conductor);
+    int ConductorTid = CREATE(PRIORITY::P4, Conductor_NS::start_conductor);
     uassert(ConductorTid > 0 && "Error starting Conductor");
     IO_NS::PrintTerminal("Conductor started with TID %d\r\n", ConductorTid);
 
     // create command prompt
-    int cmdTid = CREATE(PRIORITY::P5, UI_CMD_NS::start_command_prompt); // Start the Command Task
+    int cmdTid = CREATE(PRIORITY::P6, UI_CMD_NS::start_command_prompt); // Start the Command Task
     uassert(cmdTid > 0 && "Error starting Command Task");
     IO_NS::PrintTerminal("Command Task started with TID %d\r\n", cmdTid);
 
     // create the UI task
-    int uiTaskTid = CREATE(PRIORITY::P1, UI_NS::start_ui); // Start the UI Task
+    int uiTaskTid = CREATE(PRIORITY::P6, UI_NS::start_ui); // Start the UI Task
     uassert(uiTaskTid > 0 && "Error starting UI Task");
     IO_NS::PrintTerminal("UI Task started with TID %d\r\n", uiTaskTid);
 
     EXIT();
 }
 
-// this could send to the controller, but faster to send to the IO SERVER directly
+// this is deprecated -- see sensor.cpp for server implementation
 void SensorTask()
 {
     REGISTERAS("SensorTask");

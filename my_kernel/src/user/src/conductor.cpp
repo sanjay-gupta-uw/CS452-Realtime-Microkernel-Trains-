@@ -22,11 +22,11 @@ namespace Conductor_NS
         IO_NS::PrintTerminal("Conductor started\r\n");
 
         // create sensor server
-        SENSOR_SERVER_TID = CREATE(PRIORITY::P0, Sensors_NS::SensorServer);
+        SENSOR_SERVER_TID = CREATE(PRIORITY::P2, Sensors_NS::SensorServer);
         uassert(SENSOR_SERVER_TID > 0 && "Conductor::Error creating sensor server");
         IO_NS::PrintTerminal("Sensor server created with TID %d\r\n", SENSOR_SERVER_TID);
         // // create switch server
-        SWITCH_SERVER_TID = CREATE(PRIORITY::P0, Switch_NS::SwitchServer);
+        SWITCH_SERVER_TID = CREATE(PRIORITY::P2, Switch_NS::SwitchServer);
         uassert(SWITCH_SERVER_TID > 0 && "Conductor::Error creating switch server");
         IO_NS::PrintTerminal("Switch server created with TID %d\r\n", SWITCH_SERVER_TID);
 
@@ -116,7 +116,7 @@ namespace Conductor_NS
         case COMMAND::SPAWN_TRAIN:
         {
             IO_NS::PrintTerminal("Conductor received SPAWN_TRAIN request for train %d\r\n", req->id);
-            int spawned_train_tid = CREATE(PRIORITY::P0, Trains_NS::spawn_train);
+            int spawned_train_tid = CREATE(PRIORITY::P2, Trains_NS::spawn_train);
             uassert(spawned_train_tid > 0);
             IO_NS::PrintTerminal("Train %d spawned with TID %d\r\n", req->id, spawned_train_tid);
             bool trainSpawnedSuccess = false;
