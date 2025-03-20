@@ -84,9 +84,20 @@ namespace Switch_NS
         for (int i = 0; i < NUM_SWITCHES; ++i)
         {
             switches[i] = Switch(switch_addrs[i], MARKLIN_IO_SERVER_TID, CLOCK_SERVER_TID);
-            switches[i].SetSwitch(SWITCH_STATE::STRAIGHT);
-            IO_NS::Print(MOVE_CURSOR COLOR_GREEN "S", SWITCH_LOCATION + 3 + i, SWITCH_STATUS_COL);
+            // switches[i].SetSwitch(SWITCH_STATE::STRAIGHT);
+            // IO_NS::Print(MOVE_CURSOR COLOR_GREEN "S", SWITCH_LOCATION + 3 + i, SWITCH_STATUS_COL);
         }
+
+        IO_NS::PrintTerminal("SwitchServer: STARTING SWITCH TEST\r\n");
+        for (int i = 0; i < 20; ++i)
+        {
+            switches[0].SetSwitch(i % 2 == 0 ? SWITCH_STATE::STRAIGHT : SWITCH_STATE::CURVED);
+            IO_NS::Print(MOVE_CURSOR COLOR_GREEN "S", SWITCH_LOCATION + 3 + i, SWITCH_STATUS_COL);
+            IO_NS::PrintTerminal("DELAYING FOR 200 TICKS\r\n");
+            DELAY(CLOCK_SERVER_TID, 200);
+        }
+        uassert(false && "SwitchServer: Finished switch test");
+
         // switches[NUM_SWITCHES - 1].SendOffCommand();
 
         // int timer_tid = CREATE(PRIORITY::P0, switch_timer);
