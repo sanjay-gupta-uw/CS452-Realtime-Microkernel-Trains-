@@ -247,12 +247,24 @@ namespace UI_CMD_NS
                 ptr++;
             }
 
-            const char *node_name = ptr;
-            FindPathRequest request = {(unsigned char *)node_name};
+            // extract train num
 
+            // capitalize the first letter
+            char node_name[5];
+            for (int i = 0; i < 4; i++)
+            {
+                node_name[i] = *ptr;
+                ptr++;
+            }
+            node_name[4] = '\0';
+            if (node_name[0] >= 'a' && node_name[0] <= 'z')
+            {
+                node_name[0] = node_name[0] - 32;
+            }
+            ConductorRequest request(COMMAND::GOTO, 0, 0, node_name, node_name);
             // send node name to conductor
             IO_NS::PrintTerminal("Attempting to find path to %s, sending to Conductor tid: %d\r\n", node_name, CONDUCTOR_TID);
-            SEND(CONDUCTOR_TID, (char *)&request, sizeof(FindPathRequest), nullptr, 0);
+            SEND(CONDUCTOR_TID, (char *)&request, sizeof(request), nullptr, 0);
         }
 
         else

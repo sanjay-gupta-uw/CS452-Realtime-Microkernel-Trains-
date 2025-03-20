@@ -8,6 +8,7 @@
 #include "../include/name_server.h"
 #include "../include/clock_server.h"
 #include "../../containers/queue.h"
+#include "../../containers/pqueue.h"
 #include "../../containers/stack.h"
 
 // define our own memset to avoid SIMD instructions emitted from the compiler
@@ -2480,156 +2481,199 @@ track_node *Track::get_node_by_name(const char *name)
     return NULL;
 }
 
+static int get_node_index(track_node *node)
+{
+    int index = -1;
+    switch (node->type)
+    {
+    case NODE_SENSOR:
+        index = node->num;
+        break;
+    case NODE_BRANCH:
+    {
+        int node_num = (node->num <= 18) ? node->num : node->num - 134;
+        index = 80 + (node_num - 1) * 2;
+        break;
+    }
+    case NODE_MERGE:
+    {
+        int node_num = (node->num <= 18) ? node->num : node->num - 134;
+        index = 81 + (node_num - 1) * 2;
+        break;
+    }
+    case NODE_ENTER:
+    {
+        // remove EN from name
+        const char *name_ptr = node->name + 2;
+        int node_num = 0;
+        while (*name_ptr >= '0' && *name_ptr <= '9')
+        {
+            node_num = node_num * 10 + (*name_ptr - '0');
+            name_ptr++;
+        }
+        index = 124 + (node_num - 1) * 2;
+        break;
+    }
+    case NODE_EXIT:
+    {
+        // remove EX from name
+        const char *name_ptr = node->name + 2;
+        int node_num = 0;
+        while (*name_ptr >= '0' && *name_ptr <= '9')
+        {
+            node_num = node_num * 10 + (*name_ptr - '0');
+            name_ptr++;
+        }
+        index = 125 + (node_num - 1) * 2;
+        break;
+    }
+    default:
+        break;
+    }
+    return index;
+}
+
 /*
   Find a path from the destination into the loop
 */
-void Track::find_path(const char *start)
+void Track::find_path(const char *start, const char *dest)
 {
-    figure_eight(); // initial reset
+    IO_NS::PrintTerminal("Track::find_path: Finding path from %s to %s\r\n", start, dest);
+    const int MAX_DIST = (1 << 31) - 1; // since we are using signed integers
 
-    track_node *start_node = get_node_by_name(start);
-    if (start_node == NULL)
+    int dist[TRACK_MAX];
+    int prev_node[TRACK_MAX];
+    for (int i = 0; i < TRACK_MAX; i++)
     {
-        IO_NS::PrintTerminal("Track::find_path: Destination node not found!\r\n");
+        dist[i] = MAX_DIST;
+        prev_node[i] = -1;
+    }
+    // PQ for nodes to explore
+    track_node *start_node = get_node_by_name(start);
+    if (start_node == NULL || start_node->type != NODE_SENSOR)
+    {
+        IO_NS::PrintTerminal("Track::find_path: Start node not found, please ensure only sensor nodes are requested!\r\n");
         return;
     }
+    int index = get_node_index(start_node);
+    uassert(index >= 0 && "Track::find_path: index is negative! UNEXPECTED ERROR");
+    dist[index] = 0;
 
-    IO_NS::PrintTerminal("Track::find_path: Determining path to %s\r\n", start);
+    // PQueue for nodes to explore, sorted by distance
+    PQueue<int> pq;
+    pq.Push(index, 0); // push start node
 
-    /*
-    Logic: Given initial node, acting as where we want to stop, we can trigger this sensor by
-    reversing the start position, and going forward until were in a loop
-    - If we encounter a branch, save position and follow down path as in DFS
-
-    - Edge Cases:
-        - Stop at enter point
-    */
-    int path_level = 0;
-
-    struct PathNode
+    bool path_found = false;
+    // Dijkstra's algorithm
+    while (!pq.isEmpty())
     {
-        track_node *node;
-        int level;
-        bool explored_both;
-    };
+        int index;
+        uassert(pq.Pop(&index) >= 0 && "Track::find_path: error popping from PQ");
+        uassert(index >= 0 && "Track::find_path: index is negative");
 
-    // 22 switches, each has merge, 5*16 = 80 sensors, 10 enter/exit nodes each
-    // 80 should be more than enough
-    Stack<PathNode, 80> path;
-    track_node *curnode = start_node->reverse;
+        track_node *curnode = &track[index];
 
-    while (!curnode->is_node_in_loop)
-    {
-        IO_NS::PrintTerminal("Track::find_path: Current node: %s, Path level: %d\r\n", curnode->name, path_level);
-        // IO_NS::PrintTerminal("Track::find_path: Current node: %s\r\n", curnode->name);
-        if (curnode->type == NODE_BRANCH)
+        // IO_NS::PrintTerminal("{ %s  ", curnode->name);
+
+        // check if we have reached the destination
+        if (strcmp(curnode->name, dest) == 0)
         {
-            // save position
-            IO_NS::PrintTerminal("Track::find_path: Pushing Branch node: %s\r\n", curnode->name);
-            path.Push({curnode, path_level++, false});
-            // follow down path
-            curnode = curnode->edge[DIR_STRAIGHT].dest;
-            continue;
+            // IO_NS::PrintTerminal("Track::find_path: Found path to %s\r\n", dest);
+            path_found = true;
+            break;
         }
-        // follow edge to destination node
 
-        if (curnode->type == NODE_EXIT)
+        // push reverse node incase reversing provides a shorter path
+        if (curnode->type == track_node_type::NODE_SENSOR)
         {
-            IO_NS::PrintTerminal("Track::find_path: Reached exit node: %s\r\n", curnode->name);
-            // need to pop all nodes from this level
-            while (!path.IsEmpty())
+            track_node *reverse_node = curnode->reverse;
+            uassert(reverse_node != NULL && "Track::find_path: sensor reverse node is NULL");
+            int reverse_index = get_node_index(reverse_node);
+            if (dist[reverse_index] > dist[index] + REVERSE_COST)
             {
-                PathNode path_node;
-                path.Pop(&path_node);
-                IO_NS::PrintTerminal("Track::find_path: path_node name: %s, path_node level: %d, path_node check_both: %c, path level: %d,\r\n", path_node.node->name, path_node.level, path_node.explored_both ? 'Y' : 'N', path_level);
-
-                if (path_node.level < path_level && !path_node.explored_both)
-                {
-                    if (path_node.node->type != NODE_BRANCH)
-                    {
-                        while (!path.IsEmpty())
-                        {
-                            path.Pop(&path_node);
-                        }
-                        break;
-                    }
-                    // unexplored path
-                    IO_NS::PrintTerminal("Track::find_path: Exploring other path from %s\r\n", path_node.node->name);
-                    path_node.explored_both = true;
-                    path.Push(path_node);
-                    path_level = path_node.level + 1;
-                    IO_NS::PrintTerminal("Track::find_path: New path level: %d\r\n", path_level);
-                    curnode = path_node.node->edge[DIR_CURVED].dest;
-                    break;
-                }
-            }
-            if (path.IsEmpty())
-            {
-                IO_NS::PrintTerminal("Track::find_path: Path to %s not found!\r\n", start);
-                return;
+                dist[reverse_index] = dist[index] + REVERSE_COST;
+                prev_node[reverse_index] = index;
+                pq.Push(reverse_index, dist[reverse_index]);
             }
         }
-        IO_NS::PrintTerminal("Track::find_path: Pushing node: %s\r\n", curnode->name);
-        path.Push({curnode, path_level, false});
 
-        curnode = curnode->edge[DIR_AHEAD].dest;
-        IO_NS::PrintTerminal("Track::find_path: Following edge to %s\r\n", curnode->name);
+        // push all outgoing edges
+        // if node is branch, then two edges
+        // otherwise, just one edge
+        int num_edges = 0;
+        switch (curnode->type)
+        {
+        case track_node_type::NODE_BRANCH:
+        {
+            num_edges = 2;
+            break;
+        }
+        case track_node_type::NODE_SENSOR:
+        case track_node_type::NODE_MERGE:
+        case track_node_type::NODE_ENTER:
+        {
+            num_edges = 1;
+            break;
+        }
+        default:
+            break;
+        }
+        // IO_NS::PrintTerminal(" NEd: %d ", num_edges);
+
+        for (int i = 0; i < num_edges; i++)
+        {
+            track_edge *edge = &curnode->edge[i];
+            int dest_index = get_node_index(edge->dest);
+            // IO_NS::PrintTerminal(" %s ", edge->dest->name);
+            // IO_NS::PrintTerminal(" dist[index]:%d edge[dist]:%d dest_index:%d cur_dist:%d ", dist[index], edge->dist, dest_index, dist[dest_index]);
+
+            if (dist[dest_index] > dist[index] + edge->dist)
+            {
+                // IO_NS::PrintTerminal(" ADDING TO PQ ");
+                dist[dest_index] = dist[index] + edge->dist;
+                prev_node[dest_index] = index;
+                pq.Push(dest_index, dist[dest_index]);
+            }
+        }
+        // IO_NS::PrintTerminal("} ");
     }
 
-    path.Push({curnode, path_level, false});
-    IO_NS::PrintTerminal("Track::find_path: Path to %s found!\r\n", start);
-    while (!path.IsEmpty())
+    if (!path_found)
     {
-        PathNode path_node;
-        path.Pop(&path_node);
-        IO_NS::PrintTerminal("Track::find_path: Node ~ %s\r\n", path_node.node->name);
+        IO_NS::PrintTerminal("Track::find_path: No path found to %s\r\n", dest);
+        return;
+    }
+    else // print path
+    {
+        int dest_index = get_node_index(get_node_by_name(dest));
+        int cur_index = dest_index;
+        IO_NS::PrintTerminal("Track::find_path: Path: ");
+        int prior_index = -1;
+        while (cur_index != -1)
+        {
+            track_node *node = &track[cur_index];
+            if (node->type == track_node_type::NODE_BRANCH && prior_index >= 0)
+            {
+                track_node *branch_result = &track[prior_index];
+
+                if (node->edge[DIR_STRAIGHT].dest == branch_result)
+                {
+                    IO_NS::PrintTerminal("STRAIGHT ");
+                }
+                else if (node->edge[DIR_CURVED].dest == branch_result)
+                {
+                    IO_NS::PrintTerminal("CURVED ");
+                }
+            }
+            IO_NS::PrintTerminal("%s ", node->name);
+
+            prior_index = cur_index;
+            cur_index = prev_node[cur_index];
+        }
+        IO_NS::PrintTerminal("; Total distance: %d\r\n", dist[dest_index]);
     }
 }
 
 void Track::figure_eight()
 {
-    /*
-    IO_NS::PrintTerminal("Track::figure_eight: Setting switches for figure eight\r\n");
-    // middle switch indexes
-    const int SWITCH_OFFSET = 80; // different since we use all switches
-
-    const int middle_switches[4] = {0x9a, 0x9b, 0x9c, 0x99};
-
-    // const int LEFT_CURVE[2] = {0x9c, 0x9a};
-    // const int RIGHT_CURVE[2] = {0x99, 0x9b};
-
-    if (CONTROLLER_TID < 0)
-    {
-        CONTROLLER_TID = WHOIS("MarklinController");
-        if (CONTROLLER_TID < 0)
-        {
-            IO_NS::PrintTerminal("Track::figure_eight: MarklinController not found!\r\n");
-            return;
-        }
-    }
-
-    const int SWITCH_COUNT = 22;
-    SwitchSetting switches[SWITCH_COUNT];
-    for (int i = 1; i <= SWITCH_COUNT; i++)
-    {
-        switches[i - 1].switch_num = (i < 19) ? (i) : (middle_switches[i - 19]);
-        switches[i - 1].dir = SWITCH_CURVED;
-    }
-
-    // switches[9].dir = SWITCH_STRAIGHT;
-    switches[21].dir = SWITCH_STRAIGHT; // Set 99 to straight
-    switches[21].dir = SWITCH_STRAIGHT; // Set 99 to straight
-
-    for (int i = 0; i < SWITCH_COUNT; i++)
-    {
-        // send command to controller
-        MarklinRequest request;
-        request.type = COMMAND::SET_SWITCH;
-        request.id = switches[i].switch_num;
-        request.data = switches[i].dir == SWITCH_STRAIGHT ? 'S' : 'C';
-        SEND(CONTROLLER_TID, (char *)&request, sizeof(request), NULL, 0);
-    }
-    MarklinRequest request = {COMMAND::SOLENOID_OFF, switches[SWITCH_COUNT - 1].switch_num};
-    SEND(CONTROLLER_TID, (char *)&request, sizeof(request), NULL, 0);
-    */
 }

@@ -22,11 +22,11 @@ namespace Conductor_NS
         IO_NS::PrintTerminal("Conductor started\r\n");
 
         // create sensor server
-        SWITCH_SERVER_TID = CREATE(PRIORITY::P0, Switch_NS::SwitchServer);
-        uassert(SWITCH_SERVER_TID > 0 && "Conductor::Error creating switch server");
+        // SWITCH_SERVER_TID = CREATE(PRIORITY::P0, Switch_NS::SwitchServer);
+        // uassert(SWITCH_SERVER_TID > 0 && "Conductor::Error creating switch server");
         // create switch server
-        SENSOR_SERVER_TID = CREATE(PRIORITY::P0, Sensors_NS::SensorServer);
-        uassert(SENSOR_SERVER_TID > 0 && "Conductor::Error creating sensor server");
+        // SENSOR_SERVER_TID = CREATE(PRIORITY::P0, Sensors_NS::SensorServer);
+        // uassert(SENSOR_SERVER_TID > 0 && "Conductor::Error creating sensor server");
 
         // initialize train_arr
         for (int i = 0; i < NUM_TRAINS; i++)
@@ -58,6 +58,7 @@ namespace Conductor_NS
 
     void Conductor::ProcessRequest(CMDRequest *req)
     {
+        IO_NS::PrintTerminal("Conductor processing request\r\n");
         switch (req->command)
         {
         case COMMAND::SET_SWITCH:
@@ -140,7 +141,8 @@ namespace Conductor_NS
         }
         case COMMAND::GOTO:
         {
-            IO_NS::PrintTerminal("UNIMPLEMENTED: Conductor received GOTO request for train %d to node %s\r\n", req->id, req->data);
+            IO_NS::PrintTerminal("UNIMPLEMENTED: Conductor received GOTO request\r\n");
+
             // track.find_path((char *)req->data);
             break;
         }
@@ -168,9 +170,14 @@ namespace Conductor_NS
 
         REPLY(sender_tid, nullptr, 0);
         // test
-
-        // spawn sensor task
-        int sensor_server_tid = CREATE(PRIORITY::P0, Sensors_NS::SensorServer);
+        {
+            // test path finding
+            conductor.track.find_path("E1", "E14");
+            conductor.track.find_path("E9", "D8");
+            conductor.track.find_path("A1", "A2");
+            conductor.track.find_path("A1", "E7");
+            conductor.track.find_path("A2", "E7");
+        }
 
         ConductorRequest req;
         while (true)

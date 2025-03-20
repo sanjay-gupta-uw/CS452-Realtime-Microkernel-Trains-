@@ -24,6 +24,8 @@ struct CMDRequest
     COMMAND command;
     int id;
     int data;
+    char *src;
+    char *dest;
 };
 
 enum class RequestType
@@ -87,7 +89,7 @@ struct ConductorRequest
     ConductorRequest() {}
 
     // Constructor for CMDRequest
-    ConductorRequest(COMMAND command, int id, int requestData)
+    ConductorRequest(COMMAND command, int id, int requestData, char *src = nullptr, char *dest = nullptr)
         : requestType(RequestType::CMD)
     {
         data.cmdRequest = {command, id, requestData};
