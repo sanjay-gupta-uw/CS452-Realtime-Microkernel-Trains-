@@ -219,7 +219,6 @@ namespace MARKLIN_IO_SERVER
             if (count == 0)
             {
                 sequence_length_buffer.Pop(&sequence_length);
-                start_time = clock.Time();
             }
 
             unsigned char ch;
@@ -229,14 +228,18 @@ namespace MARKLIN_IO_SERVER
             canTransmit = false;
             total_bytes_transmitted++;
             count++;
-            if (count == sequence_length)
+            if (count == 2)
+            {
+                start_time = clock.Time();
+            }
+            else if (count == sequence_length)
             {
                 end_time = clock.Time();
                 IO_NS::PrintTerminal("MarklinIOServer::handle_transmission: Time to send 4-byte sequence: %d ms\r\n", (end_time - start_time) / 1000);
                 count = 0;
                 // IO_NS::PrintTerminal("MarklinIOServer::handle_transmission: Finished transmitting sequence\r\n");
             }
-            IO_NS::Print(MOVE_CURSOR COLOR_GREEN "%d", TRANSMITTED_BYTES_LOCATION, TRANSMITTED_BYTES_COL, total_bytes_transmitted);
+            // IO_NS::Print(MOVE_CURSOR COLOR_GREEN "%d", TRANSMITTED_BYTES_LOCATION, TRANSMITTED_BYTES_COL, total_bytes_transmitted);
             // uassert(false && "FORCED PANIC -- FINISHED TRANSMITTING BYTE");
         }
     }
