@@ -64,9 +64,9 @@ void FirstUserTask()
     CreateIOServers();
 
     // create the clock server
-    // int clockServerTid = CREATE(PRIORITY::P1, ClockServer); // Start the Clock Server
-    // uassert(clockServerTid > 0 && "Error starting Clock Server");
-    // IO_NS::PrintTerminal("Clock Server started\r\n");
+    int clockServerTid = CREATE(PRIORITY::P1, ClockServer); // Start the Clock Server
+    uassert(clockServerTid > 0 && "Error starting Clock Server");
+    IO_NS::PrintTerminal("Clock Server started\r\n");
 
     // create conductor for communicating between trains/sensors/switches
     int ConductorTid = CREATE(PRIORITY::P3, Conductor_NS::start_conductor);

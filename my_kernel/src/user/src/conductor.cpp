@@ -22,11 +22,11 @@ namespace Conductor_NS
         IO_NS::PrintTerminal("Conductor started\r\n");
 
         // create sensor server
-        // SWITCH_SERVER_TID = CREATE(PRIORITY::P0, Switch_NS::SwitchServer);
-        // uassert(SWITCH_SERVER_TID > 0 && "Conductor::Error creating switch server");
+        SWITCH_SERVER_TID = CREATE(PRIORITY::P0, Switch_NS::SwitchServer);
+        uassert(SWITCH_SERVER_TID > 0 && "Conductor::Error creating switch server");
         // create switch server
-        // SENSOR_SERVER_TID = CREATE(PRIORITY::P0, Sensors_NS::SensorServer);
-        // uassert(SENSOR_SERVER_TID > 0 && "Conductor::Error creating sensor server");
+        SENSOR_SERVER_TID = CREATE(PRIORITY::P0, Sensors_NS::SensorServer);
+        uassert(SENSOR_SERVER_TID > 0 && "Conductor::Error creating sensor server");
 
         // initialize train_arr
         for (int i = 0; i < NUM_TRAINS; i++)
