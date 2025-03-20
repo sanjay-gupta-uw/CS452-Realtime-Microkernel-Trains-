@@ -42,11 +42,11 @@ namespace MARKLIN_IO_SERVER
     void MarklinIOServer::spawnNotifiers()
     {
         // ensure this runs before tx_notifier
-        rx_notifier_tid = CREATE(PRIORITY::P0, notifier_rx);
+        rx_notifier_tid = CREATE(PRIORITY::P1, notifier_rx);
         uassert(rx_notifier_tid >= 0 && "Error starting RX Notifier");
         IO_NS::PrintTerminal("RX Notifier started with TID %d\r\n", rx_notifier_tid);
 
-        tx_notifier_tid = CREATE(PRIORITY::P0, notifier_tx);
+        tx_notifier_tid = CREATE(PRIORITY::P1, notifier_tx);
         uassert(tx_notifier_tid >= 0 && "Error starting TX Notifier");
         IO_NS::PrintTerminal("TX Notifier started with TID %d\r\n", tx_notifier_tid);
     }
@@ -183,7 +183,7 @@ namespace MARKLIN_IO_SERVER
                 if (!m_req.isSingleByteCommand)
                 {
                     transmit_buffer.Push(m_req.byte2);
-                    len = 2;
+                    len = 4;
                 }
                 sequence_length_buffer.Push(len);
                 reply.type = REPLY_TYPE::SUCCESS;

@@ -46,7 +46,7 @@ namespace Switch_NS
         MARKLIN_IO_SERVER::MarklinRequest request = {false, switch_cmd, address};
         MARKLIN_IO_SERVER::SendCmd(MARKLIN_IO_SERVER_TID, &request);
         state = ALIGNMENT;
-        // DELAY(CLOCK_SERVER_TID, 15);
+        DELAY(CLOCK_SERVER_TID, 15);
 
         uint32_t end_time = clock.Time();
         IO_NS::PrintTerminal("SetSwitch::time to send and return first switch command: %d\r\n", end_time - start_time);

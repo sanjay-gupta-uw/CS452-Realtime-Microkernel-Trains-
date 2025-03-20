@@ -46,7 +46,7 @@ static void CreateIOServers()
     uassert(ioServerTid > 0 && "Error starting IO Server");
     IO_NS::PrintTerminal("IO Server started with TID %d\r\n", ioServerTid);
 
-    int marklinIoServerTid = CREATE(PRIORITY::P0, MARKLIN_IO_SERVER::startMarklinIOServer); // Start the Marklin IO Server
+    int marklinIoServerTid = CREATE(PRIORITY::P1, MARKLIN_IO_SERVER::startMarklinIOServer); // Start the Marklin IO Server
     uassert(marklinIoServerTid > 0 && "Error starting Marklin IO Server");
     IO_NS::PrintTerminal("Marklin IO Server started with TID %d\r\n", marklinIoServerTid);
 }
