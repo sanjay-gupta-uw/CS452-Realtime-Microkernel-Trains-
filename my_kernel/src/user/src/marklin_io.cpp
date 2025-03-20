@@ -28,6 +28,10 @@ namespace MARKLIN_IO_SERVER
         total_bytes_transmitted = 0;
         REGISTERAS("MarklinIOServer");
         spawnNotifiers();
+
+        sequence_length = 0;
+        count = 0;
+
         run();
     }
 
@@ -175,9 +179,11 @@ namespace MARKLIN_IO_SERVER
                 // IO_NS::PrintTerminal("MarklinIO_server::SEND_CMD\r\n");
                 MarklinRequest m_req = *(req.request);
                 transmit_buffer.Push(m_req.byte1);
+                sequence_length = 1;
                 if (!m_req.isSingleByteCommand)
                 {
                     transmit_buffer.Push(m_req.byte2);
+                    sequence_length = 4;
                 }
                 reply.type = REPLY_TYPE::SUCCESS;
                 send_reply = true;
@@ -205,6 +211,10 @@ namespace MARKLIN_IO_SERVER
         uassert(canTransmit && "MarklinIOServer::handle_transmission: PANIC, cannot transmit");
         if (canTransmit && !transmit_buffer.IsEmpty())
         {
+            if (count == 0)
+            {
+                start_time = clock.Time();
+            }
             // IO_NS::PrintTerminal("MarklinIOServer::handle_transmission: Transmitting\r\n");
             IO_REPLY reply = {REPLY_TYPE::SUCCESS, UNDEFINED_CHAR};
             REPLY(tx_notifier_tid, (char *)&reply, sizeof(reply));
@@ -215,6 +225,15 @@ namespace MARKLIN_IO_SERVER
 
             canTransmit = false;
             total_bytes_transmitted++;
+            count++;
+            if (count == sequence_length)
+            {
+                end_time = clock.Time();
+                IO_NS::PrintTerminal("MarklinIOServer::handle_transmission: Time to send 4-byte sequence: %d\r\n", end_time - start_time);
+
+                count = 0;
+                // IO_NS::PrintTerminal("MarklinIOServer::handle_transmission: Finished transmitting sequence\r\n");
+            }
             IO_NS::Print(MOVE_CURSOR COLOR_GREEN "%d", TRANSMITTED_BYTES_LOCATION, TRANSMITTED_BYTES_COL, total_bytes_transmitted);
             // uassert(false && "FORCED PANIC -- FINISHED TRANSMITTING BYTE");
         }

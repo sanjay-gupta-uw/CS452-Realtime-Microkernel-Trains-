@@ -27,6 +27,10 @@ namespace MARKLIN_IO_SERVER
         // interface for the IO server
 
     private:
+        uint32_t start_time;
+        uint32_t end_time;
+        int sequence_length;
+        int count;
         bool canTransmit;
         int total_bytes_transmitted;
 
