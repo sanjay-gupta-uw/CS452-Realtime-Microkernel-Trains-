@@ -28,15 +28,16 @@ namespace Switch_NS
     class Switch
     {
     private:
+        int CLOCK_SERVER_TID;
         int MARKLIN_IO_SERVER_TID;
         int address;
+        void SendOffCommand();
 
     public:
         Switch();
-        Switch(int address, int MARKLIN_IO_SERVER_TID);
+        Switch(int address, int MARKLIN_IO_SERVER_TID, int CLOCK_SERVER_TID);
         ~Switch();
         bool SetSwitch(SWITCH_STATE ALIGNMENT);
-        void SendOffCommand();
 
         SWITCH_STATE state;
     };
