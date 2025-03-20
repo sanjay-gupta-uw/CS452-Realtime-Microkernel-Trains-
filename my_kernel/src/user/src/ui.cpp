@@ -10,7 +10,10 @@ namespace UI_NS
 
     static void init_switch_display()
     {
-        const int SWITCH_ADDR[SWITCH_COUNT] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 0x9A, 0x9B, 0x9C, 0x99};
+        const int SWITCH_ADDR[NUM_SWITCHES] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+                                               11, 12, 13, 14, 15, 16, 17, 18,
+                                               0x99, 0x9A, 0x9B, 0x9C};
+
         IO_NS::Print(COLOR_WHITE MOVE_CURSOR "-------------------------\r\n", SWITCH_LOCATION + 0, 1);
         IO_NS::Print(COLOR_WHITE MOVE_CURSOR "|   Table of Switches:  |\r\n", SWITCH_LOCATION + 1, 1);
         IO_NS::Print(COLOR_WHITE MOVE_CURSOR "-------------------------\r\n", SWITCH_LOCATION + 2, 1);

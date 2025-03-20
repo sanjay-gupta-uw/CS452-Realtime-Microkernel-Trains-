@@ -40,9 +40,11 @@ namespace MARKLIN_IO_SERVER
         // ensure this runs before tx_notifier
         rx_notifier_tid = CREATE(PRIORITY::P0, notifier_rx);
         uassert(rx_notifier_tid >= 0 && "Error starting RX Notifier");
+        IO_NS::PrintTerminal("RX Notifier started with TID %d\r\n", rx_notifier_tid);
 
         tx_notifier_tid = CREATE(PRIORITY::P0, notifier_tx);
         uassert(tx_notifier_tid >= 0 && "Error starting TX Notifier");
+        IO_NS::PrintTerminal("TX Notifier started with TID %d\r\n", tx_notifier_tid);
     }
 
     void notifier_rx()
@@ -118,7 +120,7 @@ namespace MARKLIN_IO_SERVER
         while (true)
         {
             int retval = RECEIVE(&sender_tid, (char *)&req, sizeof(req));
-            IO_NS::PrintTerminal("MarklinIO_server::run: Received request from tid{%d} of size{%d}\r\n", sender_tid, retval);
+            // IO_NS::PrintTerminal("MarklinIO_server::run: Received request from tid{%d} of size{%d}\r\n", sender_tid, retval);
 
             IO_REPLY reply;
             reply.type = REPLY_TYPE::FAILURE;
@@ -213,7 +215,8 @@ namespace MARKLIN_IO_SERVER
 
             canTransmit = false;
             total_bytes_transmitted++;
-            // IO_NS::Print(MOVE_CURSOR COLOR_GREEN "%d", TRANSMITTED_BYTES_LOCATION, TRANSMITTED_BYTES_COL, total_bytes_transmitted);
+            IO_NS::Print(MOVE_CURSOR COLOR_GREEN "%d", TRANSMITTED_BYTES_LOCATION, TRANSMITTED_BYTES_COL, total_bytes_transmitted);
+            // uassert(false && "FORCED PANIC -- FINISHED TRANSMITTING BYTE");
         }
     }
 

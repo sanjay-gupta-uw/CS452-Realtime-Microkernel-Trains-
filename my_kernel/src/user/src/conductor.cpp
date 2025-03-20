@@ -22,11 +22,13 @@ namespace Conductor_NS
         IO_NS::PrintTerminal("Conductor started\r\n");
 
         // create sensor server
-        SWITCH_SERVER_TID = CREATE(PRIORITY::P0, Switch_NS::SwitchServer);
-        uassert(SWITCH_SERVER_TID > 0 && "Conductor::Error creating switch server");
-        // create switch server
         SENSOR_SERVER_TID = CREATE(PRIORITY::P0, Sensors_NS::SensorServer);
         uassert(SENSOR_SERVER_TID > 0 && "Conductor::Error creating sensor server");
+        IO_NS::PrintTerminal("Sensor server created with TID %d\r\n", SENSOR_SERVER_TID);
+        // // create switch server
+        SWITCH_SERVER_TID = CREATE(PRIORITY::P0, Switch_NS::SwitchServer);
+        uassert(SWITCH_SERVER_TID > 0 && "Conductor::Error creating switch server");
+        IO_NS::PrintTerminal("Switch server created with TID %d\r\n", SWITCH_SERVER_TID);
 
         // initialize train_arr
         for (int i = 0; i < NUM_TRAINS; i++)
@@ -63,7 +65,7 @@ namespace Conductor_NS
         {
         case COMMAND::SET_SWITCH:
         {
-            IO_NS::PrintTerminal("Conductor received SET_SWITCH request for switch %d\r\n", req->id);
+            IO_NS::PrintTerminal("Conductor received SET_SWITCH request for switch index %d\r\n", req->id);
             int switch_index = req->id;
             Switch_NS::SWITCH_STATE state = (req->data == 'S') ? Switch_NS::SWITCH_STATE::STRAIGHT : Switch_NS::SWITCH_STATE::CURVED;
             Switch_NS::SwitchRequest switch_req = {false, switch_index, state};
@@ -116,6 +118,7 @@ namespace Conductor_NS
             IO_NS::PrintTerminal("Conductor received SPAWN_TRAIN request for train %d\r\n", req->id);
             int spawned_train_tid = CREATE(PRIORITY::P0, Trains_NS::spawn_train);
             uassert(spawned_train_tid > 0);
+            IO_NS::PrintTerminal("Train %d spawned with TID %d\r\n", req->id, spawned_train_tid);
             bool trainSpawnedSuccess = false;
 
             Trains_NS::TrainParams train_params = {req->id, 0};

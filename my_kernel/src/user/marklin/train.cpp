@@ -57,14 +57,14 @@ namespace Trains_NS
     void Train::Reverse()
     {
         isReversed = !isReversed;
-        MARKLIN_IO_SERVER::MarklinRequest request = {false, REVERSE_CMD, train_num};
+        MARKLIN_IO_SERVER::MarklinRequest request = {false, REVERSE_CMD + 16, train_num};
         MARKLIN_IO_SERVER::SendCmd(MARKLIN_IO_SERVER_TID, &request);
     }
 
     void Train::Stop()
     {
         train_speed = 0;
-        MARKLIN_IO_SERVER::MarklinRequest request = {false, train_speed, train_num};
+        MARKLIN_IO_SERVER::MarklinRequest request = {false, train_speed + 16, train_num};
         MARKLIN_IO_SERVER::SendCmd(MARKLIN_IO_SERVER_TID, &request);
     }
 

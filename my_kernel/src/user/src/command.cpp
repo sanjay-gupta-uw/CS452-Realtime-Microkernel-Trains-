@@ -17,7 +17,7 @@ namespace UI_CMD_NS
         {
             return switch_num - 1;
         }
-        int middle_switches[4] = {0x9A, 0x9B, 0x9C, 0x99};
+        int middle_switches[4] = {0x99, 0x9A, 0x9B, 0x9C};
         for (int i = 0; i < 4; i++)
         {
             if (switch_num == middle_switches[i])
@@ -121,7 +121,19 @@ namespace UI_CMD_NS
             // create marklin request
             IO_NS::PrintTerminal("Attempting to set Switch %d to %c\r\n", switch_num, switch_state);
             ConductorRequest request(COMMAND::SET_SWITCH, switch_index, switch_state);
+
             SEND(CONDUCTOR_TID, (char *)&request, sizeof(ConductorRequest), nullptr, 0);
+            // update switch display
+            // need to get status of switch
+
+            if (switch_state == 'S')
+            {
+                IO_NS::Print(MOVE_CURSOR COLOR_GREEN "S", SWITCH_LOCATION + 3 + switch_index, SWITCH_STATUS_COL);
+            }
+            else
+            {
+                IO_NS::Print(MOVE_CURSOR COLOR_RED "C", SWITCH_LOCATION + 3 + switch_index, SWITCH_STATUS_COL);
+            }
         }
         else if ((first == 'T' || first == 't') &&
                  (second == 'R' || second == 'r'))

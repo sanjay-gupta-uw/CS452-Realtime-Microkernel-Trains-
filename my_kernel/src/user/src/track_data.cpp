@@ -2649,6 +2649,7 @@ void Track::find_path(const char *start, const char *dest)
         int cur_index = dest_index;
         IO_NS::PrintTerminal("Track::find_path: Path: ");
         int prior_index = -1;
+        Stack<track_node *, TRACK_MAX> path;
         while (cur_index != -1)
         {
             track_node *node = &track[cur_index];

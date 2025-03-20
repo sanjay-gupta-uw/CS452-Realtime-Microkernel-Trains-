@@ -11,19 +11,19 @@
 namespace Switch_NS
 {
 #define NUM_SWITCHES 22
+    typedef enum
+    {
+        STRAIGHT, // green
+        CURVED,   // red
+        UNINITIALIZED,
+    } SWITCH_STATE;
 
     struct SwitchRequest
     {
         bool isTimer;
         int switch_index;
-        char switch_state;
+        SWITCH_STATE switch_state;
     };
-
-    typedef enum
-    {
-        STRAIGHT, // green
-        CURVED,   // red
-    } SWITCH_STATE;
 
     class Switch
     {
@@ -35,8 +35,10 @@ namespace Switch_NS
         Switch();
         Switch(int address, int MARKLIN_IO_SERVER_TID);
         ~Switch();
-        void SetSwitch(SWITCH_STATE ALIGNMENT);
+        bool SetSwitch(SWITCH_STATE ALIGNMENT);
         void SendOffCommand();
+
+        SWITCH_STATE state;
     };
 
     void SwitchServer();
