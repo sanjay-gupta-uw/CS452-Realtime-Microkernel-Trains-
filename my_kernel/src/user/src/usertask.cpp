@@ -22,14 +22,16 @@
 
 void IdleTask()
 {
-    int FUT = CREATE(PRIORITY::P4, FirstUserTask);
+    int FUT = CREATE(PRIORITY::P5, FirstUserTask);
     uassert(FUT > 0 && "Error starting First User Task");
+
+    int IdleCompute = CREATE(PRIORITY::P7, ComputeIdleTask);
+    uassert(IdleCompute > 0 && "Error starting Compute Idle Task");
+
     /*
     // REGISTERAS("IdleTask");
     // extern Clock clock;
     */
-    int IdleCompute = CREATE(PRIORITY::P6, ComputeIdleTask);
-    uassert(IdleCompute > 0 && "Error starting Compute Idle Task");
     for (;;)
     {
         // IO_NS::PrintTerminal("Idle Task\r\n");
@@ -42,6 +44,7 @@ extern "C" void _reboot(void); // Declare the reboot function implemented in ass
 
 static void CreateIOServers()
 {
+
     int ioServerTid = CREATE(PRIORITY::P4, IO_SERVER::startIOServer); // Start the IO Server
     uassert(ioServerTid > 0 && "Error starting IO Server");
     IO_NS::PrintTerminal("IO Server started with TID %d\r\n", ioServerTid);
