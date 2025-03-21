@@ -26,9 +26,9 @@ namespace Conductor_NS
         uassert(SENSOR_SERVER_TID > 0 && "Conductor::Error creating sensor server");
         IO_NS::PrintTerminal("Sensor server created with TID %d\r\n", SENSOR_SERVER_TID);
         // // create switch server
-        SWITCH_SERVER_TID = CREATE(PRIORITY::DEVICE_SERVER, Switch_NS::SwitchServer);
-        uassert(SWITCH_SERVER_TID > 0 && "Conductor::Error creating switch server");
-        IO_NS::PrintTerminal("Switch server created with TID %d\r\n", SWITCH_SERVER_TID);
+        // SWITCH_SERVER_TID = CREATE(PRIORITY::DEVICE_SERVER, Switch_NS::SwitchServer);
+        // uassert(SWITCH_SERVER_TID > 0 && "Conductor::Error creating switch server");
+        // IO_NS::PrintTerminal("Switch server created with TID %d\r\n", SWITCH_SERVER_TID);
 
         // initialize train_arr
         for (int i = 0; i < NUM_TRAINS; i++)

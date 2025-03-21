@@ -82,6 +82,7 @@ namespace MARKLIN_IO_SERVER
             // (CONSOLE, "ENABLING RX INTERRUPT\r\n");
             int retval = AWAITEVENT(InterruptEvents::UART_MARKLIN_RX);
             uassert(retval >= 0 && "RX NOTIFIER AWAITEVENT returned error");
+            uassert(false && "MARKLIN RX NOTIFIER AWOKEN");
             // (CONSOLE, "RX NOTIFIER AWOKEN\r\n");
 
             IO_REQUEST req{IO_REQUEST_TYPE::RX_NOTIFIER, 0};
@@ -160,6 +161,7 @@ namespace MARKLIN_IO_SERVER
             {
             case IO_REQUEST_TYPE::RX_NOTIFIER:
             {
+                uassert(false && "MarklinIO_server::RX_NOTIFIER: -- Received RX Notifier");
                 unsigned char ch = (unsigned char)uart_getc_non_blocking(MARKLIN);
                 receive_buffer.Push(ch);
 
@@ -277,6 +279,13 @@ namespace MARKLIN_IO_SERVER
             count++;
 
             int DELAY_TIME = 25;
+
+            if (sequence_length == 1)
+            {
+                // sensor read
+                IO_NS::PrintTerminal("MarklinIOServer::handle_transmission: sent sensor read command\r\n");
+            }
+
             if (count == 2 && sequence_length == 3)
             {
                 start_time = clock.Time();

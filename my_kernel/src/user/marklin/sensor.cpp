@@ -2,6 +2,8 @@
 #include "../include/uassert.h"
 #include "../include/clock_server.h"
 #include "../marklin/train.h"
+
+#define USE_CTS 1
 namespace Sensors_NS
 {
 
@@ -50,17 +52,33 @@ namespace Sensors_NS
         bank_num = VALIDATE_BANK(bank_num);
 
         // send command to marklin
-        // MarklinRequest request = {COMMAND::READ_SENSOR, -1, -1, READ_ONE_SENSOR_BASE + bank_num};
-        MARKLIN_IO_SERVER::MarklinRequest request = {true, READ_ONE_SENSOR_BASE + bank_num};
-        int ret = MARKLIN_IO_SERVER::SendCmd(MARKLIN_IO_SERVER_TID, &request);
-        uassert(ret >= 0 && "SensorManager::ReadBank: command sent to MarklinIOServer failed");
+        if (USE_CTS)
+        {
+            MARKLIN_IO_SERVER::MarklinRequest request = {true, READ_ONE_SENSOR_BASE + bank_num};
+            int ret = MARKLIN_IO_SERVER::SendCmd(MARKLIN_IO_SERVER_TID, &request);
+            uassert(ret >= 0 && "SensorManager::ReadBank: FAILED to command sent to MarklinIOServer");
+        }
+        else
+        {
+            uart_putc(MARKLIN, READ_ONE_SENSOR_BASE + bank_num);
+            // uassert(false && "SensorManager::ReadBank: Sent command to Marklin");
+        }
 
         // get response from marklin -- 2 bytes per bank
         char bytes[2];
         for (int i = 0; i < 2; ++i)
         {
             // get byte from marklin io
-            bytes[i] = MARKLIN_IO_SERVER::Getc(MARKLIN_IO_SERVER_TID);
+            // bytes[i] = uart_getc(MARKLIN);
+            if (USE_CTS)
+            {
+                bytes[i] = MARKLIN_IO_SERVER::Getc(MARKLIN_IO_SERVER_TID);
+            }
+            else
+            {
+                bytes[i] = uart_getc(MARKLIN);
+            }
+            uassert(false && "SensorManager::ReadBank: Successfully Read Byte");
             uassert(bytes[i] >= 0 && "SensorManager::ReadBank: Getc failed");
         }
         processSensorData(bank_num, bytes[0], bytes[1], bank_mask);
@@ -92,7 +110,7 @@ namespace Sensors_NS
 
     void SensorManager::processSensorData(int bank, uint8_t byte1, uint8_t byte2, BANK_MASK *bank_mask)
     {
-        if (byte1 > 0 || byte2 > 0)
+        if (byte1 >= 0 || byte2 >= 0)
         {
             IO_NS::PrintTerminal("SensorManager::processSensorData: BYTE1: %d, BYTE2: %d\r\n", byte1, byte2);
             uassert(false && "SensorManager::processSensorData -- forced panic");
@@ -183,8 +201,14 @@ namespace Sensors_NS
         bool is_ticker_available = false;
         int sender_tid;
         SensorQuery query;
+        IO_NS::PrintTerminal("SensorServer: Starting Sensor Test\r\n");
         while (true)
         {
+            IO_NS::PrintTerminal("SensorServer: Reading bank A\r\n");
+            BANK_MASK bank_mask;
+            sensors.ReadBank(0, &bank_mask);
+            uassert(false && "SensorServer: Finished reading bank A");
+            /*
             int retval = RECEIVE(&sender_tid, (char *)&query, sizeof(query));
             uassert(retval >= 0 && "SensorServer: Error receiving SensorQuery");
 
@@ -211,6 +235,7 @@ namespace Sensors_NS
                 is_ticker_available = false;
                 REPLY(sensor_ticker_tid, nullptr, 0);
             }
+            */
         }
     }
 
