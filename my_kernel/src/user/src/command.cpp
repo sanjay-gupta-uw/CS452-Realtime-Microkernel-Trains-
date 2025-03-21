@@ -394,7 +394,7 @@ namespace UI_CMD_NS
             {
                 // display the track graph
                 if (track_id == 'A' || track_id == 'a') {
-                    //commandPrompt.current_track = &TRACK_A;
+                    commandPrompt.current_track = &TRACK_A;
                 } else {
                     commandPrompt.current_track = &TRACK_B;
                 }
