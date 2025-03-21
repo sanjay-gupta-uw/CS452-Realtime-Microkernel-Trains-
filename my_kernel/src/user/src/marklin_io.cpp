@@ -13,6 +13,19 @@
 extern Clock clock;
 namespace MARKLIN_IO_SERVER
 {
+    // returns -1 if not a switch command, otherwise, returns the index of the switch
+    int MarklinIOServer::isSwitchCommand(int addr)
+    {
+        for (int i = 0; i < NUM_SWITCHES; ++i)
+        {
+            if (SWITCH_ADDRS[i] == addr)
+            {
+                return i;
+            }
+        }
+        return -1;
+    }
+
     static void GETC_SUCCESS_REPLY(int tid, char ch)
     {
         IO_REPLY reply;
@@ -23,7 +36,15 @@ namespace MARKLIN_IO_SERVER
 
     MarklinIOServer::MarklinIOServer()
     {
+        CLOCK_SERVER_TID = WHOIS("ClockServer");
+
         IO_NS::Print(MOVE_CURSOR CLEAR_TO_END_LINE COLOR_GREEN "Transmitted Bytes: ", TRANSMITTED_BYTES_LOCATION, 1);
+        const int switch_addrs[NUM_SWITCHES] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 0x99, 0x9A, 0x9B, 0x9C};
+
+        for (int i = 0; i < NUM_SWITCHES; ++i)
+        {
+            SWITCH_ADDRS[i] = switch_addrs[i];
+        }
 
         total_bytes_transmitted = 0;
         REGISTERAS("MarklinIOServer");
@@ -42,11 +63,11 @@ namespace MARKLIN_IO_SERVER
     void MarklinIOServer::spawnNotifiers()
     {
         // ensure this runs before tx_notifier
-        rx_notifier_tid = CREATE(PRIORITY::P1, notifier_rx);
+        rx_notifier_tid = CREATE(PRIORITY::MARKLIN_NOTIFIER, notifier_rx);
         uassert(rx_notifier_tid >= 0 && "Error starting RX Notifier");
         IO_NS::PrintTerminal("RX Notifier started with TID %d\r\n", rx_notifier_tid);
 
-        tx_notifier_tid = CREATE(PRIORITY::P1, notifier_tx);
+        tx_notifier_tid = CREATE(PRIORITY::MARKLIN_NOTIFIER, notifier_tx);
         uassert(tx_notifier_tid >= 0 && "Error starting TX Notifier");
         IO_NS::PrintTerminal("TX Notifier started with TID %d\r\n", tx_notifier_tid);
     }
@@ -81,18 +102,24 @@ namespace MARKLIN_IO_SERVER
         {
             if (TX_STATUS(MARKLIN) != 1)
             {
+                IO_NS::PrintTerminal("TX NOTIFIER::Waiting for TX\r\n");
                 ret = AWAITEVENT(InterruptEvents::UART_MARKLIN_TX);
+                uassert(false && "TX NOTIFIER::TX_AWAITEVENT AWOKEN -- FORCED PANIC");
                 uassert(ret >= 0 && "TX NOTIFIER::TX_AWAITEVENT returned error");
             }
 
             if (CTS_STATUS(MARKLIN) != 1)
             {
+                IO_NS::PrintTerminal("TX NOTIFIER::Waiting for CTS HIGH\r\n");
                 ret = AWAITEVENT(InterruptEvents::UART_MARKLIN_CTS_HIGH);
+                uassert(ret >= 0 && "TX NOTIFIER::CTS_HIGH_AWAITEVENT AWOKEN -- FORCED PANIC");
                 uassert(ret >= 0 && "TX NOTIFIER::CTS_HIGH_AWAITEVENT returned error");
             }
 
             IO_REQUEST req{IO_REQUEST_TYPE::TX_NOTIFIER, 0};
             IO_REPLY reply;
+
+            IO_NS::PrintTerminal("TX NOTIFIER::Available to transmit\r\n");
 
             // Notify the server that we can transmit
             SEND(MARKLIN_IO_TID, (char *)&req, sizeof(req), (char *)&reply, sizeof(reply)); // Server needs to reply when it writes to the UART
@@ -182,8 +209,20 @@ namespace MARKLIN_IO_SERVER
                 int len = 1;
                 if (!m_req.isSingleByteCommand)
                 {
-                    transmit_buffer.Push(m_req.byte2);
-                    len = 4;
+                    len = 2;
+                    int addr = m_req.byte2;
+
+                    transmit_buffer.Push(addr);
+                    // second byte is the address
+                    int switch_index = isSwitchCommand(addr);
+                    if (switch_index >= 0)
+                    {
+                        len = 3;
+                        IO_NS::PrintTerminal("MarklinIO_server::SEND_CMD: Switch command for switch index %d\r\n", switch_index);
+                        // push solenoid off command
+                        transmit_buffer.Push(SOLENOID_OFF_CMD);
+                        // transmit_buffer.Push(addr);
+                    }
                 }
                 sequence_length_buffer.Push(len);
                 reply.type = REPLY_TYPE::SUCCESS;
@@ -210,7 +249,7 @@ namespace MARKLIN_IO_SERVER
     void MarklinIOServer::handle_transmission()
     {
         uassert(canTransmit && "MarklinIOServer::handle_transmission: PANIC, cannot transmit");
-        if (canTransmit && !transmit_buffer.IsEmpty())
+        if (!transmit_buffer.IsEmpty())
         {
             // IO_NS::PrintTerminal("MarklinIOServer::handle_transmission: Transmitting\r\n");
             IO_REPLY reply = {REPLY_TYPE::SUCCESS, UNDEFINED_CHAR};
@@ -220,6 +259,13 @@ namespace MARKLIN_IO_SERVER
             {
                 sequence_length_buffer.Pop(&sequence_length);
             }
+            else if (count == 2 && sequence_length == 3)
+            {
+                end_time = clock.Time();
+                uassert(false && "FORCED PANIC");
+                IO_NS::PrintTerminal("MarklinIOServer::handle_transmission: sending solenoid off within: %d ms\r\n", (end_time - start_time) / 1000);
+                // IO_NS::PrintTerminal("MarklinIOServer::handle_transmission: Finished transmitting sequence\r\n");
+            }
 
             unsigned char ch;
             transmit_buffer.Pop(&ch);
@@ -228,18 +274,21 @@ namespace MARKLIN_IO_SERVER
             canTransmit = false;
             total_bytes_transmitted++;
             count++;
-            if (count == 2)
+
+            int DELAY_TIME = 25;
+            if (count == 2 && sequence_length == 3)
             {
                 start_time = clock.Time();
+                // clock.Delay(400);
+                DELAY(CLOCK_SERVER_TID, DELAY_TIME);
             }
-            else if (count == sequence_length)
+            if (count == sequence_length)
             {
-                end_time = clock.Time();
-                IO_NS::PrintTerminal("MarklinIOServer::handle_transmission: Time to send 4-byte sequence: %d ms\r\n", (end_time - start_time) / 1000);
                 count = 0;
                 // IO_NS::PrintTerminal("MarklinIOServer::handle_transmission: Finished transmitting sequence\r\n");
             }
-            // IO_NS::Print(MOVE_CURSOR COLOR_GREEN "%d", TRANSMITTED_BYTES_LOCATION, TRANSMITTED_BYTES_COL, total_bytes_transmitted);
+
+            IO_NS::Print(MOVE_CURSOR COLOR_GREEN "%d", TRANSMITTED_BYTES_LOCATION, TRANSMITTED_BYTES_COL, total_bytes_transmitted);
             // uassert(false && "FORCED PANIC -- FINISHED TRANSMITTING BYTE");
         }
     }

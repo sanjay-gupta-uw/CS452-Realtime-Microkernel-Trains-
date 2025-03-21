@@ -43,10 +43,10 @@ namespace IO_SERVER
     {
         if (IRQ_ENABLED)
         {
-            rtm_notifier_tid = CREATE(PRIORITY::P4, notifier_rxto);
+            rtm_notifier_tid = CREATE(PRIORITY::CONSOLE_NOTIFIER, notifier_rxto);
             uassert(rtm_notifier_tid >= 0 && "IO_SERVER::spawnNotifiers: PANIC, Error starting RTM Notifier");
 
-            tx_notifier_tid = CREATE(PRIORITY::P4, notifier_tx);
+            tx_notifier_tid = CREATE(PRIORITY::CONSOLE_NOTIFIER, notifier_tx);
             uassert(tx_notifier_tid >= 0 && "IO_SERVER::spawnNotifiers: PANIC, Error starting TX Notifier");
         }
     }

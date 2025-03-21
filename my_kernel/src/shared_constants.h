@@ -17,15 +17,18 @@ typedef enum
 // priority levels
 typedef enum
 {
-    P0,
-    P1,
-    P2,
-    P3,
-    P4,
-    P5,
-    P6,
-    P7,
-    IDLE
+    CORE_NOTIFIER,
+    CORE,
+    MARKLIN_NOTIFIER,
+    MARKLIN_SERVER,
+    CONSOLE_NOTIFIER,
+    CONSOLE_SERVER,
+    DEVICE_NOTIFIER,
+    DEVICE,
+    DEVICE_SERVER,
+    ORCHESTRATOR,
+    LOWEST,
+    IDLE,
 } PRIORITY;
 
 typedef enum

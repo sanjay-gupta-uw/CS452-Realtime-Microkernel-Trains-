@@ -15,7 +15,7 @@ namespace MARKLIN_IO_SERVER
     };
 
 #define UNDEFINED_CHAR '-'
-
+#define NUM_SWITCHES 22
     // REDEFINED QUEUE SIZE TO 32 -> change queue to accept size as a parameter?
     // #define RECEIVE_SIZE 32 // 32 chars/bytes
     class MarklinIOServer
@@ -27,6 +27,9 @@ namespace MARKLIN_IO_SERVER
         // interface for the IO server
 
     private:
+        int CLOCK_SERVER_TID;
+        int SWITCH_ADDRS[NUM_SWITCHES];
+
         uint32_t start_time;
         uint32_t end_time;
         Queue<int, 32> sequence_length_buffer;
@@ -39,6 +42,7 @@ namespace MARKLIN_IO_SERVER
         int tx_notifier_tid;
         int cts_notifier_high_tid;
         int cts_notifier_low_tid;
+        int switch_notifier_tid[NUM_SWITCHES];
 
         Queue<unsigned char, 100> receive_buffer;
         Queue<uint8_t, 100> transmit_buffer; // this should be the bytes for commands
@@ -49,6 +53,7 @@ namespace MARKLIN_IO_SERVER
         void spawnNotifiers();
         void write_to_uart();
         void handle_transmission();
+        int isSwitchCommand(int addr);
     };
 
     enum class IO_REQUEST_TYPE
@@ -60,6 +65,7 @@ namespace MARKLIN_IO_SERVER
         TX_NOTIFIER,
         CTS_NOTIFIER_HIGH,
         CTS_NOTIFIER_LOW,
+        SWITCH_NOTIFIER
     };
 
     enum class REPLY_TYPE

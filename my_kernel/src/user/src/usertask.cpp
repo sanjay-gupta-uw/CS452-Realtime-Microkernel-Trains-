@@ -22,10 +22,10 @@
 
 void IdleTask()
 {
-    int FUT = CREATE(PRIORITY::P5, FirstUserTask);
+    int FUT = CREATE(PRIORITY::LOWEST, FirstUserTask);
     uassert(FUT > 0 && "Error starting First User Task");
 
-    int IdleCompute = CREATE(PRIORITY::P7, ComputeIdleTask);
+    int IdleCompute = CREATE(PRIORITY::LOWEST, ComputeIdleTask);
     uassert(IdleCompute > 0 && "Error starting Compute Idle Task");
 
     /*
@@ -42,14 +42,19 @@ void IdleTask()
 
 extern "C" void _reboot(void); // Declare the reboot function implemented in assembly
 
-static void CreateIOServers()
+static void CreateCoreServers()
 {
 
-    int ioServerTid = CREATE(PRIORITY::P4, IO_SERVER::startIOServer); // Start the IO Server
+    int ioServerTid = CREATE(PRIORITY::CONSOLE_SERVER, IO_SERVER::startIOServer); // Start the IO Server
     uassert(ioServerTid > 0 && "Error starting IO Server");
     IO_NS::PrintTerminal("IO Server started with TID %d\r\n", ioServerTid);
 
-    int marklinIoServerTid = CREATE(PRIORITY::P1, MARKLIN_IO_SERVER::startMarklinIOServer); // Start the Marklin IO Server
+    // create the clock server
+    int clockServerTid = CREATE(PRIORITY::CORE, ClockServer); // Start the Clock Server
+    uassert(clockServerTid > 0 && "Error starting Clock Server");
+    IO_NS::PrintTerminal("Clock Server started with TID %d\r\n", clockServerTid);
+
+    int marklinIoServerTid = CREATE(PRIORITY::MARKLIN_SERVER, MARKLIN_IO_SERVER::startMarklinIOServer); // Start the Marklin IO Server
     uassert(marklinIoServerTid > 0 && "Error starting Marklin IO Server");
     IO_NS::PrintTerminal("Marklin IO Server started with TID %d\r\n", marklinIoServerTid);
 }
@@ -59,30 +64,25 @@ void FirstUserTask()
     // uart_printf(CONSOLE, RESTORE_CURSOR "First User Task Started\r\n" SAVE_CURSOR);
 
     // create the name server
-    int nameServerTid = CREATE(PRIORITY::P0, NameServer); // Start the Name Server
+    int nameServerTid = CREATE(PRIORITY::CORE, NameServer); // Start the Name Server
     uassert(nameServerTid > 0 && "Error starting Name Server");
     // create the console/marlin IO servers
-    CreateIOServers();
+    CreateCoreServers();
 
     IO_NS::PrintTerminal("Name Server started with TID %d\r\n", nameServerTid);
 
-    // create the clock server
-    int clockServerTid = CREATE(PRIORITY::P1, ClockServer); // Start the Clock Server
-    uassert(clockServerTid > 0 && "Error starting Clock Server");
-    IO_NS::PrintTerminal("Clock Server started with TID %d\r\n", clockServerTid);
-
     // create conductor for communicating between trains/sensors/switches
-    int ConductorTid = CREATE(PRIORITY::P3, Conductor_NS::start_conductor);
+    int ConductorTid = CREATE(PRIORITY::ORCHESTRATOR, Conductor_NS::start_conductor);
     uassert(ConductorTid > 0 && "Error starting Conductor");
     IO_NS::PrintTerminal("Conductor started with TID %d\r\n", ConductorTid);
 
     // create command prompt
-    int cmdTid = CREATE(PRIORITY::P6, UI_CMD_NS::start_command_prompt); // Start the Command Task
+    int cmdTid = CREATE(PRIORITY::LOWEST, UI_CMD_NS::start_command_prompt); // Start the Command Task
     uassert(cmdTid > 0 && "Error starting Command Task");
     IO_NS::PrintTerminal("Command Task started with TID %d\r\n", cmdTid);
 
     // create the UI task
-    int uiTaskTid = CREATE(PRIORITY::P6, UI_NS::start_ui); // Start the UI Task
+    int uiTaskTid = CREATE(PRIORITY::LOWEST, UI_NS::start_ui); // Start the UI Task
     uassert(uiTaskTid > 0 && "Error starting UI Task");
     IO_NS::PrintTerminal("UI Task started with TID %d\r\n", uiTaskTid);
 

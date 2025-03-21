@@ -39,20 +39,9 @@ namespace Switch_NS
             // IO_NS::PrintTerminal("Switch %d already in alignment %d\r\n", address, ALIGNMENT);
             return false;
         }
-        Clock clock;
-        uint32_t start_time = clock.Time();
-
-        uint32_t switch_cmd = (ALIGNMENT == SWITCH_STATE::STRAIGHT) ? STRAIGHT_CMD : CURVED_CMD;
+        uint8_t switch_cmd = (ALIGNMENT == SWITCH_STATE::STRAIGHT) ? STRAIGHT_CMD : CURVED_CMD;
         MARKLIN_IO_SERVER::MarklinRequest request = {false, switch_cmd, address};
         MARKLIN_IO_SERVER::SendCmd(MARKLIN_IO_SERVER_TID, &request);
-        state = ALIGNMENT;
-        DELAY(CLOCK_SERVER_TID, 25);
-
-        uint32_t end_time = clock.Time();
-        IO_NS::PrintTerminal("SetSwitch::time to send and return first switch command: %d\r\n", end_time - start_time);
-
-        SendOffCommand();
-
         return true;
     }
 
@@ -84,19 +73,31 @@ namespace Switch_NS
         for (int i = 0; i < NUM_SWITCHES; ++i)
         {
             switches[i] = Switch(switch_addrs[i], MARKLIN_IO_SERVER_TID, CLOCK_SERVER_TID);
-            // switches[i].SetSwitch(SWITCH_STATE::STRAIGHT);
-            // IO_NS::Print(MOVE_CURSOR COLOR_GREEN "S", SWITCH_LOCATION + 3 + i, SWITCH_STATUS_COL);
+            switches[i].SetSwitch(SWITCH_STATE::STRAIGHT);
+            IO_NS::Print(MOVE_CURSOR COLOR_GREEN "S", SWITCH_LOCATION + 3 + i, SWITCH_STATUS_COL);
         }
 
+        /*
         IO_NS::PrintTerminal("SwitchServer: STARTING SWITCH TEST\r\n");
+        int index = 0;
         for (int i = 0; i < 20; ++i)
         {
-            switches[0].SetSwitch(i % 2 == 0 ? SWITCH_STATE::STRAIGHT : SWITCH_STATE::CURVED);
-            IO_NS::Print(MOVE_CURSOR COLOR_GREEN "S", SWITCH_LOCATION + 3 + i, SWITCH_STATUS_COL);
+            bool isStraight = i % 2 == 0;
+
+            switches[index].SetSwitch(isStraight ? SWITCH_STATE::STRAIGHT : SWITCH_STATE::CURVED);
+            if (isStraight)
+            {
+                IO_NS::Print(MOVE_CURSOR COLOR_GREEN "S", SWITCH_LOCATION + 3 + index, SWITCH_STATUS_COL);
+            }
+            else
+            {
+                IO_NS::Print(MOVE_CURSOR COLOR_RED "C", SWITCH_LOCATION + 3 + index, SWITCH_STATUS_COL);
+            }
             IO_NS::PrintTerminal("DELAYING FOR 200 TICKS\r\n");
             DELAY(CLOCK_SERVER_TID, 200);
         }
         uassert(false && "SwitchServer: Finished switch test");
+        */
 
         // switches[NUM_SWITCHES - 1].SendOffCommand();
 

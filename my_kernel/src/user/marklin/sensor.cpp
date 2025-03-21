@@ -166,7 +166,7 @@ namespace Sensors_NS
         };
 
         // create sensor ticker
-        int sensor_ticker_tid = CREATE(PRIORITY::P1, SensorTicker);
+        int sensor_ticker_tid = CREATE(PRIORITY::DEVICE_NOTIFIER, SensorTicker);
         Queue<SensorTaskPair, NUM_TRAINS> awaiting_for_sensor[NUM_TRAINS];
 
         bool is_ticker_available = false;

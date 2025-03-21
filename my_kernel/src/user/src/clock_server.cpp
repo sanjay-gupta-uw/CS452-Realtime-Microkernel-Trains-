@@ -16,7 +16,7 @@ public:
     {
         CLOCK_SERVER_TID = MYTID();
         REGISTERAS("ClockServer");
-        int notifierTid = CREATE(PRIORITY::P0, ClockNotifier);
+        int notifierTid = CREATE(PRIORITY::CORE_NOTIFIER, ClockNotifier);
         uassert(notifierTid > 0 && "Error starting Clock Notifier");
 
         run();

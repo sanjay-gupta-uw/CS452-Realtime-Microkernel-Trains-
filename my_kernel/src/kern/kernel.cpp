@@ -124,7 +124,7 @@ int Kernel::CopyMessage(TaskDescriptor *sender_td, TaskDescriptor *receiver_td, 
 int Kernel::Create(int priority, void (*function)())
 {
     // check if priority is valid
-    if (priority < PRIORITY::P0 || priority > PRIORITY::IDLE)
+    if (priority < PRIORITY::CORE_NOTIFIER || priority > PRIORITY::IDLE)
     {
         return -2;
     }
@@ -324,6 +324,9 @@ void Kernel::AwaitEvent(int eventType)
     break;
     case UART_MARKLIN_CTS_HIGH:
     {
+        // ensure CTS is not high
+        // int cts_status = CTS_STATUS(MARKLIN);
+        // kassert(cts_status == 0 && "WAITING FOR CTS HIGH, BUT IS ALREADY HIGH");
         active_task->SetRetval(-1);
         active_task->setState(EVENT_BLOCKED);
         event_queues[UART_MARKLIN_CTS_HIGH].Push(active_task);
