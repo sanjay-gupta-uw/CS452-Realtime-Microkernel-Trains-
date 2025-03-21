@@ -8,7 +8,7 @@
 #include "../include/ui.h"
 #include "../include/clock_server.h"
 #include "../include/io.h"
-#include "../include/command.hpp"
+#include "../include/command.h"
 #include "../include/uassert.h"
 #include "../include/conductor.h"
 #include "../../register.h"

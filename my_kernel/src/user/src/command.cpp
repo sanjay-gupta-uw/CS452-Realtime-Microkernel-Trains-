@@ -1,15 +1,33 @@
-#include "../include/command.hpp"
+#include "../include/command.h"
 #include "../include/name_server.h"
 #include "../../include/syscall.h"
 #include "../../shared_constants.h"
 #include "../../rpi.h"
 #include "../include/uassert.h"
 #include "../include/conductor.h"
+#include "../include/graph_data.h"
 
 extern "C" void _reboot(void); // Declare the reboot function implemented in assembly
 
 namespace UI_CMD_NS
 {
+    void display_track(const TrackConfig* config) {
+        int y = TRACK_LAYOUT_LOCATION_Y;
+        int x = TRACK_LAYOUT_LOCATION_X;
+        
+        // Draw diagram
+        for (size_t i = 0; i < config->diagram_lines; i++) {
+            IO_NS::Print(MOVE_CURSOR "%s", y + i, x + 1, config->diagram[i]);
+        }
+        
+        // Initialize switches
+        for (size_t i = 0; i < config->switches_count; i++) {
+            IO_NS::Print(MOVE_CURSOR COLOR_GREEN "S",
+                y + config->switches[i].line,
+                x + config->switches[i].col
+            );
+        }
+    }
 
     static int getSwitchIndex(int switch_num)
     {
@@ -126,13 +144,28 @@ namespace UI_CMD_NS
             // update switch display
             // need to get status of switch
 
-            if (switch_state == 'S')
-            {
-                IO_NS::Print(MOVE_CURSOR COLOR_GREEN "S", SWITCH_LOCATION + 3 + switch_index, SWITCH_STATUS_COL);
-            }
-            else
-            {
-                IO_NS::Print(MOVE_CURSOR COLOR_RED "C", SWITCH_LOCATION + 3 + switch_index, SWITCH_STATUS_COL);
+            
+            const char* color = (switch_state == 'S') ? COLOR_GREEN : COLOR_RED;
+
+            // Update switches table
+            IO_NS::Print(MOVE_CURSOR "%s%c", 
+                SWITCH_LOCATION + 3 + switch_index, 
+                SWITCH_STATUS_COL, 
+                color, 
+                switch_state
+            );
+
+            // Update track diagram
+            for (size_t i = 0; i < current_track->switches_count; ++i) {
+                if (current_track->switches[i].num == switch_num) {
+                    // Use current_track->switches[i].line/col
+                    IO_NS::Print(MOVE_CURSOR "%s%c",
+                        TRACK_LAYOUT_LOCATION_Y + current_track->switches[i].line,
+                        TRACK_LAYOUT_LOCATION_X + current_track->switches[i].col,
+                        color, 
+                        switch_state
+                    );
+                }
             }
         }
         else if ((first == 'T' || first == 't') &&
@@ -359,6 +392,14 @@ namespace UI_CMD_NS
             IO_NS::PrintTerminal("%c\r\n", track_id);
             if (track_id == 'A' || track_id == 'a' || track_id == 'B' || track_id == 'b')
             {
+                // display the track graph
+                if (track_id == 'A' || track_id == 'a') {
+                    //commandPrompt.current_track = &TRACK_A;
+                } else {
+                    commandPrompt.current_track = &TRACK_B;
+                }
+                display_track(commandPrompt.current_track); 
+
                 // create conductor
                 IO_NS::PrintTerminal("Attempting to start Conductor with track ID: %c, CONDUCTOR_TID: %d\r\n", track_id, commandPrompt.CONDUCTOR_TID);
                 SEND(commandPrompt.CONDUCTOR_TID, (char *)&track_id, sizeof(char), nullptr, 0);

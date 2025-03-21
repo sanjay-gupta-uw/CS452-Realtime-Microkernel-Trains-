@@ -14,9 +14,9 @@ namespace UI_NS
                                                11, 12, 13, 14, 15, 16, 17, 18,
                                                0x99, 0x9A, 0x9B, 0x9C};
 
-        IO_NS::Print(COLOR_WHITE MOVE_CURSOR "-------------------------\r\n", SWITCH_LOCATION + 0, 1);
+        IO_NS::Print(COLOR_WHITE MOVE_CURSOR "+------------------------\r\n", SWITCH_LOCATION + 0, 1);
         IO_NS::Print(COLOR_WHITE MOVE_CURSOR "|   Table of Switches:  |\r\n", SWITCH_LOCATION + 1, 1);
-        IO_NS::Print(COLOR_WHITE MOVE_CURSOR "-------------------------\r\n", SWITCH_LOCATION + 2, 1);
+        IO_NS::Print(COLOR_WHITE MOVE_CURSOR "+------------------------\r\n", SWITCH_LOCATION + 2, 1);
         // IO_NS::Print(COLOR_WHITE MOVE_CURSOR  "|  Switch  |   Status    |\r\n", SWITCH_LOCATION + 3, 1);
         // IO_NS::Print(COLOR_WHITE MOVE_CURSOR  "--------------------------\r\n", SWITCH_LOCATION + 4, 1);
         for (int i = 0; i < SWITCH_COUNT; ++i)
@@ -29,21 +29,21 @@ namespace UI_NS
             IO_NS::Print(COLOR_WHITE MOVE_CURSOR "|", location_y, 12);
             IO_NS::Print(COLOR_WHITE MOVE_CURSOR "|", location_y, 25);
         }
-        IO_NS::Print(COLOR_WHITE MOVE_CURSOR "-------------------------\r\n", SWITCH_LOCATION + 3 + SWITCH_COUNT, 1);
+        IO_NS::Print(COLOR_WHITE MOVE_CURSOR "+------------------------\r\n", SWITCH_LOCATION + 3 + SWITCH_COUNT, 1);
     }
 
     static void init_sensor_display()
     {
-        IO_NS::Print(COLOR_WHITE MOVE_CURSOR "------------------------\r\n", SENSOR_LOCATION + 0, 1 + BOX_WIDTH);
+        IO_NS::Print(COLOR_WHITE MOVE_CURSOR "-----------------------+\r\n", SENSOR_LOCATION + 0, 1 + BOX_WIDTH);
         IO_NS::Print(COLOR_WHITE MOVE_CURSOR "   Table of Sensors:   |\r\n", SENSOR_LOCATION + 1, 1 + BOX_WIDTH);
-        IO_NS::Print(COLOR_WHITE MOVE_CURSOR "------------------------\r\n", SENSOR_LOCATION + 2, 1 + BOX_WIDTH);
-        for (int i = 0; i < MAX_RECENT_SENSORS; ++i)
+        IO_NS::Print(COLOR_WHITE MOVE_CURSOR "-----------------------+\r\n", SENSOR_LOCATION + 2, 1 + BOX_WIDTH);
+        for (int i = 0; i < SWITCH_COUNT; ++i)
         {
             // print borders and switch address so display only needs to update the status
             int location_y = SENSOR_LOCATION + 3 + i;
             IO_NS::Print(COLOR_WHITE MOVE_CURSOR "|", location_y, 2 * BOX_WIDTH - 1);
         }
-        IO_NS::Print(COLOR_WHITE MOVE_CURSOR "------------------------\r\n", SENSOR_LOCATION + 3 + MAX_RECENT_SENSORS, 1 + BOX_WIDTH);
+        IO_NS::Print(COLOR_WHITE MOVE_CURSOR "-----------------------+\r\n", SENSOR_LOCATION + 3 + SWITCH_COUNT, 1 + BOX_WIDTH);
     }
 
     void start_ui()

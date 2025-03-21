@@ -4,6 +4,7 @@
 #include "io.h"
 #include "io_server.h"
 #include "marklin_structs.h"
+#include "graph_data.h"
 
 namespace UI_CMD_NS
 {
@@ -26,6 +27,7 @@ namespace UI_CMD_NS
 
         int IO_SERVER_TID;
         int CONDUCTOR_TID;
+        const TrackConfig* current_track;
     };
 
     void start_command_prompt();
