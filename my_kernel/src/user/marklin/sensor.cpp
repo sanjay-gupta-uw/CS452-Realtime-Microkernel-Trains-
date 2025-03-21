@@ -20,7 +20,7 @@ namespace Sensors_NS
         {
             for (int sensor = 0; sensor < SENSORS_PER_BANK; ++sensor)
             {
-                int idx = bank * SENSORS_PER_BANK + sensor;
+                int idx = (bank * SENSORS_PER_BANK) + sensor;
                 sensor_data[idx].bank = BANK_LABELS[bank];
                 sensor_data[idx].id = sensor + 1;
                 sensor_data[idx].status = SensorState::SEN_OFF;
@@ -78,7 +78,7 @@ namespace Sensors_NS
             {
                 bytes[i] = uart_getc(MARKLIN);
             }
-            uassert(false && "SensorManager::ReadBank: Successfully Read Byte");
+            // uassert(false && "SensorManager::ReadBank: Successfully Read Byte");
             uassert(bytes[i] >= 0 && "SensorManager::ReadBank: Getc failed");
         }
         processSensorData(bank_num, bytes[0], bytes[1], bank_mask);
@@ -94,7 +94,7 @@ namespace Sensors_NS
         IO_NS::PrintTerminal("SensorManager::ReadAll: Sent command to MarklinIOServer\r\n");
 
         BANK_MASK bank_mask;
-        for (int bank = 0; bank < num_banks; ++bank)
+        for (int bank = 1; bank <= num_banks; ++bank)
         {
             uint8_t byte1 = MARKLIN_IO_SERVER::Getc(MARKLIN_IO_SERVER_TID);
             // uassert(false && "Successfully Read Byte1");
@@ -110,24 +110,23 @@ namespace Sensors_NS
 
     void SensorManager::processSensorData(int bank, uint8_t byte1, uint8_t byte2, BANK_MASK *bank_mask)
     {
-        if (byte1 >= 0 || byte2 >= 0)
+        if (byte1 == 0 && byte2 == 0)
         {
-            IO_NS::PrintTerminal("SensorManager::processSensorData: BYTE1: %d, BYTE2: %d\r\n", byte1, byte2);
-            uassert(false && "SensorManager::processSensorData -- forced panic");
+            return;
         }
-        for (int sensor = 0; sensor < SENSORS_PER_BANK; ++sensor)
+        IO_NS::PrintTerminal("SensorManager::processSensorData: byte1: %d, byte2: %d\r\n", byte1, byte2);
+        for (int sensor = 1; sensor <= SENSORS_PER_BANK; ++sensor)
         {
-            int idx = bank * SENSORS_PER_BANK + sensor;
-            int new_state = (sensor < 8) ? SENSOR_TRIGGERED(byte1, sensor) : SENSOR_TRIGGERED(byte2, sensor - 8);
+            int idx = ((bank - 1) * SENSORS_PER_BANK) + (sensor - 1);
+            int new_state = (sensor < 9) ? SENSOR_TRIGGERED(byte1, sensor) : SENSOR_TRIGGERED(byte2, sensor);
+            IO_NS::PrintTerminal("NEW STATE: %d\r\n", new_state);
 
             int old_state = sensor_data[idx].status;
             sensor_data[idx].status = new_state;
 
             if (new_state == SEN_ON && old_state == SEN_OFF)
             {
-                uassert(false && "SensorManager::processSensorData: Sensor triggered");
                 uassert(bank_mask != nullptr && "SensorManager::processSensorData: bank_mask is null");
-                bank_mask->sensor[sensor] = true;
 
                 if (sensor_data[idx].bank != last_triggered_bank ||
                     sensor_data[idx].id != last_triggered_id)
@@ -137,11 +136,14 @@ namespace Sensors_NS
                     {
                         int dummy;
                         recent_sensors.Pop(&dummy);
+                        IO_NS::PrintTerminal("SensorManager::processSensorData: recent sensors is full -- making space\r\n");
                     }
                     recent_sensors.Push(idx);
 
                     last_triggered_bank = sensor_data[idx].bank;
                     last_triggered_id = sensor_data[idx].id;
+
+                    bank_mask->sensor[sensor - 1] = true;
                     UPDATE_DISPLAY = true;
                 }
             }
@@ -154,25 +156,18 @@ namespace Sensors_NS
             return;
 
         Queue<int, MAX_MAX_RECENT_SENSORS> temp_queue;
-        for (int i = 0; i < MAX_RECENT_SENSORS; i++)
+        int count = 0;
+        while (!recent_sensors.IsEmpty())
         {
-            if (recent_sensors.IsEmpty())
-            {
-                return;
-            }
             int idx;
             recent_sensors.Pop(&idx);
             temp_queue.Push(idx);
 
-            int bank = idx / SENSORS_PER_BANK;
-            int sensor = idx % SENSORS_PER_BANK;
-            char bank_label = sensor_data[idx].bank;
-
-            IO_NS::Print(COLOR_YELLOW MOVE_CURSOR "%c%d %s",
-                         SENSOR_LOCATION + 3 + i, BOX_WIDTH + 5,
-                         bank_label, sensor + 1,
-                         sensor_data[idx].status == SEN_ON ? "ON" : "OFF");
+            IO_NS::Print(COLOR_YELLOW MOVE_CURSOR "%c%d tripped  ",
+                         SENSOR_LOCATION + 3 + count++, BOX_WIDTH + 5,
+                         sensor_data[idx].bank, sensor_data[idx].id);
         }
+
         while (!temp_queue.IsEmpty())
         {
             int idx;
@@ -201,13 +196,50 @@ namespace Sensors_NS
         bool is_ticker_available = false;
         int sender_tid;
         SensorQuery query;
+
+        // test SENSOR_TRIGGERED
+        {
+            IO_NS::PrintTerminal("SensorServer: Testing SENSOR_TRIGGERED\r\n");
+
+            uint8_t sensor_bytes[16] = {
+                0b10000000,
+                0b01000000,
+                0b00100000,
+                0b00010000,
+                0b00001000,
+                0b00000100,
+                0b00000010,
+                0b00000001,
+                0b10000000,
+                0b01000000,
+                0b00100000,
+                0b00010000,
+                0b00001000,
+                0b00000100,
+                0b00000010,
+                0b00000001};
+
+            for (int i = 1; i <= 16; ++i)
+            {
+                IO_NS::PrintTerminal("SensorServer: Testing sensor %d\r\n", i);
+                uassert(SENSOR_TRIGGERED(sensor_bytes[i - 1], i) && "SensorServer: Error testing SENSOR_TRIGGERED");
+            }
+
+            IO_NS::PrintTerminal("SensorServer: Finished testing SENSOR_TRIGGERED\r\n");
+        }
+
         IO_NS::PrintTerminal("SensorServer: Starting Sensor Test\r\n");
         while (true)
         {
+
             IO_NS::PrintTerminal("SensorServer: Reading bank A\r\n");
             BANK_MASK bank_mask;
-            sensors.ReadBank(0, &bank_mask);
-            uassert(false && "SensorServer: Finished reading bank A");
+
+            // sensors.ReadBank(1, &bank_mask);
+            sensors.ReadAll(NUM_BANKS);
+            sensors.Display(); // this can block the server until IO is ready
+
+            // uassert(false && "SensorServer: Finished reading bank A");
             /*
             int retval = RECEIVE(&sender_tid, (char *)&query, sizeof(query));
             uassert(retval >= 0 && "SensorServer: Error receiving SensorQuery");

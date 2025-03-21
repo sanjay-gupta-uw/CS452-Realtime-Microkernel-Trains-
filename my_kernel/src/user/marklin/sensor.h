@@ -15,8 +15,8 @@ struct SensorResponse
 };
 namespace Sensors_NS
 {
-#define VALIDATE_BANK(bank) (int)(bank >= 0 && bank < NUM_BANKS ? bank : NUM_BANKS - 1)
-#define SENSOR_TRIGGERED(byte, sensor) ((byte >> (7 - sensor)) & 1)
+#define VALIDATE_BANK(bank) (int)(bank > 0 && bank <= NUM_BANKS ? bank : NUM_BANKS)
+#define SENSOR_TRIGGERED(byte, sensor) ((byte >> (8 - ((sensor > 8) ? (sensor - 8) : sensor))) & 0b00000001)
 
 #define NUM_BANKS 5
 #define SENSORS_PER_BANK 16
