@@ -128,10 +128,12 @@ namespace Trains_NS
             switch (response.command)
             {
             case TRAIN_COMMAND::ACCELERATE:
+                IO_NS::PrintTerminal("Accelerating train %d to speed %d\r\n", train_num, response.speed);
                 uassert(response.speed >= 0 && response.speed <= 14);
                 train.Accelerate(response.speed);
                 break;
             case TRAIN_COMMAND::REVERSE:
+                IO_NS::PrintTerminal("Reversing train %d\r\n", train_num);
                 train.ReverseTrain();
                 break;
             case TRAIN_COMMAND::STOP:
@@ -145,13 +147,13 @@ namespace Trains_NS
 
             // Reply contains the next sensor node to query for
             // Poll from next expected sensor bank
-            SensorStruct next_sensor;
-            next_sensor.bank = BANKS::A;
-            next_sensor.id = 3; // A4
+            // SensorStruct next_sensor;
+            // next_sensor.bank = BANKS::A;
+            // next_sensor.id = 3; // A4
 
-            Sensors_NS::SensorQuery sensor_query = {Sensors_NS::SENSOR_COMMAND::READ_BANK, next_sensor};
-            retval = SEND(sensor_server_tid, (char *)&sensor_query, sizeof(Sensors_NS::SensorQuery), nullptr, 0);
-            uassert(retval >= 0 && "Error sending SensorQuery to SensorServer");
+            // Sensors_NS::SensorQuery sensor_query = {Sensors_NS::SENSOR_COMMAND::READ_BANK, next_sensor};
+            // retval = SEND(sensor_server_tid, (char *)&sensor_query, sizeof(Sensors_NS::SensorQuery), nullptr, 0);
+            // uassert(retval >= 0 && "Error sending SensorQuery to SensorServer");
 
             // // send waits for the sensor to be hit (not robust incase sensor is broken)
             // train_query.data.trainQuery.sensor = response.sensor;

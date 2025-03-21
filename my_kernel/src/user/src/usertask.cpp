@@ -71,6 +71,11 @@ void FirstUserTask()
 
     IO_NS::PrintTerminal("Name Server started with TID %d\r\n", nameServerTid);
 
+    // create the UI task
+    int uiTaskTid = CREATE(PRIORITY::CORE, UI_NS::start_ui); // Start the UI Task
+    uassert(uiTaskTid > 0 && "Error starting UI Task");
+    IO_NS::PrintTerminal("UI Task started with TID %d\r\n", uiTaskTid);
+
     // create conductor for communicating between trains/sensors/switches
     int ConductorTid = CREATE(PRIORITY::ORCHESTRATOR, Conductor_NS::start_conductor);
     uassert(ConductorTid > 0 && "Error starting Conductor");
@@ -80,11 +85,6 @@ void FirstUserTask()
     int cmdTid = CREATE(PRIORITY::LOWEST, UI_CMD_NS::start_command_prompt); // Start the Command Task
     uassert(cmdTid > 0 && "Error starting Command Task");
     IO_NS::PrintTerminal("Command Task started with TID %d\r\n", cmdTid);
-
-    // create the UI task
-    int uiTaskTid = CREATE(PRIORITY::LOWEST, UI_NS::start_ui); // Start the UI Task
-    uassert(uiTaskTid > 0 && "Error starting UI Task");
-    IO_NS::PrintTerminal("UI Task started with TID %d\r\n", uiTaskTid);
 
     EXIT();
 }

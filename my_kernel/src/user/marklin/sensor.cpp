@@ -228,19 +228,16 @@ namespace Sensors_NS
             IO_NS::PrintTerminal("SensorServer: Finished testing SENSOR_TRIGGERED\r\n");
         }
 
-        IO_NS::PrintTerminal("SensorServer: Starting Sensor Test\r\n");
         while (true)
         {
+            // BANK_MASK bank_mask;
 
-            IO_NS::PrintTerminal("SensorServer: Reading bank A\r\n");
-            BANK_MASK bank_mask;
-
-            // sensors.ReadBank(1, &bank_mask);
-            sensors.ReadAll(NUM_BANKS);
-            sensors.Display(); // this can block the server until IO is ready
+            // // sensors.ReadBank(1, &bank_mask);
+            // sensors.ReadAll(NUM_BANKS);
+            // sensors.Display(); // this can block the server until IO is ready
 
             // uassert(false && "SensorServer: Finished reading bank A");
-            /*
+
             int retval = RECEIVE(&sender_tid, (char *)&query, sizeof(query));
             uassert(retval >= 0 && "SensorServer: Error receiving SensorQuery");
 
@@ -267,7 +264,6 @@ namespace Sensors_NS
                 is_ticker_available = false;
                 REPLY(sensor_ticker_tid, nullptr, 0);
             }
-            */
         }
     }
 
@@ -285,8 +281,8 @@ namespace Sensors_NS
         {
             int retval = SEND(sensor_server_tid, (char *)&query, sizeof(query), nullptr, 0);
             uassert(retval >= 0 && "SensorTicker: Error sending SensorQuery to SensorServer");
-            IO_NS::PrintTerminal("SensorTicker: Sent TICK request to SensorServer\r\n");
-            DELAY(CLOCK_SERVER_TID, 10);
+            IO_NS::PrintTerminal("SensorTicker: DELAYING\r\n");
+            DELAY(CLOCK_SERVER_TID, 20);
         }
     }
 } // namespace Sensors_NS
