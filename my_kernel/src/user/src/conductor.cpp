@@ -187,7 +187,7 @@ namespace Conductor_NS
         {
             // receive request from terminal
             retval = RECEIVE(&sender_tid, (char *)&req, sizeof(ConductorRequest));
-            uassert(retval > 0 && "Error receiving request from terminal");
+            uassert(retval >= 0 && "Error receiving request from terminal");
             bool sendReply = false;
             if (req.requestType == RequestType::CMD)
             {

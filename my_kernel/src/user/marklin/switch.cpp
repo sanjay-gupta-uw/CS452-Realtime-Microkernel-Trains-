@@ -73,8 +73,8 @@ namespace Switch_NS
         for (int i = 0; i < NUM_SWITCHES; ++i)
         {
             switches[i] = Switch(switch_addrs[i], MARKLIN_IO_SERVER_TID, CLOCK_SERVER_TID);
-            switches[i].SetSwitch(SWITCH_STATE::STRAIGHT);
-            IO_NS::Print(MOVE_CURSOR COLOR_GREEN "S", SWITCH_LOCATION + 3 + i, SWITCH_STATUS_COL);
+            // switches[i].SetSwitch(SWITCH_STATE::STRAIGHT);
+            // IO_NS::Print(MOVE_CURSOR COLOR_GREEN "S", SWITCH_LOCATION + 3 + i, SWITCH_STATUS_COL);
         }
 
         /*

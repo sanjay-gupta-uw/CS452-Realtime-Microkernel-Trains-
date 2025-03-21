@@ -104,7 +104,6 @@ namespace MARKLIN_IO_SERVER
             {
                 IO_NS::PrintTerminal("TX NOTIFIER::Waiting for TX\r\n");
                 ret = AWAITEVENT(InterruptEvents::UART_MARKLIN_TX);
-                uassert(false && "TX NOTIFIER::TX_AWAITEVENT AWOKEN -- FORCED PANIC");
                 uassert(ret >= 0 && "TX NOTIFIER::TX_AWAITEVENT returned error");
             }
 
@@ -112,7 +111,6 @@ namespace MARKLIN_IO_SERVER
             {
                 IO_NS::PrintTerminal("TX NOTIFIER::Waiting for CTS HIGH\r\n");
                 ret = AWAITEVENT(InterruptEvents::UART_MARKLIN_CTS_HIGH);
-                uassert(ret >= 0 && "TX NOTIFIER::CTS_HIGH_AWAITEVENT AWOKEN -- FORCED PANIC");
                 uassert(ret >= 0 && "TX NOTIFIER::CTS_HIGH_AWAITEVENT returned error");
             }
 
@@ -172,6 +170,8 @@ namespace MARKLIN_IO_SERVER
                     int waiting_tid;
                     rx_waiting_tasks.Pop(&waiting_tid);
 
+                    // uassert(false && "MarklinIO_server::RX_NOTIFIER: -- Sending reply to waiting task");
+
                     GETC_SUCCESS_REPLY(waiting_tid, ch);
                 }
                 reply.type = REPLY_TYPE::SUCCESS;
@@ -194,6 +194,7 @@ namespace MARKLIN_IO_SERVER
                     reply.type = REPLY_TYPE::SUCCESS;
                     reply.ch = ch;
                     send_reply = true;
+                    // uassert(false && "MarklinIO_server::GETC: -- Sending reply to waiting task");
                 }
                 else
                 {
@@ -262,7 +263,7 @@ namespace MARKLIN_IO_SERVER
             else if (count == 2 && sequence_length == 3)
             {
                 end_time = clock.Time();
-                uassert(false && "FORCED PANIC");
+                // uassert(false && "FORCED PANIC");
                 IO_NS::PrintTerminal("MarklinIOServer::handle_transmission: sending solenoid off within: %d ms\r\n", (end_time - start_time) / 1000);
                 // IO_NS::PrintTerminal("MarklinIOServer::handle_transmission: Finished transmitting sequence\r\n");
             }

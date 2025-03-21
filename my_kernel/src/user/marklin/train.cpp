@@ -1,6 +1,7 @@
 #include "train.h"
 // #include "../clock.h" // this includes util which includes rpi.h
 #include "../include/marklin_io.h"
+#include "../marklin/sensor.h"
 #include "../include/name_server.h"
 #include "../include/clock_server.h"
 #include "../include/uassert.h"
@@ -102,7 +103,7 @@ namespace Trains_NS
 
         int train_num = train_params.train_num;
         // SET SPEED TO 0
-        uassert(retval > 0 && "Error receiving train_num from Conductor");
+        uassert(retval >= 0 && "Error receiving train_num from Conductor");
         IO_NS::PrintTerminal("Train %d spawned\r\n", train_num);
         REPLY(conductor_tid, (char *)true, sizeof(bool));
 
@@ -123,7 +124,7 @@ namespace Trains_NS
             // Send to the conductor with the current position and direction of travel
             TrainResponse response;
             int retval = SEND(conductor_tid, (char *)&train_query, sizeof(train_query), (char *)&response, sizeof(TrainResponse));
-            uassert(retval > 0 && "Error sending TrainQuery to Conductor");
+            uassert(retval >= 0 && "Error sending TrainQuery to Conductor");
             switch (response.command)
             {
             case TRAIN_COMMAND::ACCELERATE:
@@ -144,9 +145,13 @@ namespace Trains_NS
 
             // Reply contains the next sensor node to query for
             // Poll from next expected sensor bank
-            // SensorQuery sensor_query = {SENSOR_COMMAND::READ_BANK, response.sensor};
-            // retval = SEND(sensor_server_tid, (char *)&sensor_query, sizeof(SensorQuery), nullptr, 0);
-            // uassert(retval > 0 && "Error sending SensorQuery to SensorServer");
+            SensorStruct next_sensor;
+            next_sensor.bank = BANKS::A;
+            next_sensor.id = 3; // A4
+
+            Sensors_NS::SensorQuery sensor_query = {Sensors_NS::SENSOR_COMMAND::READ_BANK, next_sensor};
+            retval = SEND(sensor_server_tid, (char *)&sensor_query, sizeof(Sensors_NS::SensorQuery), nullptr, 0);
+            uassert(retval >= 0 && "Error sending SensorQuery to SensorServer");
 
             // // send waits for the sensor to be hit (not robust incase sensor is broken)
             // train_query.data.trainQuery.sensor = response.sensor;
