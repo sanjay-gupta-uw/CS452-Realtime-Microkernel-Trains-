@@ -24,6 +24,9 @@ namespace Trains_NS
         int CLOCK_SERVER_TID;
         int CONDUCTOR_TID;
         int SENSOR_SERVER_TID;
+        int TICKER_TID;
+
+        int CURRENT_SPEED_LOCATION;
         int train_speed; // between 0 and 14
         bool isReversed;
         SensorStruct last_hit_sensor;
@@ -53,8 +56,8 @@ namespace Trains_NS
         int speed;
     };
 
-    void
-    spawn_train(); // individual train tasks
+    void spawn_train(); // individual train tasks
+    void train_ticker();
 
 };
 

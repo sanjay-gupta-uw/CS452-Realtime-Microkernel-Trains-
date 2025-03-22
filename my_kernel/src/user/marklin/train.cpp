@@ -19,6 +19,32 @@ namespace Trains_NS
 
         train_num = train_params.train_num;
 
+        if (train_num == 1)
+        {
+            CURRENT_SPEED_LOCATION = 3;
+        }
+        else if (train_num == 54)
+        {
+            CURRENT_SPEED_LOCATION = 4;
+        }
+        else if (train_num == 55)
+        {
+            CURRENT_SPEED_LOCATION = 5;
+        }
+        else if (train_num == 58)
+        {
+            CURRENT_SPEED_LOCATION = 6;
+        }
+        else if (train_num == 77)
+        {
+            CURRENT_SPEED_LOCATION = 7;
+        }
+        else
+        {
+            IO_NS::PrintTerminal("Error: Invalid train number %d\r\n", train_num);
+            EXIT();
+        }
+
         // FIND SERVER TIDS
         MARKLIN_IO_SERVER_TID = WHOIS("MarklinIOServer");
         uassert(MARKLIN_IO_SERVER_TID > 0 && "Error finding MarklinIOServer");
@@ -163,6 +189,8 @@ namespace Trains_NS
     {
         IO_NS::PrintTerminal("Train %d spawned\r\n", train_num);
 
+        TICKER_TID = CREATE(PRIORITY::DEVICE_NOTIFIER, Trains_NS::train_ticker);
+
         // initialize train: get location of train
         // DETERMINE PATH TO NAVIGATE LOOP
         last_hit_sensor = GetLocation();
@@ -173,16 +201,24 @@ namespace Trains_NS
         }
 
         ConductorRequest train_query(last_hit_sensor, getDirection(isReversed));
+        int PREV_TICK = TIME(CLOCK_SERVER_TID);
 
         // train loop
         while (true)
         {
+            int CUR_TICK = TIME(CLOCK_SERVER_TID);
+
             // Send to the conductor with the current position and direction of travel
             TrainResponse response;
             int retval = SEND(CONDUCTOR_TID, (char *)&train_query, sizeof(train_query), (char *)&response, sizeof(TrainResponse));
             uassert(retval >= 0 && "Error sending TrainQuery to Conductor");
             switch (response.command)
             {
+            case TRAIN_COMMAND::TICK:
+            {
+                // TICKER
+                break;
+            }
             case TRAIN_COMMAND::ACCELERATE:
                 IO_NS::PrintTerminal("Accelerating train %d to speed %d\r\n", train_num, response.speed);
                 uassert(response.speed >= 0 && response.speed <= 14);
@@ -197,22 +233,14 @@ namespace Trains_NS
                 // SHOULD COMPUTE MEAN STOPPING DISTANCE/VELOCITY
                 Stop();
                 break;
+
             default:
                 break;
             }
 
-            // Reply contains the next sensor node to query for
-            // Poll from next expected sensor bank
-            // SensorStruct next_sensor;
-            // next_sensor.bank = BANKS::A;
-            // next_sensor.id = 3; // A4
+            // PASS BACK DISTANCE TO NEXT SENSOR
 
-            // Sensors_NS::SensorQuery sensor_query = {Sensors_NS::SENSOR_COMMAND::READ_BANK, next_sensor};
-            // retval = SEND(sensor_server_tid, (char *)&sensor_query, sizeof(Sensors_NS::SensorQuery), nullptr, 0);
-            // uassert(retval >= 0 && "Error sending SensorQuery to SensorServer");
-
-            // // send waits for the sensor to be hit (not robust incase sensor is broken)
-            // train_query.data.trainQuery.sensor = response.sensor;
+            PREV_TICK = CUR_TICK;
         }
     }
 
@@ -221,5 +249,21 @@ namespace Trains_NS
     void spawn_train()
     {
         Train train;
+    }
+
+    void train_ticker()
+    {
+        int TRAIN_SERVER_TID = WHOIS("TrainServer");
+        uassert(TRAIN_SERVER_TID > 0 && "Error finding TrainServer");
+        int CLOCK_SERVER_TID = WHOIS("ClockServer");
+        uassert(CLOCK_SERVER_TID > 0 && "Error finding ClockServer");
+
+        TrainResponse response = {TRAIN_COMMAND::TICK};
+
+        while (true)
+        {
+            int retval = SEND(TRAIN_SERVER_TID, (char *)&response, sizeof(TrainResponse), nullptr, 0);
+            DELAY(CLOCK_SERVER_TID, 5);
+        }
     }
 } // namespace Trains_NS

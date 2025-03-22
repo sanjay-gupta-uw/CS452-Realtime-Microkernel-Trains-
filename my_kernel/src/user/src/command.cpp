@@ -148,12 +148,12 @@ namespace UI_CMD_NS
 
             const char *color = (switch_state == 'S') ? COLOR_GREEN : COLOR_RED;
 
-            // Update switches table
-            IO_NS::Print(MOVE_CURSOR "%s%c",
-                         SWITCH_LOCATION + 3 + switch_index,
-                         SWITCH_STATUS_COL,
-                         color,
-                         switch_state);
+            // // Update switches table
+            // IO_NS::Print(MOVE_CURSOR "%s%c",
+            //              SWITCH_LOCATION + 3 + switch_index,
+            //              SWITCH_STATUS_COL,
+            //              color,
+            //              switch_state);
 
             // Update track diagram
             for (size_t i = 0; i < current_track->switches_count; ++i)
@@ -372,7 +372,7 @@ namespace UI_CMD_NS
         break;
         default:
         {
-            IO_NS::PrintTerminal("INPUT: %d\r\n", c);
+            // IO_NS::PrintTerminal("INPUT: %d\r\n", c);
             if (BUFFER_INDEX < INPUT_BUFFER_SIZE - 1)
             {
                 inputBuffer[BUFFER_INDEX] = c;

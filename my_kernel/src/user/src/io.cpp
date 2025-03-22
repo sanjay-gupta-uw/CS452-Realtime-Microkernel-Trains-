@@ -190,8 +190,8 @@ namespace IO_NS
             int retval = IO_SERVER::Puts(-1, (unsigned char *)ret_buffer);
             uassert(retval != -1 && "IO_SERVER::PrintTerminal: PANIC, Puts failed");
             // uart_printf(CONSOLE, RESTORE_CURSOR "PRINTTERMINAL -- string sent successfully -- returning\r\n" SAVE_CURSOR);
-// #else
-// uart_puts(CONSOLE, ret_buffer);
+#else
+            // uart_puts(CONSOLE, ret_buffer);
 #endif
         }
         return;

@@ -5,6 +5,7 @@
 #include "track_node.h"
 #include "../marklin/switch.h"
 #include "../../containers/stack.h"
+#include "../../containers/queue.h"
 
 // The track initialization functions expect an array of this size.
 #define TRACK_MAX 144
@@ -23,12 +24,12 @@ private:
     void init_tracka();
     void init_trackb();
     void initialize_loop(); // sets noid
-    void figure_eight();
 
 public:
     Track();
     ~Track();
 
+    void getLoop(Queue<PathNode, NUM_SWITCHES> *switch_config, int *distance);
     void init(char track_id); // initialized either track a or b
     track_node *get_node_by_name(const char *name);
     void find_path(const char *start, const char *dest, Stack<PathNode, TRACK_MAX> *path);

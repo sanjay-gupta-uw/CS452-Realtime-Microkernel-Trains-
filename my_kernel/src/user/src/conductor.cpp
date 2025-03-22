@@ -27,7 +27,7 @@ namespace Conductor_NS
         uassert(SENSOR_SERVER_TID > 0 && "Conductor::Error creating sensor server");
         IO_NS::PrintTerminal("Sensor server created with TID %d\r\n", SENSOR_SERVER_TID);
         // // create switch server
-        SWITCH_SERVER_TID = CREATE(PRIORITY::DEVICE_SERVER, Switch_NS::SwitchServer);
+        SWITCH_SERVER_TID = CREATE(PRIORITY::DEVICE_SERVER, Switch_NS::StartSwitchServer);
         uassert(SWITCH_SERVER_TID > 0 && "Conductor::Error creating switch server");
         IO_NS::PrintTerminal("Switch server created with TID %d\r\n", SWITCH_SERVER_TID);
 
@@ -38,6 +38,9 @@ namespace Conductor_NS
             train_arr[i].train_num = -1;
             train_arr[i].isWaitingForCommand = false;
         }
+
+        // run conductor loop
+        ConductorLoop();
     }
     Conductor::~Conductor()
     {
@@ -69,7 +72,7 @@ namespace Conductor_NS
             IO_NS::PrintTerminal("Conductor received SET_SWITCH request for switch index %d\r\n", req->id);
             int switch_index = req->id;
             Switch_NS::SWITCH_STATE state = (req->data == 'S') ? Switch_NS::SWITCH_STATE::STRAIGHT : Switch_NS::SWITCH_STATE::CURVED;
-            Switch_NS::SwitchRequest switch_req = {false, switch_index, state};
+            Switch_NS::SwitchRequest switch_req = {switch_index, state};
             int retval = SEND(SWITCH_SERVER_TID, (char *)&switch_req, sizeof(Switch_NS::SwitchRequest), nullptr, 0);
             break;
         }
@@ -164,6 +167,7 @@ namespace Conductor_NS
 
     void Conductor::CalibrateTrain(int train_num)
     {
+        /*
         int train_index = get_train_index(train_num);
         train_task_mapping *train = &train_arr[train_index];
 
@@ -204,6 +208,7 @@ namespace Conductor_NS
                 Switch_NS::SwitchRequest switch_req = {false, node.node->num, Switch_NS::SWITCH_STATE::STRAIGHT};
                 int retval = SEND(SWITCH_SERVER_TID, (char *)&switch_req, sizeof(switch_req), nullptr, 0);
                 uassert(retval >= 0 && "Error sending switch request");
+                break;
             }
 
             count++;
@@ -214,29 +219,65 @@ namespace Conductor_NS
 
         // should then turn off train, and set to loop
         // call another function to get destination once constant speed is reached
+        */
     }
 
-    void start_conductor()
+    void Conductor::SetSwitches(Queue<PathNode, NUM_SWITCHES> *switch_nodes)
     {
-        Conductor conductor;
+        while (!switch_nodes->IsEmpty())
+        {
+            PathNode node;
+            switch_nodes->Pop(&node);
+            IO_NS::PrintTerminal("CONDUCTOR::SettingSwitches -- NODE: %s\r\n", node.node->name);
+
+            if (node.node->type == NODE_BRANCH)
+            {
+                Switch_NS::SwitchRequest switch_req = {node.node->num, node.switch_state};
+
+                int retval = SEND(SWITCH_SERVER_TID, (char *)&switch_req, sizeof(switch_req), nullptr, 0);
+                uassert(retval >= 0 && "Error sending switch request");
+
+                IO_NS::PrintTerminal("CONDUCTOR::Switch %s set to %c\r\n", node.node->name, node.switch_state == Switch_NS::SWITCH_STATE::STRAIGHT ? 'S' : 'C');
+                // break;
+            }
+        }
+        // uassert(false && "FORCED ERROR");
+    }
+
+    void Conductor::ConductorLoop()
+    {
         int sender_tid;
         unsigned char track_id;
         int retval = RECEIVE(&sender_tid, (char *)&track_id, sizeof(track_id));
         IO_NS::PrintTerminal("Conductor received request for track %c\r\n", track_id);
         uassert(track_id == 'A' || track_id == 'B' || track_id == 'a' || track_id == 'b');
-        conductor.track.init(track_id);
+        track.init(track_id);
+        IO_NS::PrintTerminal("Conductor successfully initialized track %c\r\n", track_id);
 
         REPLY(sender_tid, nullptr, 0);
+
+        IO_NS::PrintTerminal("STARTING CONDUCTOR TESTS\r\n");
         // test
         {
+            // TEST LOOP SWITCHES
+            Queue<PathNode, NUM_SWITCHES> switch_config;
+            int distance;
+            IO_NS::PrintTerminal("Conductor requesting loop switches\r\n");
+            track.getLoop(&switch_config, &distance);
+            IO_NS::PrintTerminal("Conductor received loop switches\r\n");
+            SetSwitches(&switch_config);
+
+            // uassert(false && "FINISHED TESTING LOOP SWITCHES");
+
             // test path finding
-            Stack<PathNode, TRACK_MAX> path;
-            conductor.track.find_path("E1", "E14", &path);
-            conductor.track.find_path("E9", "D8", &path);
-            conductor.track.find_path("A1", "A2", &path);
-            conductor.track.find_path("A1", "E7", &path);
-            conductor.track.find_path("A2", "E7", &path);
+            // Stack<PathNode, TRACK_MAX> path;
+            // conductor.track.find_path("E1", "E14", &path);
+            // conductor.track.find_path("E9", "D8", &path);
+            // conductor.track.find_path("A1", "A2", &path);
+            // conductor.track.find_path("A1", "E7", &path);
+            // conductor.track.find_path("A2", "E7", &path);
         }
+        IO_NS::PrintTerminal("CONDUCTOR TESTS FINISHED\r\n");
 
         ConductorRequest req;
         while (true)
@@ -248,7 +289,7 @@ namespace Conductor_NS
             if (req.requestType == RequestType::CMD)
             {
                 IO_NS::PrintTerminal("Conductor received cmd request\r\n");
-                conductor.ProcessRequest(&(req.data.cmdRequest));
+                ProcessRequest(&(req.data.cmdRequest));
                 sendReply = true;
             }
             else
@@ -257,16 +298,16 @@ namespace Conductor_NS
                 // find train from TID and set isWaitingForCommand to true
                 for (int i = 0; i < NUM_TRAINS; i++)
                 {
-                    if (conductor.train_arr[i].task_id == sender_tid)
+                    if (train_arr[i].task_id == sender_tid)
                     {
-                        IO_NS::PrintTerminal("Train %d is waiting for command\r\n", conductor.train_arr[i].train_num);
-                        conductor.train_arr[i].isWaitingForCommand = true;
+                        IO_NS::PrintTerminal("Train %d is waiting for command\r\n", train_arr[i].train_num);
+                        train_arr[i].isWaitingForCommand = true;
                         break;
                     }
                 }
             }
 
-            conductor.DispatchTrainCommand();
+            DispatchTrainCommand();
 
             // find path to node
             // conductor.track.find_path((char *)find_node_name.node_name);
@@ -277,6 +318,11 @@ namespace Conductor_NS
             }
         }
         EXIT();
+    }
+
+    void start_conductor()
+    {
+        Conductor conductor;
     }
 
     int Conductor::get_train_index(int train_num)

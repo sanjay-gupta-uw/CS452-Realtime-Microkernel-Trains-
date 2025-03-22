@@ -16,6 +16,10 @@ namespace Conductor_NS
 {
     class Conductor
     {
+    public:
+        Conductor();
+        ~Conductor();
+
     private:
         int SWITCH_SERVER_TID;
         int SENSOR_SERVER_TID;
@@ -24,9 +28,8 @@ namespace Conductor_NS
         int get_train_index(int train_num);
         void CalibrateTrain(int train_num);
 
-    public:
-        Conductor();
-        ~Conductor();
+        void ConductorLoop();
+        void SetSwitches(Queue<PathNode, NUM_SWITCHES> *switch_nodes);
 
         void ProcessRequest(CMDRequest *req);
         void DispatchTrainCommand();

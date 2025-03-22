@@ -458,7 +458,7 @@ void Kernel::Handler(int N, uint32_t idleTime)
     case SVC_ABORT:
     {
         const char *condition = reinterpret_cast<const char *>(active_task->context.x[0]); // extract condition from active task
-        int line = static_cast<int>(active_task->context.x[1]);
+        int line = static_cast<int>(active_task->context.x[2]);
         const char *file = reinterpret_cast<const char *>(active_task->context.x[3]);
         kabort(condition, line, file, 1);
 

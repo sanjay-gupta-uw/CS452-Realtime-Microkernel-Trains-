@@ -46,6 +46,22 @@ namespace UI_NS
         IO_NS::Print(COLOR_WHITE MOVE_CURSOR "-----------------------+\r\n", SENSOR_LOCATION + 3 + SWITCH_COUNT, 1 + BOX_WIDTH);
     }
 
+    static void init_velocities_display()
+    {
+        const int train_nums[NUM_TRAINS] = {1, 54, 55, 58, 77};
+
+        IO_NS::Print(COLOR_WHITE MOVE_CURSOR "-----------------------+\r\n", VELOCITY_LOCATION_Y, 1);
+        IO_NS::Print(COLOR_WHITE MOVE_CURSOR "   Current Velocity: |\r\n", VELOCITY_LOCATION_Y + 1, 1);
+        IO_NS::Print(COLOR_WHITE MOVE_CURSOR "-----------------------+\r\n", VELOCITY_LOCATION_Y + 2, 1);
+        for (int i = 0; i < NUM_TRAINS; ++i)
+        {
+            // print borders and switch address so display only needs to update the status
+            int location_y = VELOCITY_LOCATION_Y + 3 + i;
+            IO_NS::Print(COLOR_WHITE MOVE_CURSOR "|  Train %d" CHANGE_COLUMN "|", location_y, 1, train_nums[i], BOX_WIDTH - 1);
+        }
+        IO_NS::Print(COLOR_WHITE MOVE_CURSOR "-----------------------+\r\n", VELOCITY_LOCATION_Y + 3 + NUM_TRAINS, 1);
+    }
+
     void start_ui()
     {
         // uassert(false && "FORCED PANIC -- UI1 -- REMOVE THIS LINE");
@@ -61,9 +77,9 @@ namespace UI_NS
             IO_NS::Print(MOVE_CURSOR "-", SCROLL_ROW_END, i);
         }
 
+        init_velocities_display();
         init_switch_display();
-        IO_NS::Print(MOVE_CURSOR "IDLE: %d%%", IDLE_LOCATION, 1, 0);
-        // clock.Display();
+        // IO_NS::Print(MOVE_CURSOR "IDLE: %d%%", IDLE_LOCATION, 1, 0);
         init_sensor_display();
         IO_NS::PrintTerminal("UI TASK INITIALIZED!\r\n");
         EXIT();

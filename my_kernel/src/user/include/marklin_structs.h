@@ -65,6 +65,7 @@ enum class TRAIN_COMMAND
     ACCELERATE,
     REVERSE,
     STOP,
+    TICK,
 };
 struct TrainResponse
 {

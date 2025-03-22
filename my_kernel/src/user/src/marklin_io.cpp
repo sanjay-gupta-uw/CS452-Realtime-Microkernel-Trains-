@@ -102,14 +102,14 @@ namespace MARKLIN_IO_SERVER
         {
             if (TX_STATUS(MARKLIN) != 1)
             {
-                IO_NS::PrintTerminal("TX NOTIFIER::Waiting for TX\r\n");
+                // IO_NS::PrintTerminal("TX NOTIFIER::Waiting for TX\r\n");
                 ret = AWAITEVENT(InterruptEvents::UART_MARKLIN_TX);
                 uassert(ret >= 0 && "TX NOTIFIER::TX_AWAITEVENT returned error");
             }
 
             if (CTS_STATUS(MARKLIN) != 1)
             {
-                IO_NS::PrintTerminal("TX NOTIFIER::Waiting for CTS HIGH\r\n");
+                // IO_NS::PrintTerminal("TX NOTIFIER::Waiting for CTS HIGH\r\n");
                 ret = AWAITEVENT(InterruptEvents::UART_MARKLIN_CTS_HIGH);
                 uassert(ret >= 0 && "TX NOTIFIER::CTS_HIGH_AWAITEVENT returned error");
             }
@@ -117,7 +117,7 @@ namespace MARKLIN_IO_SERVER
             IO_REQUEST req{IO_REQUEST_TYPE::TX_NOTIFIER, 0};
             IO_REPLY reply;
 
-            IO_NS::PrintTerminal("TX NOTIFIER::Available to transmit\r\n");
+            // IO_NS::PrintTerminal("TX NOTIFIER::Available to transmit\r\n");
 
             // Notify the server that we can transmit
             SEND(MARKLIN_IO_TID, (char *)&req, sizeof(req), (char *)&reply, sizeof(reply)); // Server needs to reply when it writes to the UART
@@ -264,8 +264,7 @@ namespace MARKLIN_IO_SERVER
             {
                 end_time = clock.Time();
                 // uassert(false && "FORCED PANIC");
-                IO_NS::PrintTerminal("MarklinIOServer::handle_transmission: sending solenoid off within: %d ms\r\n", (end_time - start_time) / 1000);
-                // IO_NS::PrintTerminal("MarklinIOServer::handle_transmission: Finished transmitting sequence\r\n");
+                // IO_NS::PrintTerminal("MarklinIOServer::handle_transmission: sending solenoid off within: %d ms\r\n", (end_time - start_time) / 1000);
             }
 
             unsigned char ch;
