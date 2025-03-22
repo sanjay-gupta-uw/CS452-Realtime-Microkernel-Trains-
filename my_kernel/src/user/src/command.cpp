@@ -52,7 +52,7 @@ namespace UI_CMD_NS
         IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Switch Command: SW <switch_num> <S/C>", CMD_INFO_LOCATION + 1, 1);
         IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Train Accelerate Command: TR <train_num> <speed>", CMD_INFO_LOCATION + 2, 1);
         IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Train Reverse Command: RV <train_num>", CMD_INFO_LOCATION + 3, 1);
-        IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Train Spawn Command: SPAWN <train_num>", CMD_INFO_LOCATION + 4, 1);
+        IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Train Spawn Command: SPAWN <train_num> <sensor_id>", CMD_INFO_LOCATION + 4, 1);
         IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Go Command: GO <node_name>", CMD_INFO_LOCATION + 5, 1);
         IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Quit Command: q", CMD_INFO_LOCATION + 6, 1);
     }
@@ -257,6 +257,9 @@ namespace UI_CMD_NS
                 // read the trian being spawned
                 int train_num = 0;
                 bool num_set = false;
+                char sensor_id[5] = {0};
+                bool sensor_set = false;
+
                 const char *ptr = str + 5;
                 while (*ptr == ' ')
                 {
@@ -269,15 +272,35 @@ namespace UI_CMD_NS
                     ptr++;
                     num_set = true;
                 }
-
-                // try to spawn train
-                if (!num_set || train_num < 0 || train_num > 80)
+                while (*ptr == ' ')
                 {
-                    IO_NS::PrintTerminal("Invalid Train Spawn Command\r\n");
+                    ptr++;
+                }
+                // Parse sensor ID (up to 4 characters)
+                int sidx = 0;
+                while (*ptr != '\0' && *ptr != ' '  && sidx < 4) {
+                    sensor_id[sidx++] = *ptr++;
+                    sensor_set = true;
+                }
+                sensor_id[sidx] = '\0';
+
+                if (!num_set || !sensor_set) {
+                    IO_NS::PrintTerminal("Invalid Train SPAWN command\r\n");
                     return;
                 }
-                IO_NS::PrintTerminal("Attempting to spawn Train %d\r\n", train_num);
+
+                // try to spawn train
+                if (train_num < 0 || train_num > 80)
+                {
+                    IO_NS::PrintTerminal("Invalid Train Number\r\n");
+                    return;
+                }
+                IO_NS::PrintTerminal("Attempting to spawn Train %d in front of sensor %s\r\n", train_num, sensor_id);
+
+                // Create request with sensor ID
                 ConductorRequest request(COMMAND::SPAWN_TRAIN, train_num, 0);
+                // strncpy(request.data.spawnRequest.sensor_id, sensor_id, sizeof(request.data.spawnRequest.sensor_id));
+        
                 SEND(CONDUCTOR_TID, (char *)&request, sizeof(ConductorRequest), (char *)command_received, sizeof(int));
             }
         }
