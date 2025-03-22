@@ -89,20 +89,6 @@ void FirstUserTask()
     EXIT();
 }
 
-// this is deprecated -- see sensor.cpp for server implementation
-void SensorTask()
-{
-    REGISTERAS("SensorTask");
-    // uassert(4 == 5);
-    Sensors_NS::SensorManager sensors;
-    while (true)
-    {
-        sensors.ReadAll(NUM_BANKS); // this will put it to sleep until data is ready
-        sensors.Display();
-    }
-    EXIT();
-}
-
 void ComputeIdleTask()
 {
     int CLOCK_SERVER_TID = WHOIS("ClockServer");

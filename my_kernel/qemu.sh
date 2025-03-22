@@ -4,6 +4,7 @@
     read -r line
     pts=$(echo $line | cut -d ' ' -f5)
     tmux splitw -h "screen $pts 115200"
+    tmux resize-pane -L 50  # Increase pane width by 50 columns (adjust as needed)
     echo "Opening terminal on $pts"
     read -r line
     # echo "Opening terminal on $pts"

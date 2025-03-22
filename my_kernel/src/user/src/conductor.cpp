@@ -6,6 +6,7 @@
 #include "../marklin/sensor.h"
 #include "../marklin/train.h"
 #include "../../include/syscall.h"
+#include "../../containers/stack.h"
 
 typedef struct IO_REQUEST
 {
@@ -161,6 +162,60 @@ namespace Conductor_NS
         }
     }
 
+    void Conductor::CalibrateTrain(int train_num)
+    {
+        int train_index = get_train_index(train_num);
+        train_task_mapping *train = &train_arr[train_index];
+
+        if (train_index == -1)
+        {
+            IO_NS::PrintTerminal("Train %d not found or initialized.\r\n", train_num);
+            return;
+        }
+        IO_NS::PrintTerminal("Beginning calibration for train %d\r\n", train_num);
+
+        // Find Path to loop
+        Stack<PathNode, TRACK_MAX> path;
+
+        track.find_path(train->last_hit_sensor.name, "B5", &path); // B5 is a loop node
+        // check if path is empty
+        uassert(!path.IsEmpty() && "Error finding path to loop");
+
+        PathNode start_node;
+        path.Pop(&start_node);
+
+        int count = 0;
+        while (!path.IsEmpty())
+        {
+            PathNode node;
+            path.Pop(&node);
+            if (count == 0)
+            {
+                TrainResponse response = {TRAIN_COMMAND::ACCELERATE, MEDIUM_SPEED};
+                if (start_node.node == node.node->reverse) // send reverse command to train
+                {
+                    response = {TRAIN_COMMAND::REVERSE};
+                }
+                train->train_response_queue.Push(response);
+            }
+            if (node.node->type == NODE_BRANCH)
+            {
+                // switch
+                Switch_NS::SwitchRequest switch_req = {false, node.node->num, Switch_NS::SWITCH_STATE::STRAIGHT};
+                int retval = SEND(SWITCH_SERVER_TID, (char *)&switch_req, sizeof(switch_req), nullptr, 0);
+                uassert(retval >= 0 && "Error sending switch request");
+            }
+
+            count++;
+        }
+
+        // once B5 is tripped, set train to loop
+        // after sending last train command, we will receive the next when the train hits B5
+
+        // should then turn off train, and set to loop
+        // call another function to get destination once constant speed is reached
+    }
+
     void start_conductor()
     {
         Conductor conductor;
@@ -175,11 +230,12 @@ namespace Conductor_NS
         // test
         {
             // test path finding
-            conductor.track.find_path("E1", "E14");
-            conductor.track.find_path("E9", "D8");
-            conductor.track.find_path("A1", "A2");
-            conductor.track.find_path("A1", "E7");
-            conductor.track.find_path("A2", "E7");
+            Stack<PathNode, TRACK_MAX> path;
+            conductor.track.find_path("E1", "E14", &path);
+            conductor.track.find_path("E9", "D8", &path);
+            conductor.track.find_path("A1", "A2", &path);
+            conductor.track.find_path("A1", "E7", &path);
+            conductor.track.find_path("A2", "E7", &path);
         }
 
         ConductorRequest req;

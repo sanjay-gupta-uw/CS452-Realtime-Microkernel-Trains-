@@ -22,6 +22,7 @@ namespace Conductor_NS
         // Switch_NS::Switches switches;
 
         int get_train_index(int train_num);
+        void CalibrateTrain(int train_num);
 
     public:
         Conductor();
@@ -35,6 +36,7 @@ namespace Conductor_NS
             bool isWaitingForCommand;
             int task_id;   // TID
             int train_num; // train number
+            track_node last_hit_sensor;
             Queue<TrainResponse, 8> train_response_queue;
         };
 

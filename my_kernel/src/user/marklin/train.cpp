@@ -13,10 +13,27 @@ namespace Trains_NS
     // initialize with invaid train number
     Train::Train()
     {
-        train_num = -1;
-        train_speed = 0;
-        MARKLIN_IO_SERVER_TID = -1;
+        TrainParams train_params;
+        int retval = RECEIVE(&CONDUCTOR_TID, (char *)&train_params, sizeof(TrainParams));
+        uassert(retval >= 0 && "Error receiving train_num from Conductor");
+
+        train_num = train_params.train_num;
+
+        // FIND SERVER TIDS
+        MARKLIN_IO_SERVER_TID = WHOIS("MarklinIOServer");
+        uassert(MARKLIN_IO_SERVER_TID > 0 && "Error finding MarklinIOServer");
+        CLOCK_SERVER_TID = WHOIS("ClockServer");
+        uassert(CLOCK_SERVER_TID > 0 && "Error finding ClockServer");
+        SENSOR_SERVER_TID = WHOIS("SensorServer");
+        uassert(SENSOR_SERVER_TID > 0 && "Error finding SensorServer");
+
         isReversed = false;
+        // SET SPEED TO 0
+        train_speed = 0;
+        Accelerate(0);
+        REPLY(CONDUCTOR_TID, (char *)true, sizeof(bool));
+
+        // RUN TRAIN LOOP
     }
 
     Train::~Train()
@@ -44,9 +61,10 @@ namespace Trains_NS
         if (initial_speed == 0)
         {
             // cannot reverse a stopped train
-            // IO_NS::PrintTerminal("Cannot reverse a stopped train\r\n");
-            return;
+            Accelerate(LOW_SPEED);
         }
+
+        isReversed = !isReversed;
 
         Stop();
         DELAY(CLOCK_SERVER_TID, 200); // stop for 2 seconds
@@ -93,53 +111,91 @@ namespace Trains_NS
         return false;
     }
 
-    void spawn_train()
+    static DIRECTION getDirection(bool isReversed)
     {
-        // only conductor should be interacting with this
-        int conductor_tid;
+        return isReversed ? DIRECTION::REVERSE : DIRECTION::FORWARD;
+    }
 
-        TrainParams train_params;
-        int retval = RECEIVE(&conductor_tid, (char *)&train_params, sizeof(TrainParams));
+    SensorStruct Train::GetLocation()
+    {
+        // SEND ACCELERATE COMMAND TO MARKLIN
+        Accelerate(LOW_SPEED);
 
-        int train_num = train_params.train_num;
-        // SET SPEED TO 0
-        uassert(retval >= 0 && "Error receiving train_num from Conductor");
+        // SEND SENSOR QUERY TO SENSOR SERVER
+        Sensors_NS::SensorQuery sensor_query = {Sensors_NS::SENSOR_COMMAND::READ_ALL};
+        Sensors_NS::SensorResponse sensor_response;
+        int retval = SEND(SENSOR_SERVER_TID, (char *)&sensor_query, sizeof(Sensors_NS::SensorQuery), (char *)&sensor_response, sizeof(Sensors_NS::SensorResponse));
+        if (!sensor_response.success)
+        {
+            return {BANKS::A, -1};
+        }
+        uassert(retval >= 0 && "Error sending SensorQuery to SensorServer");
+        // this runs after a sensor is hit
+
+        // reverse train and request sensor again
+        DELAY(CLOCK_SERVER_TID, 25); // let train keep moving for a little bit
+
+        // determine the reverse sensor
+        int sensor_num = sensor_response.triggered_sensor.id;
+        int reverse_sensor_num = (sensor_num % 2 == 0) ? sensor_num - 1 : sensor_num + 1;
+
+        ReverseTrain();
+        SensorStruct reverse_sensor = {sensor_response.triggered_sensor.bank, reverse_sensor_num};
+        Sensors_NS::SensorResponse reverse_sensor_response;
+        retval = SEND(SENSOR_SERVER_TID, (char *)&sensor_query, sizeof(Sensors_NS::SensorQuery), (char *)&reverse_sensor_response, sizeof(Sensors_NS::SensorResponse));
+        uassert(retval >= 0 && "Error sending SensorQuery to SensorServer");
+        if (!reverse_sensor_response.success)
+        {
+            // IO_NS::PrintTerminal("Error: Sensor %c%d not triggered\r\n", reverse_sensor.bank, reverse_sensor_num);
+            return {BANKS::A, -1};
+        }
+        // this runs after the sensor is hit -- acts as a confirmation
+
+        // reverse train back to original direction
+        ReverseTrain();
+
+        Accelerate(0); // stop train
+
+        return sensor_response.triggered_sensor;
+    }
+
+    void Train::TrainLoop()
+    {
         IO_NS::PrintTerminal("Train %d spawned\r\n", train_num);
-        REPLY(conductor_tid, (char *)true, sizeof(bool));
 
-        int MARKLIN_IO_SERVER_TID = WHOIS("MarklinIOServer");
-        uassert(MARKLIN_IO_SERVER_TID > 0 && "Error finding MarklinIOServer");
-        int CLOCK_SERVER_TID = WHOIS("ClockServer");
-        uassert(CLOCK_SERVER_TID > 0 && "Error finding ClockServer");
         // initialize train: get location of train
         // DETERMINE PATH TO NAVIGATE LOOP
-        Trains_NS::Train train(train_num, MARKLIN_IO_SERVER_TID, CLOCK_SERVER_TID);
-        ConductorRequest train_query({BANKS::A, 1}, DIRECTION::FORWARD);
+        last_hit_sensor = GetLocation();
+        if (last_hit_sensor.id == -1)
+        {
+            IO_NS::PrintTerminal("Error: Could not spawn train %d, please try again\r\n", train_num);
+            EXIT();
+        }
 
-        int sensor_server_tid = WHOIS("SensorServer");
-        uassert(sensor_server_tid > 0 && "Error finding SensorServer");
+        ConductorRequest train_query(last_hit_sensor, getDirection(isReversed));
+
         // train loop
         while (true)
         {
             // Send to the conductor with the current position and direction of travel
             TrainResponse response;
-            int retval = SEND(conductor_tid, (char *)&train_query, sizeof(train_query), (char *)&response, sizeof(TrainResponse));
+            int retval = SEND(CONDUCTOR_TID, (char *)&train_query, sizeof(train_query), (char *)&response, sizeof(TrainResponse));
             uassert(retval >= 0 && "Error sending TrainQuery to Conductor");
             switch (response.command)
             {
             case TRAIN_COMMAND::ACCELERATE:
                 IO_NS::PrintTerminal("Accelerating train %d to speed %d\r\n", train_num, response.speed);
                 uassert(response.speed >= 0 && response.speed <= 14);
-                train.Accelerate(response.speed);
+                Accelerate(response.speed);
                 break;
             case TRAIN_COMMAND::REVERSE:
                 IO_NS::PrintTerminal("Reversing train %d\r\n", train_num);
-                train.ReverseTrain();
+                ReverseTrain();
                 break;
             case TRAIN_COMMAND::STOP:
                 // USE BIJECTION METHOD TO HAVE FINAL STOP AS CLOSE TO SENSOR AS POSSIBLE
                 // SHOULD COMPUTE MEAN STOPPING DISTANCE/VELOCITY
-                train.Stop();
+                Stop();
                 break;
             default:
                 break;
@@ -160,4 +216,10 @@ namespace Trains_NS
         }
     }
 
+    // add train ticker to determine pos/time
+
+    void spawn_train()
+    {
+        Train train;
+    }
 } // namespace Trains_NS

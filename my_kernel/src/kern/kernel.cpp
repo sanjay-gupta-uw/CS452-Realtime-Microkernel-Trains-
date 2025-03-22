@@ -271,13 +271,13 @@ void Kernel::AwaitEvent(int eventType)
     {
     case TIMER_TICK:
     {
-#if IRQ_ENABLED == 0
-        // kassert(false && "PANIC: IRQ NOT ENABLED");
-        active_task->SetRetval(-1);   // set return value to -1
-        active_task->setState(READY); // set task state to ready
-        RepushActiveTask();
-        return;
-#endif
+        // #if IRQ_ENABLED == 0
+        //         // kassert(false && "PANIC: IRQ NOT ENABLED");
+        //         active_task->SetRetval(-1);   // set return value to -1
+        //         active_task->setState(READY); // set task state to ready
+        //         RepushActiveTask();
+        //         return;
+        // #endif
 
         clock.ReArmTimer(TEN_MS); // Rearm timer for next interval
         active_task->SetRetval(0);

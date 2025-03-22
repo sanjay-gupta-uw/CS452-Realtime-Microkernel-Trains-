@@ -11,21 +11,23 @@ extern "C" void _reboot(void); // Declare the reboot function implemented in ass
 
 namespace UI_CMD_NS
 {
-    void display_track(const TrackConfig* config) {
+    void display_track(const TrackConfig *config)
+    {
         int y = TRACK_LAYOUT_LOCATION_Y;
         int x = TRACK_LAYOUT_LOCATION_X;
-        
+
         // Draw diagram
-        for (size_t i = 0; i < config->diagram_lines; i++) {
+        for (size_t i = 0; i < config->diagram_lines; i++)
+        {
             IO_NS::Print(MOVE_CURSOR "%s", y + i, x + 1, config->diagram[i]);
         }
-        
+
         // Initialize switches
-        for (size_t i = 0; i < config->switches_count; i++) {
+        for (size_t i = 0; i < config->switches_count; i++)
+        {
             IO_NS::Print(MOVE_CURSOR COLOR_GREEN "S",
-                y + config->switches[i].line,
-                x + config->switches[i].col
-            );
+                         y + config->switches[i].line,
+                         x + config->switches[i].col);
         }
     }
 
@@ -144,27 +146,26 @@ namespace UI_CMD_NS
             // update switch display
             // need to get status of switch
 
-            
-            const char* color = (switch_state == 'S') ? COLOR_GREEN : COLOR_RED;
+            const char *color = (switch_state == 'S') ? COLOR_GREEN : COLOR_RED;
 
             // Update switches table
-            IO_NS::Print(MOVE_CURSOR "%s%c", 
-                SWITCH_LOCATION + 3 + switch_index, 
-                SWITCH_STATUS_COL, 
-                color, 
-                switch_state
-            );
+            IO_NS::Print(MOVE_CURSOR "%s%c",
+                         SWITCH_LOCATION + 3 + switch_index,
+                         SWITCH_STATUS_COL,
+                         color,
+                         switch_state);
 
             // Update track diagram
-            for (size_t i = 0; i < current_track->switches_count; ++i) {
-                if (current_track->switches[i].num == switch_num) {
+            for (size_t i = 0; i < current_track->switches_count; ++i)
+            {
+                if (current_track->switches[i].num == switch_num)
+                {
                     // Use current_track->switches[i].line/col
                     IO_NS::Print(MOVE_CURSOR "%s%c",
-                        TRACK_LAYOUT_LOCATION_Y + current_track->switches[i].line,
-                        TRACK_LAYOUT_LOCATION_X + current_track->switches[i].col,
-                        color, 
-                        switch_state
-                    );
+                                 TRACK_LAYOUT_LOCATION_Y + current_track->switches[i].line,
+                                 TRACK_LAYOUT_LOCATION_X + current_track->switches[i].col,
+                                 color,
+                                 switch_state);
                 }
             }
         }
@@ -340,7 +341,7 @@ namespace UI_CMD_NS
         // IO_NS::PrintTerminal("GETTING INPUT\r\n");
         // const int CONSOLE = 1;
 
-        unsigned char c = (unsigned char)(IO_SERVER::Getc(IO_SERVER_TID));
+        unsigned char c = IO_SERVER::Getc(IO_SERVER_TID);
         // IO_NS::PrintTerminal("GOT INPUT: %c\r\n", c);
 
         // IO_NS::Print(MOVE_CURSOR, CMD_LOCATION, BUFFER_INDEX + CMD_PREFIX_LENGTH);
@@ -359,6 +360,7 @@ namespace UI_CMD_NS
             }
         }
         break;
+        case DELETE:
         case '\b':
         {
             if (BUFFER_INDEX > 0)
@@ -370,6 +372,7 @@ namespace UI_CMD_NS
         break;
         default:
         {
+            IO_NS::PrintTerminal("INPUT: %d\r\n", c);
             if (BUFFER_INDEX < INPUT_BUFFER_SIZE - 1)
             {
                 inputBuffer[BUFFER_INDEX] = c;
@@ -388,17 +391,21 @@ namespace UI_CMD_NS
         IO_NS::PrintTerminal("Please enter the Track ID: ");
         while (true)
         {
-            unsigned char track_id = (unsigned char)(IO_SERVER::Getc(commandPrompt.IO_SERVER_TID));
+            IO_NS::PrintTerminal("GETTING INPUT\r\n");
+            unsigned char track_id = IO_SERVER::Getc(commandPrompt.IO_SERVER_TID);
             IO_NS::PrintTerminal("%c\r\n", track_id);
             if (track_id == 'A' || track_id == 'a' || track_id == 'B' || track_id == 'b')
             {
                 // display the track graph
-                if (track_id == 'A' || track_id == 'a') {
+                if (track_id == 'A' || track_id == 'a')
+                {
                     commandPrompt.current_track = &TRACK_A;
-                } else {
+                }
+                else
+                {
                     commandPrompt.current_track = &TRACK_B;
                 }
-                display_track(commandPrompt.current_track); 
+                display_track(commandPrompt.current_track);
 
                 // create conductor
                 IO_NS::PrintTerminal("Attempting to start Conductor with track ID: %c, CONDUCTOR_TID: %d\r\n", track_id, commandPrompt.CONDUCTOR_TID);

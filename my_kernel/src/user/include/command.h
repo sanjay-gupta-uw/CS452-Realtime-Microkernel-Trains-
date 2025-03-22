@@ -9,6 +9,8 @@
 namespace UI_CMD_NS
 {
 
+#define DELETE 0x7F
+
 #define CMD_PREFIX_LENGTH 5
 #define INPUT_BUFFER_SIZE 32
 
@@ -27,7 +29,7 @@ namespace UI_CMD_NS
 
         int IO_SERVER_TID;
         int CONDUCTOR_TID;
-        const TrackConfig* current_track;
+        const TrackConfig *current_track;
     };
 
     void start_command_prompt();

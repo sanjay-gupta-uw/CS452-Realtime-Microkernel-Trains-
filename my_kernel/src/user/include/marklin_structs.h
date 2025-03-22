@@ -36,6 +36,7 @@ enum class RequestType
 
 enum class BANKS
 {
+    OFFSET,
     A,
     B,
     C,
@@ -44,7 +45,7 @@ enum class BANKS
 };
 struct SensorStruct
 {
-    BANKS bank; // A, B, C, D, E
+    BANKS bank; // TEMP, A, B, C, D, E
     int id;     // 1-16
 };
 

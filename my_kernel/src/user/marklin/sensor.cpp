@@ -4,17 +4,21 @@
 #include "../marklin/train.h"
 
 #define USE_CTS 1
+
+#define MAX_POLL_RETRIES 50
+
 namespace Sensors_NS
 {
 
     static const char BANK_LABELS[NUM_BANKS] = {'A', 'B', 'C', 'D', 'E'};
 
     SensorManager::SensorManager()
-        : UPDATE_DISPLAY(false), last_triggered_bank('\0'), last_triggered_id(0)
     {
         IO_NS::PrintTerminal("SensorManager::SensorManager: Initializing SensorManager\r\n");
+        REGISTERAS("SensorServer");
         last_triggered_bank = '\0';
         last_triggered_id = 0;
+        UPDATE_DISPLAY = false;
 
         for (int bank = 0; bank < NUM_BANKS; ++bank)
         {
@@ -28,7 +32,10 @@ namespace Sensors_NS
         }
 
         MARKLIN_IO_SERVER_TID = WHOIS("MarklinIOServer");
+        SENSOR_TICKER_TID = -1;
+        isTickerRunning = false;
         Reset(true); // send reset command to the marklin
+        SensorLoop();
     }
 
     SensorManager::~SensorManager()
@@ -84,7 +91,7 @@ namespace Sensors_NS
         processSensorData(bank_num, bytes[0], bytes[1], bank_mask);
     }
 
-    void SensorManager::ReadAll(int num_banks)
+    int SensorManager::ReadAll(int num_banks, BANK_MASK *bank_mask)
     {
         num_banks = VALIDATE_BANK(num_banks);
 
@@ -92,8 +99,8 @@ namespace Sensors_NS
         int ret = MARKLIN_IO_SERVER::SendCmd(MARKLIN_IO_SERVER_TID, &request);
         uassert(ret >= 0 && "SensorManager::ReadAll: command sent to MarklinIOServer failed");
         IO_NS::PrintTerminal("SensorManager::ReadAll: Sent command to MarklinIOServer\r\n");
+        int triggered_bank = -1;
 
-        BANK_MASK bank_mask;
         for (int bank = 1; bank <= num_banks; ++bank)
         {
             uint8_t byte1 = MARKLIN_IO_SERVER::Getc(MARKLIN_IO_SERVER_TID);
@@ -102,9 +109,17 @@ namespace Sensors_NS
             uint8_t byte2 = MARKLIN_IO_SERVER::Getc(MARKLIN_IO_SERVER_TID);
             // uassert(false && "Successfully Read Byte2");
             uassert(byte2 >= 0 && "SensorManager::ReadAll: Getc failed");
-            processSensorData(bank, byte1, byte2, &bank_mask);
+
+            if (byte1 == 0 && byte2 == 0)
+            {
+                continue;
+            }
+            processSensorData(bank, byte1, byte2, bank_mask);
+            triggered_bank = bank;
+
             // uassert(false && "Successfully Read Bank");
         }
+        return triggered_bank;
         // uassert(false && "Successfully Read All Banks");
     }
 
@@ -178,96 +193,173 @@ namespace Sensors_NS
         UPDATE_DISPLAY = false;
     }
 
-    void SensorServer()
+    void SensorManager::SensorLoop()
     {
-        REGISTERAS("SensorServer");
-        SensorManager sensors;
-
-        struct SensorTaskPair
-        {
-            int tid;
-            int sensor;
-        };
-
         // create sensor ticker
-        int sensor_ticker_tid = CREATE(PRIORITY::DEVICE_NOTIFIER, SensorTicker);
-        Queue<SensorTaskPair, NUM_TRAINS> awaiting_for_sensor[NUM_TRAINS];
+        isTickerRunning = true;
+        SENSOR_TICKER_TID = CREATE(PRIORITY::DEVICE_NOTIFIER, SensorTicker);
 
-        bool is_ticker_available = false;
         int sender_tid;
         SensorQuery query;
 
         // test SENSOR_TRIGGERED
-        {
-            IO_NS::PrintTerminal("SensorServer: Testing SENSOR_TRIGGERED\r\n");
+        // {
+        //     IO_NS::PrintTerminal("SensorServer: Testing SENSOR_TRIGGERED\r\n");
 
-            uint8_t sensor_bytes[16] = {
-                0b10000000,
-                0b01000000,
-                0b00100000,
-                0b00010000,
-                0b00001000,
-                0b00000100,
-                0b00000010,
-                0b00000001,
-                0b10000000,
-                0b01000000,
-                0b00100000,
-                0b00010000,
-                0b00001000,
-                0b00000100,
-                0b00000010,
-                0b00000001};
+        //     uint8_t sensor_bytes[16] = {
+        //         0b10000000,
+        //         0b01000000,
+        //         0b00100000,
+        //         0b00010000,
+        //         0b00001000,
+        //         0b00000100,
+        //         0b00000010,
+        //         0b00000001,
+        //         0b10000000,
+        //         0b01000000,
+        //         0b00100000,
+        //         0b00010000,
+        //         0b00001000,
+        //         0b00000100,
+        //         0b00000010,
+        //         0b00000001};
 
-            for (int i = 1; i <= 16; ++i)
-            {
-                IO_NS::PrintTerminal("SensorServer: Testing sensor %d\r\n", i);
-                uassert(SENSOR_TRIGGERED(sensor_bytes[i - 1], i) && "SensorServer: Error testing SENSOR_TRIGGERED");
-            }
+        //     for (int i = 1; i <= 16; ++i)
+        //     {
+        //         IO_NS::PrintTerminal("SensorServer: Testing sensor %d\r\n", i);
+        //         uassert(SENSOR_TRIGGERED(sensor_bytes[i - 1], i) && "SensorServer: Error testing SENSOR_TRIGGERED");
+        //     }
 
-            IO_NS::PrintTerminal("SensorServer: Finished testing SENSOR_TRIGGERED\r\n");
-        }
+        //     IO_NS::PrintTerminal("SensorServer: Finished testing SENSOR_TRIGGERED\r\n");
+        // }
 
         while (true)
         {
-            // BANK_MASK bank_mask;
-
-            // // sensors.ReadBank(1, &bank_mask);
-            // sensors.ReadAll(NUM_BANKS);
-            // sensors.Display(); // this can block the server until IO is ready
-
-            // uassert(false && "SensorServer: Finished reading bank A");
-
             int retval = RECEIVE(&sender_tid, (char *)&query, sizeof(query));
             uassert(retval >= 0 && "SensorServer: Error receiving SensorQuery");
 
             switch (query.command)
             {
+            case SENSOR_COMMAND::READ_ALL:
+            case SENSOR_COMMAND::READ_BANK:
+            {
+                // TRAIN must have sent this for initialization
+                // IO_NS::PrintTerminal("SensorServer: Received READ_ALL request -- READING ALL BANKS\r\n");
+                train_requests.Push({sender_tid, query, 0});
+            }
+
             case SENSOR_COMMAND::TICK:
             {
                 IO_NS::PrintTerminal("SensorServer: Received TICK request -- READING ALL BANKS\r\n");
-                is_ticker_available = true;
-                sensors.ReadAll(NUM_BANKS);
-                IO_NS::PrintTerminal("SensorServer: Finished reading all banks\r\n");
+                isTickerRunning = false;
                 break;
             }
             default:
                 break;
             }
 
-            sensors.Display(); // this can block the server until IO is ready
+            HandleSensorQuery();
 
-            if (is_ticker_available)
-            {
-                // uassert(false && "THIS SHOULD BE REPLYING!");
-                IO_NS::PrintTerminal("SensorServer: Sending reply to sensor ticker\r\n");
-                is_ticker_available = false;
-                REPLY(sensor_ticker_tid, nullptr, 0);
-            }
+            Display(); // this can block the server until IO is ready
         }
     }
 
-    // sensor notifier
+    // this returns true if the train is freed
+    bool SensorManager::HandleReadAll(WaitingTrain *train, BANK_MASK *bank_mask)
+    {
+        // need to make a bank mask for this call
+        int triggered_bank = ReadAll(NUM_BANKS, bank_mask);
+
+        // check if bank mask has any sensors
+        if (triggered_bank < 0)
+        {
+            return false;
+        }
+
+        for (int i = 0; i < SENSORS_PER_BANK; ++i)
+        {
+            if (bank_mask->sensor[i])
+            {
+                // send reply to train
+                SensorResponse response = {{BANKS(triggered_bank), i + 1}, true};
+                REPLY(train->train_tid, (char *)&response, sizeof(SensorResponse));
+                break;
+            }
+        }
+        return true;
+    }
+
+    bool SensorManager::HandleReadBank(WaitingTrain *train, BANK_MASK *bank_mask)
+    {
+        ReadBank(int(train->query.sensor.bank), bank_mask);
+        // check if the train is waiting for the sensor
+        if (bank_mask->sensor[train->query.sensor.id - 1])
+        {
+            // send reply to train
+            SensorResponse response = {train->query.sensor, true};
+            REPLY(train->train_tid, (char *)&response, sizeof(SensorResponse));
+            return true;
+        }
+        return false;
+    }
+
+    void SensorManager::HandleSensorQuery()
+    {
+        Queue<WaitingTrain, NUM_TRAINS> temp_queue;
+        while (!train_requests.IsEmpty())
+        {
+            WaitingTrain train;
+            train_requests.Pop(&train);
+            if (train.poll_count >= MAX_POLL_RETRIES)
+            {
+                IO_NS::PrintTerminal("SensorManager::HandleSensorQuery: MAX_POLL_RETRIES reached\r\n");
+                // send reply to train
+                SensorResponse response = {train.query.sensor, false};
+                REPLY(train.train_tid, (char *)&response, sizeof(SensorResponse));
+                continue;
+            }
+
+            bool freed_train = false;
+
+            BANK_MASK bank_mask;
+            if (train.query.command == SENSOR_COMMAND::READ_ALL)
+            {
+                // need to make a bank mask for this call
+                freed_train = HandleReadAll(&train, &bank_mask);
+            }
+            else
+            {
+                freed_train = HandleReadBank(&train, &bank_mask);
+            }
+
+            if (!freed_train)
+            {
+                train.poll_count++;
+                temp_queue.Push(train);
+            }
+        }
+        // put back the trains that are still waiting
+        while (!temp_queue.IsEmpty())
+        {
+            WaitingTrain train;
+            temp_queue.Pop(&train);
+            train_requests.Push(train);
+        }
+
+        if (!isTickerRunning && !train_requests.IsEmpty())
+        {
+            IO_NS::PrintTerminal("SensorServer: Sending reply to sensor ticker\r\n");
+            isTickerRunning = true;
+            REPLY(SENSOR_TICKER_TID, nullptr, 0);
+        }
+    }
+
+    void SensorServer()
+    {
+        Sensors_NS::SensorManager sensors;
+    }
+
+    // sensor notifier -- sends a tick to the sensor server every 200ms
     void SensorTicker()
     {
         REGISTERAS("SensorTicker");

@@ -8,6 +8,7 @@
 #include "../../clock.h"
 #include "../include/name_server.h"
 #include "../../shared_constants.h"
+#include "train.h"
 
 struct SensorResponse
 {
@@ -15,6 +16,7 @@ struct SensorResponse
 };
 namespace Sensors_NS
 {
+#define NUM_TRAINS 5
 #define VALIDATE_BANK(bank) (int)(bank > 0 && bank <= NUM_BANKS ? bank : NUM_BANKS)
 #define SENSOR_TRIGGERED(byte, sensor) ((byte >> (8 - ((sensor > 8) ? (sensor - 8) : sensor))) & 0b00000001)
 
@@ -48,6 +50,12 @@ namespace Sensors_NS
         SensorStruct sensor;
     };
 
+    struct SensorResponse
+    {
+        SensorStruct triggered_sensor;
+        bool success;
+    };
+
     typedef enum
     {
         SEN_OFF,
@@ -60,13 +68,26 @@ namespace Sensors_NS
         SensorManager();
         ~SensorManager();
         void ReadBank(int bank_num, BANK_MASK *bank_mask);
-        void ReadAll(int num_banks);
+        int ReadAll(int num_bank, BANK_MASK *bank_mask);
         void Reset(bool reset_on);
-        void Display();
 
     private:
+        struct WaitingTrain
+        {
+            int train_tid;
+            SensorQuery query;
+            int poll_count;
+        };
+
+        void SensorLoop();
+        void HandleSensorQuery();
+        bool HandleReadAll(WaitingTrain *train, BANK_MASK *bank_mask);
+        bool HandleReadBank(WaitingTrain *train, BANK_MASK *bank_mask);
+        void Display();
+
         void processSensorData(int bank, uint8_t byte1, uint8_t byte2, BANK_MASK *bank_mask);
         Queue<int, MAX_RECENT_SENSORS> recent_sensors;
+        Queue<WaitingTrain, NUM_TRAINS> train_requests;
         struct Sensor
         {
             char bank;
@@ -74,11 +95,13 @@ namespace Sensors_NS
             int status;
         };
 
+        bool isTickerRunning;
         Sensor sensor_data[NUM_BANKS * SENSORS_PER_BANK];
         bool UPDATE_DISPLAY;
         char last_triggered_bank;
         uint8_t last_triggered_id;
         int MARKLIN_IO_SERVER_TID;
+        int SENSOR_TICKER_TID;
     };
 
     void SensorServer();

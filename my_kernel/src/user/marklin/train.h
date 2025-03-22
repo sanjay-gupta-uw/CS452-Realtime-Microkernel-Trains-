@@ -10,6 +10,10 @@
 
 namespace Trains_NS
 {
+#define LOW_SPEED 7
+#define MEDIUM_SPEED 10
+#define HIGH_SPEED 12
+
 #define NUM_TRAINS 5
 #define MAX_SPEED 14
 #define MIN_SPEED 0
@@ -18,10 +22,16 @@ namespace Trains_NS
     private:
         int MARKLIN_IO_SERVER_TID;
         int CLOCK_SERVER_TID;
+        int CONDUCTOR_TID;
+        int SENSOR_SERVER_TID;
         int train_speed; // between 0 and 14
         bool isReversed;
+        SensorStruct last_hit_sensor;
 
         void Reverse(); // sends reverse train command to marklin
+
+        void TrainLoop();
+        SensorStruct GetLocation();
 
     public:
         int train_num;

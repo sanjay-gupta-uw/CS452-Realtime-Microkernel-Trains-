@@ -2536,9 +2536,15 @@ static int get_node_index(track_node *node)
 /*
   Find a path from the destination into the loop
 */
-void Track::find_path(const char *start, const char *dest)
+void Track::find_path(const char *start, const char *dest, Stack<PathNode, TRACK_MAX> *path)
 {
     IO_NS::PrintTerminal("Track::find_path: Finding path from %s to %s\r\n", start, dest);
+
+    while (!path->IsEmpty())
+    {
+        path->Pop(nullptr);
+    }
+
     const int MAX_DIST = (1 << 31) - 1; // since we are using signed integers
 
     int dist[TRACK_MAX];
@@ -2563,6 +2569,20 @@ void Track::find_path(const char *start, const char *dest)
     PQueue<int> pq;
     pq.Push(index, 0); // push start node
 
+    // push reverse node incase reversing provides a shorter path
+    if (start_node->type == track_node_type::NODE_SENSOR)
+    {
+        track_node *reverse_node = start_node->reverse;
+        uassert(reverse_node != NULL && "Track::find_path: sensor reverse node is NULL");
+        int reverse_index = get_node_index(reverse_node);
+        if (dist[reverse_index] > dist[index] + REVERSE_COST)
+        {
+            dist[reverse_index] = dist[index] + REVERSE_COST;
+            prev_node[reverse_index] = index;
+            pq.Push(reverse_index, dist[reverse_index]);
+        }
+    }
+
     bool path_found = false;
     // Dijkstra's algorithm
     while (!pq.isEmpty())
@@ -2581,20 +2601,6 @@ void Track::find_path(const char *start, const char *dest)
             // IO_NS::PrintTerminal("Track::find_path: Found path to %s\r\n", dest);
             path_found = true;
             break;
-        }
-
-        // push reverse node incase reversing provides a shorter path
-        if (curnode->type == track_node_type::NODE_SENSOR)
-        {
-            track_node *reverse_node = curnode->reverse;
-            uassert(reverse_node != NULL && "Track::find_path: sensor reverse node is NULL");
-            int reverse_index = get_node_index(reverse_node);
-            if (dist[reverse_index] > dist[index] + REVERSE_COST)
-            {
-                dist[reverse_index] = dist[index] + REVERSE_COST;
-                prev_node[reverse_index] = index;
-                pq.Push(reverse_index, dist[reverse_index]);
-            }
         }
 
         // push all outgoing edges
@@ -2649,7 +2655,6 @@ void Track::find_path(const char *start, const char *dest)
         int cur_index = dest_index;
         IO_NS::PrintTerminal("Track::find_path: Path: ");
         int prior_index = -1;
-        Stack<track_node *, TRACK_MAX> path;
         while (cur_index != -1)
         {
             track_node *node = &track[cur_index];
@@ -2659,12 +2664,18 @@ void Track::find_path(const char *start, const char *dest)
 
                 if (node->edge[DIR_STRAIGHT].dest == branch_result)
                 {
+                    path->Push({node, Switch_NS::SWITCH_STATE::STRAIGHT});
                     IO_NS::PrintTerminal("STRAIGHT ");
                 }
                 else if (node->edge[DIR_CURVED].dest == branch_result)
                 {
+                    path->Push({node, Switch_NS::SWITCH_STATE::CURVED});
                     IO_NS::PrintTerminal("CURVED ");
                 }
+            }
+            else if (node->type == track_node_type::NODE_SENSOR)
+            {
+                path->Push({node, Switch_NS::SWITCH_STATE::UNINITIALIZED});
             }
             IO_NS::PrintTerminal("%s ", node->name);
 
