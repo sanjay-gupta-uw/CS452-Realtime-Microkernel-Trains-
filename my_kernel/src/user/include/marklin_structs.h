@@ -93,6 +93,8 @@ struct ConductorRequest
         : requestType(RequestType::CMD)
     {
         data.cmdRequest = {command, id, requestData};
+        if(src) data.cmdRequest = {command, id, requestData, src};
+        if(src && dest) data.cmdRequest = {command, id, requestData, src, dest};
     }
 
     // Constructor for TrainQuery

@@ -6,6 +6,7 @@
 #include "../include/uassert.h"
 #include "../include/conductor.h"
 #include "../include/graph_data.h"
+#include <cstring>
 
 extern "C" void _reboot(void); // Declare the reboot function implemented in assembly
 
@@ -298,8 +299,7 @@ namespace UI_CMD_NS
                 IO_NS::PrintTerminal("Attempting to spawn Train %d in front of sensor %s\r\n", train_num, sensor_id);
 
                 // Create request with sensor ID
-                ConductorRequest request(COMMAND::SPAWN_TRAIN, train_num, 0);
-                // strncpy(request.data.spawnRequest.sensor_id, sensor_id, sizeof(request.data.spawnRequest.sensor_id));
+                ConductorRequest request(COMMAND::SPAWN_TRAIN, train_num, 0, sensor_id);
         
                 SEND(CONDUCTOR_TID, (char *)&request, sizeof(ConductorRequest), (char *)command_received, sizeof(int));
             }

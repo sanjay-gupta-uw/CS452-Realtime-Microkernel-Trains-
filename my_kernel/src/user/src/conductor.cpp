@@ -6,6 +6,8 @@
 #include "../marklin/sensor.h"
 #include "../marklin/train.h"
 #include "../../include/syscall.h"
+#include <cstring>
+#include <cctype> 
 
 typedef struct IO_REQUEST
 {
@@ -116,6 +118,35 @@ namespace Conductor_NS
         case COMMAND::SPAWN_TRAIN:
         {
             IO_NS::PrintTerminal("Conductor received SPAWN_TRAIN request for train %d\r\n", req->id);
+
+             // Extract sensor ID from request
+            char sensor_id[5] = {0};
+            if (req->src) {
+                strncpy(sensor_id, req->src, sizeof(sensor_id)-1);
+            }
+
+            IO_NS::PrintTerminal("Raw sensor ID: '%s'\r\n", sensor_id);
+    
+            // Parse sensor components
+            char sensor_bank = '\0';
+            int sensor_number = -1;
+            if (strlen(sensor_id) >= 2) {
+                sensor_bank = std::toupper(sensor_id[0]);
+                sensor_number = 0;
+                for (int i = 1; sensor_id[i] != '\0'; i++) {
+                    if (std::isdigit(sensor_id[i])) {
+                        sensor_number = sensor_number * 10 + (sensor_id[i] - '0');
+                    }       
+                    else {
+                        IO_NS::PrintTerminal("Invalid character in sensor number: %c\r\n", sensor_id[i]);
+                        break;
+                    }
+                }
+            }
+            
+            IO_NS::PrintTerminal("Parsed sensor: bank=%c, number=%d (from '%s')\r\n", 
+                sensor_bank, sensor_number, sensor_id);
+
             int spawned_train_tid = CREATE(PRIORITY::DEVICE_SERVER, Trains_NS::spawn_train);
             uassert(spawned_train_tid > 0);
             IO_NS::PrintTerminal("Train %d spawned with TID %d\r\n", req->id, spawned_train_tid);
