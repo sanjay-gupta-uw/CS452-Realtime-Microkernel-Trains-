@@ -79,6 +79,7 @@ namespace Sensors_NS
         char last_triggered_bank;
         uint8_t last_triggered_id;
         int MARKLIN_IO_SERVER_TID;
+        int CONDUCTOR_TID;
     };
 
     void SensorServer();

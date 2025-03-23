@@ -197,6 +197,39 @@ namespace Conductor_NS
             // Sensor current_sensor = req->data;
             break;
         }
+        /*case COMMAND::SENSOR_TRIGGER:
+        {
+            // Extract sensor ID from request
+            int sensor_number = req->id;
+            char sensor_bank = req->src[0];
+           
+            IO_NS::PrintTerminal("Triggered sensor: bank=%c, number=%d\r\n", sensor_bank, sensor_number);
+            track_node* sensor_node = track.find_sensor(bank, number);
+
+            for (int i = 0; i < NUM_TRAINS; i++) {
+                if (train_arr[i].next_predicted_id == sensor_node) {
+                    // Update train's sensor information
+                    train_arr[i].recent_sensor_bank = bank;
+                    train_arr[i].recent_sensor_num = number;
+                    train_arr[i].recent_sensor_id = sensor_node;
+                        
+                    // Predict next sensor
+                    int dist;
+                    track_node* next_sensor = track.get_node_by_name(sensor_id);
+                    train_arr[i].predicted_node = next_sensor;
+                        
+                    // Update display
+                    if (next_sensor) {
+                        train_arr[i].next_predicted_bank = next_sensor->name[0];
+                        train_arr[i].next_predicted_num = 
+                            std::stoi(next_sensor->name + 1);
+                    }
+                    UpdateTrainDisplay();
+                    break;
+                }
+                }
+            break;
+        }*/
         default:
             IO_NS::PrintTerminal("Conductor received INVALID request\r\n");
             break;
