@@ -7,26 +7,29 @@
 #include "../include/conductor.h"
 #include "../include/graph_data.h"
 #include <cstring>
+#include <cctype>
 
 extern "C" void _reboot(void); // Declare the reboot function implemented in assembly
 
 namespace UI_CMD_NS
 {
-    void display_track(const TrackConfig* config) {
+    void display_track(const TrackConfig *config)
+    {
         int y = TRACK_LAYOUT_LOCATION_Y;
         int x = TRACK_LAYOUT_LOCATION_X;
-        
+
         // Draw diagram
-        for (size_t i = 0; i < config->diagram_lines; i++) {
+        for (size_t i = 0; i < config->diagram_lines; i++)
+        {
             IO_NS::Print(MOVE_CURSOR "%s", y + i, x + 1, config->diagram[i]);
         }
-        
+
         // Initialize switches
-        for (size_t i = 0; i < config->switches_count; i++) {
+        for (size_t i = 0; i < config->switches_count; i++)
+        {
             IO_NS::Print(MOVE_CURSOR COLOR_GREEN "S",
-                y + config->switches[i].line,
-                x + config->switches[i].col
-            );
+                         y + config->switches[i].line,
+                         x + config->switches[i].col);
         }
     }
 
@@ -145,27 +148,26 @@ namespace UI_CMD_NS
             // update switch display
             // need to get status of switch
 
-            
-            const char* color = (switch_state == 'S') ? COLOR_GREEN : COLOR_RED;
+            const char *color = (switch_state == 'S') ? COLOR_GREEN : COLOR_RED;
 
             // Update switches table
-            IO_NS::Print(MOVE_CURSOR "%s%c", 
-                SWITCH_LOCATION + 3 + switch_index, 
-                SWITCH_STATUS_COL, 
-                color, 
-                switch_state
-            );
+            IO_NS::Print(MOVE_CURSOR "%s%c",
+                         SWITCH_LOCATION + 3 + switch_index,
+                         SWITCH_STATUS_COL,
+                         color,
+                         switch_state);
 
             // Update track diagram
-            for (size_t i = 0; i < current_track->switches_count; ++i) {
-                if (current_track->switches[i].num == switch_num) {
+            for (size_t i = 0; i < current_track->switches_count; ++i)
+            {
+                if (current_track->switches[i].num == switch_num)
+                {
                     // Use current_track->switches[i].line/col
                     IO_NS::Print(MOVE_CURSOR "%s%c",
-                        TRACK_LAYOUT_LOCATION_Y + current_track->switches[i].line,
-                        TRACK_LAYOUT_LOCATION_X + current_track->switches[i].col,
-                        color, 
-                        switch_state
-                    );
+                                 TRACK_LAYOUT_LOCATION_Y + current_track->switches[i].line,
+                                 TRACK_LAYOUT_LOCATION_X + current_track->switches[i].col,
+                                 color,
+                                 switch_state);
                 }
             }
         }
@@ -273,22 +275,6 @@ namespace UI_CMD_NS
                     ptr++;
                     num_set = true;
                 }
-                while (*ptr == ' ')
-                {
-                    ptr++;
-                }
-                // Parse sensor ID (up to 4 characters)
-                int sidx = 0;
-                while (*ptr != '\0' && *ptr != ' '  && sidx < 4) {
-                    sensor_id[sidx++] = *ptr++;
-                    sensor_set = true;
-                }
-                sensor_id[sidx] = '\0';
-
-                if (!num_set || !sensor_set) {
-                    IO_NS::PrintTerminal("Invalid Train SPAWN command\r\n");
-                    return;
-                }
 
                 // try to spawn train
                 if (train_num < 0 || train_num > 80)
@@ -296,11 +282,50 @@ namespace UI_CMD_NS
                     IO_NS::PrintTerminal("Invalid Train Number\r\n");
                     return;
                 }
+
+                while (*ptr == ' ')
+                {
+                    ptr++;
+                }
+                // Parse sensor ID (up to 4 characters)
+                int sidx = 0;
+                while (*ptr != '\0' && *ptr != ' ' && sidx < 4)
+                {
+                    sensor_id[sidx++] = *ptr++;
+                    sensor_set = true;
+                }
+                sensor_id[sidx] = '\0';
+
+                bool is_valid_sensor_id = false;
+
+                sensor_id[0] = std::toupper(sensor_id[0]);
+                char sensor_bank = sensor_id[0];
+
+                if (sensor_bank >= 'A' && sensor_bank <= 'E')
+                {
+                    char *sensor_num_ptr = sensor_id + 1;
+                    uint32_t sensor_num = a2ui(&sensor_num_ptr, 10);
+                    IO_NS::PrintTerminal("Parsed sensor: bank=%c, number=%d (from '%s')\r\n",
+                                         sensor_bank, sensor_num, sensor_id);
+                    if (sensor_num >= 1 && sensor_num <= 16)
+                    {
+                        is_valid_sensor_id = true;
+                    }
+                }
+
+                if (!num_set || !sensor_set || !is_valid_sensor_id)
+                {
+                    IO_NS::PrintTerminal("Invalid Train SPAWN command\r\n");
+                    IO_NS::PrintTerminal("Input: %s\r\n", str);
+                    IO_NS::PrintTerminal("Train Number: %d, Sensor ID: %s\r\n", train_num, sensor_id);
+                    return;
+                }
+
                 IO_NS::PrintTerminal("Attempting to spawn Train %d in front of sensor %s\r\n", train_num, sensor_id);
 
                 // Create request with sensor ID
                 ConductorRequest request(COMMAND::SPAWN_TRAIN, train_num, 0, sensor_id);
-        
+
                 SEND(CONDUCTOR_TID, (char *)&request, sizeof(ConductorRequest), (char *)command_received, sizeof(int));
             }
         }
@@ -416,12 +441,15 @@ namespace UI_CMD_NS
             if (track_id == 'A' || track_id == 'a' || track_id == 'B' || track_id == 'b')
             {
                 // display the track graph
-                if (track_id == 'A' || track_id == 'a') {
+                if (track_id == 'A' || track_id == 'a')
+                {
                     commandPrompt.current_track = &TRACK_A;
-                } else {
+                }
+                else
+                {
                     commandPrompt.current_track = &TRACK_B;
                 }
-                display_track(commandPrompt.current_track); 
+                display_track(commandPrompt.current_track);
 
                 // create conductor
                 IO_NS::PrintTerminal("Attempting to start Conductor with track ID: %c, CONDUCTOR_TID: %d\r\n", track_id, commandPrompt.CONDUCTOR_TID);
