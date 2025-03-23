@@ -7,6 +7,7 @@
 #include "../../shared_constants.h"
 #include <cstdint>
 #include "../../rpi.h"
+#include "../../util.h"
 #include "../include/uassert.h"
 
 #if IRQEn == 1
@@ -27,8 +28,24 @@ namespace IO_SERVER
 #define UART_REG(line, offset) (*(volatile uint32_t *)(line_uarts[line] + offset))
     static char *const line_uarts[] = {NULL, UART0_BASE, UART3_BASE};
 
+    static void fill_buffer_char(char *buffer, char ch, int *len)
+    {
+        buffer[(*len)++] = ch;
+        buffer[*len] = '\0';
+    }
+
+    static void fill_buffer_wrapper(char *buffer, const char *str, int *len)
+    {
+        while (*str)
+        {
+            fill_buffer_char(buffer, *str, len);
+            str++;
+        }
+    }
+
     IOServer::IOServer()
     {
+        current_terminal_row = 1;
         int my_tid = MYTID();
         int retval = REGISTERAS("IOServer");
         spawnNotifiers();
@@ -99,6 +116,87 @@ namespace IO_SERVER
             }
             case IO_REQUEST_TYPE::PUTS:
             {
+
+                // check if terminal output
+                bool is_terminal_output = (req.ch == 1) ? true : false;
+
+                // prepend with move cursor to correct location
+                if (is_terminal_output)
+                {
+                    for (int i = 0; i < 4; i++)
+                    {
+                        int ret = transmit_buffer.Push(RESTORE_CURSOR[i]);
+                        uassert(ret >= 0 && "IO_SERVER::run: PANIC, Error pushing MOVE_CMD to transmit buffer");
+                    }
+
+                    if (current_terminal_row == 1)
+                    {
+                        // move it back to the top
+                        // MOVE_CURSOR(1, 1);
+                        transmit_buffer.Push('\033');
+                        transmit_buffer.Push('[');
+                        transmit_buffer.Push('1');
+                        transmit_buffer.Push(';');
+                        transmit_buffer.Push('1');
+                        transmit_buffer.Push('H');
+                    }
+
+                    char change_col_cmd[7];     // Buffer for escape sequence
+                    change_col_cmd[0] = '\033'; // Escape character
+                    // change_col_cmd[0] = '0';    // Escape character
+                    change_col_cmd[1] = '['; // Start of escape sequence
+                    char col_num_buf[4];     // Buffer for column number
+
+                    int idx = 2;
+                    ui2a(DEBUG_COLUMN, 10, col_num_buf);
+                    for (int i = 0; i < 4; i++)
+                    {
+                        if (col_num_buf[i] == '\0')
+                        {
+                            break;
+                        }
+                        change_col_cmd[idx++] = col_num_buf[i];
+                    }
+
+                    change_col_cmd[idx++] = 'G';  // End of escape sequence
+                    change_col_cmd[idx++] = '\0'; // Null terminator
+
+                    for (int i = 0; i < idx; i++)
+                    {
+                        // push to transmit buffer
+                        int ret = transmit_buffer.Push(change_col_cmd[i]);
+                        uassert(ret >= 0 && "IO_SERVER::run: PANIC, Error pushing MOVE_CMD to transmit buffer");
+                    }
+
+                    for (int i = 0; i < 5; ++i)
+                    {
+                        transmit_buffer.Push(COLOR_CYAN[i]);
+                    }
+                    transmit_buffer.Push('L');
+                    transmit_buffer.Push('O');
+                    transmit_buffer.Push('G');
+                    transmit_buffer.Push(':');
+
+                    char row_num_buf[4]; // Buffer for row number
+                    ui2a(current_terminal_row, 10, row_num_buf);
+                    for (int i = 0; i < 4; i++)
+                    {
+                        if (row_num_buf[i] == '\0')
+                        {
+                            break;
+                        }
+                        transmit_buffer.Push(row_num_buf[i]);
+                    }
+
+                    current_terminal_row = (current_terminal_row + 1) % TERMINAL_ROWS;
+                    if (current_terminal_row == 0)
+                    {
+                        current_terminal_row = 1;
+                        // uassert(false && "IO_SERVER::run: PANIC, Terminal buffer full");
+                    }
+                }
+                transmit_buffer.Push(' ');
+
                 unsigned char *str = req.str;
                 while (*str != '\0')
                 {
@@ -106,6 +204,21 @@ namespace IO_SERVER
                     uassert(ret >= 0 && "IO_SERVER::run: PANIC, Error pushing to transmit buffer");
                     str++;
                 }
+
+                if (is_terminal_output)
+                {
+
+                    transmit_buffer.Push('\r');
+                    transmit_buffer.Push('\n');
+
+                    // push save cursor
+                    for (int i = 0; i < 4; i++)
+                    {
+                        int ret = transmit_buffer.Push(SAVE_CURSOR[i]);
+                        uassert(ret >= 0 && "IO_SERVER::run: PANIC, Error pushing SAVE_CURSOR to transmit buffer");
+                    }
+                }
+
                 reply.type = REPLY_TYPE::SUCCESS;
                 send_reply = true;
                 break;
@@ -150,8 +263,9 @@ namespace IO_SERVER
                 break;
             }
 
-            // while (!transmit_buffer.IsEmpty())
-            // {
+// while (!transmit_buffer.IsEmpty())
+// {
+#if IRQ_ENABLED
             while (!transmit_buffer.IsEmpty())
             {
                 if (!IS_TX_FIFO_FULL(CONSOLE))
@@ -169,6 +283,15 @@ namespace IO_SERVER
                     REPLY(tx_notifier_tid, nullptr, 0);
                 }
             }
+#else
+            while (!transmit_buffer.IsEmpty())
+            {
+                unsigned char ch;
+                transmit_buffer.Pop(&ch);
+                uart_putc(CONSOLE, ch);
+            }
+
+#endif
             // }
 
             // uassert(count_send < 2 && "IO_SERVER::run: PANIC, waking up non TX task");
@@ -206,10 +329,11 @@ namespace IO_SERVER
 
         return reply.type == REPLY_TYPE::SUCCESS ? 0 : -1;
     }
-    int Puts(int tid, unsigned char *str)
+    int Puts(int tid, unsigned char *str, bool is_terminal_output)
     {
         int IO_TID = WHOIS("IOServer");
-        IO_REQUEST req{IO_REQUEST_TYPE::PUTS, 0, str};
+        unsigned char TERMINAL_MESSAGE = is_terminal_output ? 1 : 0;
+        IO_REQUEST req{IO_REQUEST_TYPE::PUTS, TERMINAL_MESSAGE, str};
         IO_REPLY reply;
         SEND(IO_TID, (char *)&req, sizeof(req), (char *)&reply, sizeof(reply));
         uassert(reply.type != REPLY_TYPE::UNIMPLEMENTED && "IO_SERVER::Puts: PANIC, Unimplemented");

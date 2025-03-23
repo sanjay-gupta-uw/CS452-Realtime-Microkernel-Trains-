@@ -7,6 +7,7 @@ namespace IO_SERVER
 {
 #define UNDEFINED_CHAR '-'
 #define MAX_QUEUE_SIZE 1000
+#define TERMINAL_ROWS 35
 
     // REDEFINED QUEUE SIZE TO 32 -> change queue to accept size as a parameter?
     // #define RECEIVE_SIZE 32 // 32 chars/bytes
@@ -19,6 +20,7 @@ namespace IO_SERVER
         // interface for the IO server
 
     private:
+        int current_terminal_row;
         int rtm_notifier_tid;
         int rx_notifier_tid;
         int tx_notifier_tid;
@@ -68,7 +70,7 @@ namespace IO_SERVER
 
     int Getc(int tid);
     int Putc(int tid, unsigned char ch);
-    int Puts(int tid, unsigned char *str);
+    int Puts(int tid, unsigned char *str, bool is_terminal_output);
 
     void notifier_rxto();
     void notifier_tx();

@@ -33,6 +33,8 @@ namespace IO_NS
 #define SHOW_CURSOR "\033[?25h"
 
 #define CHANGE_COLUMN "\033[%dG"
+#define CHANGE_ROW "\033[%dF"
+#define TOP_ROW "\033[1F"
 
     // #define LIGHT_MODE "\033[?5h"
     // #define DARK_MODE "\033[?5l"
@@ -42,6 +44,7 @@ namespace IO_NS
     extern "C" void Print(const char *fmt, ...);
     extern "C" void PrintTerminal(const char *fmt, ...);
 
-}
+#define DEBUG_COLUMN 80
+} // namespace IO_NS
 
 #endif //   _io_h_

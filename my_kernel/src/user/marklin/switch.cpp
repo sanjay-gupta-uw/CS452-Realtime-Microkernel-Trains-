@@ -30,6 +30,22 @@ namespace Switch_NS
     // ********* Switch Class *********
     SwitchServer::SwitchServer()
     {
+        // receive track id from conductor
+        int sender_tid;
+        unsigned char track_id;
+        int retval = RECEIVE(&sender_tid, (char *)&track_id, sizeof(track_id));
+        uassert(retval >= 0 && "SwitchServer: RECEIVE failed");
+        uassert(track_id == 'A' || track_id == 'B' || track_id == 'a' || track_id == 'b');
+        // Use the correct pointer assignment
+        // const SwitchPos *source_switches = (track_id == 'A' || track_id == 'a') ? track_a_switches : track_b_switches;
+
+        // for (int i = 0; i < NUM_SWITCHES; ++i)
+        // {
+        //     switches_locations[i].col = source_switches[i].col;
+        //     switches_locations[i].line = source_switches[i].line;
+        //     switches_locations[i].num = source_switches[i].num;
+        // }
+
         MARKLIN_IO_SERVER_TID = WHOIS("MarklinIOServer");
         uassert(MARKLIN_IO_SERVER_TID >= 0 && "SwitchServer: WHOIS failed");
         CLOCK_SERVER_TID = WHOIS("ClockServer");
@@ -73,10 +89,20 @@ namespace Switch_NS
         // Update switches table
         IO_NS::Print(MOVE_CURSOR "%s%c", SWITCH_LOCATION + 3 + index, SWITCH_STATUS_COL, color, switch_state);
         // update track diagram
-        {
-        }
+        //     for (size_t i = 0; i < NUM_SWITCHES; ++i)
+        //     {
+        //         if (switches_locations[i].num == addr)
+        //         {
+        //             // Use current_track->switches[i].line/col
+        //             IO_NS::Print(MOVE_CURSOR "%s%c",
+        //                          TRACK_LAYOUT_LOCATION_Y + switches_locations[i].line,
+        //                          TRACK_LAYOUT_LOCATION_X + switches_locations[i].col,
+        //                          color,
+        //                          switch_state);
+        //         }
+        //     }
 
-        IO_NS::PrintTerminal("Switch %d set to %c -- GRAPH UPDATED\r\n", addr, switch_state);
+        IO_NS::PrintTerminal("Switch.cpp: %d set to %c GRAPH UPATED", addr, switch_state);
 
         switches.switches[index].alignment = ALIGNMENT;
 

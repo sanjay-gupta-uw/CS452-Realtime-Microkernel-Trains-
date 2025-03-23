@@ -47,7 +47,20 @@ static void CreateCoreServers()
 
     int ioServerTid = CREATE(PRIORITY::CONSOLE_SERVER, IO_SERVER::startIOServer); // Start the IO Server
     uassert(ioServerTid > 0 && "Error starting IO Server");
-    IO_NS::PrintTerminal("IO Server started with TID %d\r\n", ioServerTid);
+    // Clock clock;
+    // for (int i = 1; i < 59; ++i)
+    // {
+    //     IO_NS::PrintTerminal("i: %d\r\n", i);
+    //     clock.Delay(10);
+    // }
+    // for (int i = 1; i < 20; ++i)
+    // {
+    //     IO_NS::PrintTerminal("i: %d\r\n", i + 30);
+    //     clock.Delay(50);
+    // }
+    // while (true)
+    // {
+    // }
 
     // create the clock server
     int clockServerTid = CREATE(PRIORITY::CORE, ClockServer); // Start the Clock Server
@@ -70,6 +83,7 @@ void FirstUserTask()
     CreateCoreServers();
 
     IO_NS::PrintTerminal("Name Server started with TID %d\r\n", nameServerTid);
+    // uassert(false && "FORCED PANIC");
 
     // create the UI task
     int uiTaskTid = CREATE(PRIORITY::CORE, UI_NS::start_ui); // Start the UI Task

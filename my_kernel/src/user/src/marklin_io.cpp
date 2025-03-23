@@ -219,7 +219,7 @@ namespace MARKLIN_IO_SERVER
                     if (switch_index >= 0)
                     {
                         len = 3;
-                        IO_NS::PrintTerminal("MarklinIO_server::SEND_CMD: Switch command for switch index %d\r\n", switch_index);
+                        // IO_NS::PrintTerminal("MarklinIO_server::SEND_CMD: Switch command for switch index %d\r\n", switch_index);
                         // push solenoid off command
                         transmit_buffer.Push(SOLENOID_OFF_CMD);
                         // transmit_buffer.Push(addr);

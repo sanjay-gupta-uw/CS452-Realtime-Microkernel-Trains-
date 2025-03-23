@@ -7,7 +7,9 @@
 #include "../include/marklin_structs.h"
 // #include "../include/util.h" // this includes rpi.h
 #include "../../shared_constants.h"
-
+#include "../include/graph_data.h"
+extern const SwitchPos track_a_switches[];
+extern const SwitchPos track_b_switches[];
 namespace Switch_NS
 {
 #define NUM_SWITCHES 22
@@ -31,6 +33,7 @@ namespace Switch_NS
     {
     private:
         Switches_Alignment switches;
+        SwitchPos switches_locations[NUM_SWITCHES]; // location info for printing to diagram
 
         int CLOCK_SERVER_TID;
         int MARKLIN_IO_SERVER_TID;

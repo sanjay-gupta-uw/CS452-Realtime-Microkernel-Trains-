@@ -72,16 +72,21 @@ namespace UI_NS
         // sensors.setMarklinIOtid(MARKLIN_IO_SERVER_TID);
         // uassert(false && "FORCED PANIC -- UI2 -- REMOVE THIS LINE");
 
-        for (int i = 1; i <= NUM_COLS; i++)
+        // for (int i = 1; i <= NUM_COLS; i++)
+        // {
+        // IO_NS::Print(MOVE_CURSOR "-", SCROLL_ROW_END, i);
+        // }
+        Clock clock;
+        for (int i = 0; i < 2; i++)
         {
-            IO_NS::Print(MOVE_CURSOR "-", SCROLL_ROW_END, i);
+            init_velocities_display();
+            init_switch_display();
+            // IO_NS::Print(MOVE_CURSOR "IDLE: %d%%", IDLE_LOCATION, 1, 0);
+            init_sensor_display();
+            // clock.Delay(1000);
         }
 
-        init_velocities_display();
-        init_switch_display();
-        // IO_NS::Print(MOVE_CURSOR "IDLE: %d%%", IDLE_LOCATION, 1, 0);
-        init_sensor_display();
-        IO_NS::PrintTerminal("UI TASK INITIALIZED!\r\n");
+        // IO_NS::PrintTerminal("UI TASK INITIALIZED!\r\n");
         EXIT();
     }
 

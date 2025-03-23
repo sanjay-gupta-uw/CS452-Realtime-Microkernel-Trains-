@@ -50,13 +50,14 @@ namespace UI_CMD_NS
 
     static void PrintCommandHelp()
     {
-        IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Command List:", CMD_INFO_LOCATION, 1);
-        IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Switch Command: SW <switch_num> <S/C>", CMD_INFO_LOCATION + 1, 1);
-        IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Train Accelerate Command: TR <train_num> <speed>", CMD_INFO_LOCATION + 2, 1);
-        IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Train Reverse Command: RV <train_num>", CMD_INFO_LOCATION + 3, 1);
-        IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Train Spawn Command: SPAWN <train_num>", CMD_INFO_LOCATION + 4, 1);
-        IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Go Command: GO <node_name>", CMD_INFO_LOCATION + 5, 1);
-        IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Quit Command: q", CMD_INFO_LOCATION + 6, 1);
+        int col_num = DEBUG_COLUMN + 9;
+        IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Command List:", CMD_INFO_LOCATION, col_num);
+        IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Switch Command: SW <switch> <S/C>", CMD_INFO_LOCATION + 1, col_num);
+        IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Tr-Accelerate Command: TR <train_num><speed>", CMD_INFO_LOCATION + 2, col_num);
+        IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Tr-Reverse Command: RV <train_num>", CMD_INFO_LOCATION + 3, col_num);
+        IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Tr-Spawn Command: SPAWN <train_num>", CMD_INFO_LOCATION + 4, col_num);
+        IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Go Command: GO <node_name>", CMD_INFO_LOCATION + 5, col_num);
+        IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Quit Command: q", CMD_INFO_LOCATION + 6, col_num);
     }
 
     CommandPrompt::CommandPrompt()
@@ -156,18 +157,18 @@ namespace UI_CMD_NS
             //              switch_state);
 
             // Update track diagram
-            for (size_t i = 0; i < current_track->switches_count; ++i)
-            {
-                if (current_track->switches[i].num == switch_num)
-                {
-                    // Use current_track->switches[i].line/col
-                    IO_NS::Print(MOVE_CURSOR "%s%c",
-                                 TRACK_LAYOUT_LOCATION_Y + current_track->switches[i].line,
-                                 TRACK_LAYOUT_LOCATION_X + current_track->switches[i].col,
-                                 color,
-                                 switch_state);
-                }
-            }
+            // for (size_t i = 0; i < current_track->switches_count; ++i)
+            // {
+            //     if (current_track->switches[i].num == switch_num)
+            //     {
+            //         // Use current_track->switches[i].line/col
+            //         IO_NS::Print(MOVE_CURSOR "%s%c",
+            //                      TRACK_LAYOUT_LOCATION_Y + current_track->switches[i].line,
+            //                      TRACK_LAYOUT_LOCATION_X + current_track->switches[i].col,
+            //                      color,
+            //                      switch_state);
+            //     }
+            // }
         }
         else if ((first == 'T' || first == 't') &&
                  (second == 'R' || second == 'r'))

@@ -22,6 +22,16 @@ namespace Conductor_NS
         REGISTERAS("Conductor");
         IO_NS::PrintTerminal("Conductor started\r\n");
 
+        int sender_tid;
+        unsigned char track_id;
+        int retval = RECEIVE(&sender_tid, (char *)&track_id, sizeof(track_id));
+        IO_NS::PrintTerminal("Conductor received request for track %c\r\n", track_id);
+        uassert(track_id == 'A' || track_id == 'B' || track_id == 'a' || track_id == 'b');
+        track.init(track_id);
+        IO_NS::PrintTerminal("Conductor successfully initialized track %c\r\n", track_id);
+
+        REPLY(sender_tid, nullptr, 0);
+
         // create sensor server
         SENSOR_SERVER_TID = CREATE(PRIORITY::DEVICE_SERVER, Sensors_NS::SensorServer);
         uassert(SENSOR_SERVER_TID > 0 && "Conductor::Error creating sensor server");
@@ -30,6 +40,10 @@ namespace Conductor_NS
         SWITCH_SERVER_TID = CREATE(PRIORITY::DEVICE_SERVER, Switch_NS::StartSwitchServer);
         uassert(SWITCH_SERVER_TID > 0 && "Conductor::Error creating switch server");
         IO_NS::PrintTerminal("Switch server created with TID %d\r\n", SWITCH_SERVER_TID);
+
+        // send track id to switch server
+        retval = SEND(SWITCH_SERVER_TID, (char *)&track_id, sizeof(track_id), nullptr, 0);
+        uassert(retval >= 0 && "Error sending track id to switch server");
 
         // initialize train_arr
         for (int i = 0; i < NUM_TRAINS; i++)
@@ -69,7 +83,7 @@ namespace Conductor_NS
         {
         case COMMAND::SET_SWITCH:
         {
-            IO_NS::PrintTerminal("Conductor received SET_SWITCH request for switch index %d\r\n", req->id);
+            IO_NS::PrintTerminal("Conductor received SET_SWITCH for IDX %d\r\n", req->id);
             int switch_index = req->id;
             Switch_NS::SWITCH_STATE state = (req->data == 'S') ? Switch_NS::SWITCH_STATE::STRAIGHT : Switch_NS::SWITCH_STATE::CURVED;
             Switch_NS::SwitchRequest switch_req = {switch_index, state};
@@ -246,16 +260,6 @@ namespace Conductor_NS
 
     void Conductor::ConductorLoop()
     {
-        int sender_tid;
-        unsigned char track_id;
-        int retval = RECEIVE(&sender_tid, (char *)&track_id, sizeof(track_id));
-        IO_NS::PrintTerminal("Conductor received request for track %c\r\n", track_id);
-        uassert(track_id == 'A' || track_id == 'B' || track_id == 'a' || track_id == 'b');
-        track.init(track_id);
-        IO_NS::PrintTerminal("Conductor successfully initialized track %c\r\n", track_id);
-
-        REPLY(sender_tid, nullptr, 0);
-
         IO_NS::PrintTerminal("STARTING CONDUCTOR TESTS\r\n");
         // test
         {
@@ -280,6 +284,8 @@ namespace Conductor_NS
         IO_NS::PrintTerminal("CONDUCTOR TESTS FINISHED\r\n");
 
         ConductorRequest req;
+        int sender_tid;
+        int retval;
         while (true)
         {
             // receive request from terminal

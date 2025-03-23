@@ -5,15 +5,12 @@
 #include "../../util.h"
 // #include "../../rpi.h"
 #include "../include/uassert.h"
+#include "../../util.h"
 namespace IO_NS
 {
 #define CONSOLE 1
 #define MARKLIN 2
-#if IRQEn == 1
-#define IRQ_ENABLED 1
-#else
-#define IRQ_ENABLED 0
-#endif
+
     static void fill_buffer_char(char *buffer, char ch, int *len)
     {
         buffer[(*len)++] = ch;
@@ -32,6 +29,7 @@ namespace IO_NS
     // DISABLED PRINT FOR TESTING
     extern "C" void Print(const char *fmt, ...)
     {
+        // return;
         // uassert(false && "DISABLED PRINT FOR TESTING");
         int IO_SERVER_TID = WHOIS("IOServer");
         if (IO_SERVER_TID < 0)
@@ -90,6 +88,9 @@ namespace IO_NS
                 case '\0': // End of format string
                     fill_buffer_char(ret_buffer, ch, &len);
                     break;
+                    // case '\r':
+                    // case '\n':
+                    //     break;
 
                 default:
                     // Handle unknown specifier by printing it
@@ -97,41 +98,33 @@ namespace IO_NS
                 }
             }
         }
+        // fill_buffer_wrapper(ret_buffer, SAVE_CURSOR, &len);
+
         va_end(va);
         if (len > 0)
         {
             // check debug mode
-#if IRQ_ENABLED == 1
-            IO_SERVER::Puts(IO_SERVER_TID, (unsigned char *)ret_buffer);
-#else
-            uart_puts(CONSOLE, ret_buffer);
-#endif
+            IO_SERVER::Puts(IO_SERVER_TID, (unsigned char *)ret_buffer, false);
         }
     }
 
     extern "C" void PrintTerminal(const char *fmt, ...)
     {
-        // uassert(false && "DISABLED PRINTTERMINAL FOR TESTING");
-        // uart_printf(CONSOLE, RESTORE_CURSOR "PRINTTERMINAL CALLED\r\n" SAVE_CURSOR);
-        // int IO_SERVER_TID = WHOIS("IOServer");
-        // uart_printf(CONSOLE, RESTORE_CURSOR "PRINTTERMINAL CALLED, IO_SERVER_TID: %d\r\n" SAVE_CURSOR, IO_SERVER_TID);
-        // if (IO_SERVER_TID < 0)
-        // {
-        //     return;
-        // }
-
         char ret_buffer[RET_BUF_SIZE];
         va_list va;
         char ch, buf[12];
         int len = 0;
-
-        // Save cursor position before printing
-        fill_buffer_wrapper(ret_buffer, RESTORE_CURSOR, &len);
         fill_buffer_wrapper(ret_buffer, COLOR_WHITE, &len);
+        fill_buffer_wrapper(ret_buffer, CLEAR_TO_END_LINE, &len);
 
         va_start(va, fmt);
         while ((ch = *(fmt++)))
         {
+            if (ch == '\r' || ch == '\n')
+            {
+                continue;
+            }
+
             if (ch != '%')
             {
                 fill_buffer_char(ret_buffer, ch, &len);
@@ -182,18 +175,15 @@ namespace IO_NS
         va_end(va);
 
         // Restore cursor after printing
-        fill_buffer_wrapper(ret_buffer, SAVE_CURSOR, &len);
+        // fill_buffer_wrapper(ret_buffer, SAVE_CURSOR, &len);
 
         if (len > 0)
         {
-#if IRQ_ENABLED == 1
-            int retval = IO_SERVER::Puts(-1, (unsigned char *)ret_buffer);
+            int retval = IO_SERVER::Puts(-1, (unsigned char *)ret_buffer, true);
             uassert(retval != -1 && "IO_SERVER::PrintTerminal: PANIC, Puts failed");
-            // uart_printf(CONSOLE, RESTORE_CURSOR "PRINTTERMINAL -- string sent successfully -- returning\r\n" SAVE_CURSOR);
-#else
-            // uart_puts(CONSOLE, ret_buffer);
-#endif
         }
+
+        // uassert(false && "DISABLED PRINT FOR TESTING");
         return;
     }
 
