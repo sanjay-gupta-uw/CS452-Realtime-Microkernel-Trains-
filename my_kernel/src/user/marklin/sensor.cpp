@@ -2,6 +2,7 @@
 #include "../include/uassert.h"
 #include "../include/clock_server.h"
 #include "../marklin/train.h"
+#include "../include/conductor.h"
 
 #define USE_CTS 1
 namespace Sensors_NS
@@ -28,6 +29,7 @@ namespace Sensors_NS
         }
 
         MARKLIN_IO_SERVER_TID = WHOIS("MarklinIOServer");
+        CONDUCTOR_TID = WHOIS("Conductor");
         Reset(true); // send reset command to the marklin
     }
 
@@ -136,6 +138,12 @@ namespace Sensors_NS
                 if (sensor_data[idx].bank != last_triggered_bank ||
                     sensor_data[idx].id != last_triggered_id)
                 {
+                    char sensor_bank[2] = {0};
+                    sensor_bank[0] = sensor_data[idx].bank;
+                    int command_received = -3;
+            
+                    ConductorRequest request(COMMAND::SENSOR_TRIGGER, sensor_data[idx].id, 0, sensor_bank);
+                    SEND(CONDUCTOR_TID, (char *)&request, sizeof(ConductorRequest), (char *)command_received, sizeof(int));
 
                     if (recent_sensors.IsFull())
                     {
@@ -202,7 +210,7 @@ namespace Sensors_NS
         int sender_tid;
         SensorQuery query;
 
-        // test SENSOR_TRIGGERED
+        /*/ test SENSOR_TRIGGERED
         {
             IO_NS::PrintTerminal("SensorServer: Testing SENSOR_TRIGGERED\r\n");
 
@@ -232,6 +240,7 @@ namespace Sensors_NS
 
             IO_NS::PrintTerminal("SensorServer: Finished testing SENSOR_TRIGGERED\r\n");
         }
+        */
 
         while (true)
         {

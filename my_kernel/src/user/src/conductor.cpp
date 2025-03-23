@@ -204,14 +204,14 @@ namespace Conductor_NS
             // Sensor current_sensor = req->data;
             break;
         }
-        /*case COMMAND::SENSOR_TRIGGER:
+        case COMMAND::SENSOR_TRIGGER:
         {
             // Extract sensor ID from request
             int sensor_number = req->id;
             char sensor_bank = req->src[0];
 
             IO_NS::PrintTerminal("Triggered sensor: bank=%c, number=%d\r\n", sensor_bank, sensor_number);
-            track_node* sensor_node = track.find_sensor(bank, number);
+            /*track_node* sensor_node = track.find_sensor(bank, number);
 
             for (int i = 0; i < NUM_TRAINS; i++) {
                 if (train_arr[i].next_predicted_id == sensor_node) {
@@ -234,9 +234,9 @@ namespace Conductor_NS
                     UpdateTrainDisplay();
                     break;
                 }
-                }
+            }*/
             break;
-        }*/
+        }
         default:
             IO_NS::PrintTerminal("Conductor received INVALID request\r\n");
             break;
