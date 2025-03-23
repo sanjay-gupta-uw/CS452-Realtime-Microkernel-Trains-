@@ -36,14 +36,21 @@ namespace Switch_NS
         int retval = RECEIVE(&sender_tid, (char *)&track_id, sizeof(track_id));
         uassert(retval >= 0 && "SwitchServer: RECEIVE failed");
         uassert(track_id == 'A' || track_id == 'B' || track_id == 'a' || track_id == 'b');
+        REPLY(sender_tid, nullptr, 0);
         // Use the correct pointer assignment
-        // const SwitchPos *source_switches = (track_id == 'A' || track_id == 'a') ? track_a_switches : track_b_switches;
+        const SwitchPos *source_switches = (track_id == 'A' || track_id == 'a') ? track_a_switches : track_b_switches;
 
-        // for (int i = 0; i < NUM_SWITCHES; ++i)
+        for (int i = 0; i < NUM_SWITCHES; ++i)
+        {
+            int index = getSwitchIndex(source_switches[i].num);
+            IO_NS::PrintTerminal("SwitchServer: Switch %d at index %d\r\n", source_switches[i].num, index);
+
+            switches_locations[index].col = source_switches[i].col;
+            switches_locations[index].line = source_switches[i].line;
+            switches_locations[index].num = source_switches[i].num;
+        }
+        // while (1)
         // {
-        //     switches_locations[i].col = source_switches[i].col;
-        //     switches_locations[i].line = source_switches[i].line;
-        //     switches_locations[i].num = source_switches[i].num;
         // }
 
         MARKLIN_IO_SERVER_TID = WHOIS("MarklinIOServer");
@@ -89,18 +96,16 @@ namespace Switch_NS
         // Update switches table
         IO_NS::Print(MOVE_CURSOR "%s%c", SWITCH_LOCATION + 3 + index, SWITCH_STATUS_COL, color, switch_state);
         // update track diagram
-        //     for (size_t i = 0; i < NUM_SWITCHES; ++i)
-        //     {
-        //         if (switches_locations[i].num == addr)
-        //         {
-        //             // Use current_track->switches[i].line/col
-        //             IO_NS::Print(MOVE_CURSOR "%s%c",
-        //                          TRACK_LAYOUT_LOCATION_Y + switches_locations[i].line,
-        //                          TRACK_LAYOUT_LOCATION_X + switches_locations[i].col,
-        //                          color,
-        //                          switch_state);
-        //         }
-        //     }
+        IO_NS::PrintTerminal("Switch.cpp: %d line %d col %d", addr, switches_locations[index].line, switches_locations[index].col);
+        if (switches_locations[index].num == addr)
+        {
+            // Use current_track->switches[i].line/col
+            IO_NS::Print(MOVE_CURSOR "%s%c",
+                         TRACK_LAYOUT_LOCATION_Y + switches_locations[index].line,
+                         TRACK_LAYOUT_LOCATION_X + switches_locations[index].col,
+                         color,
+                         switch_state);
+        }
 
         IO_NS::PrintTerminal("Switch.cpp: %d set to %c GRAPH UPATED", addr, switch_state);
 
@@ -149,5 +154,4 @@ namespace Switch_NS
     {
         SwitchServer switch_server;
     }
-
 }
