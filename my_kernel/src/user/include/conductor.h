@@ -29,6 +29,7 @@ namespace Conductor_NS
 
         void ProcessRequest(CMDRequest *req);
         void DispatchTrainCommand();
+        void UpdateTrainDisplay();
         struct train_task_mapping
         {
             /* data */
@@ -36,6 +37,15 @@ namespace Conductor_NS
             int task_id;   // TID
             int train_num; // train number
             Queue<TrainResponse, 8> train_response_queue;
+
+            int speed_level;
+            int actual_speed_x10;
+            char recent_sensor_bank;
+            int recent_sensor_num;
+            char next_predicted_bank;
+            int next_predicted_num;
+            char destination[5];
+            int offset;
         };
 
         train_task_mapping train_arr[NUM_TRAINS];
@@ -43,6 +53,7 @@ namespace Conductor_NS
     };
 
     void start_conductor();
+    void InitializeTrainDisplay();
 }
 
 #endif // _CONDUCTOR_H_

@@ -6,6 +6,7 @@
 #include "../marklin/sensor.h"
 #include "../marklin/train.h"
 #include "../../include/syscall.h"
+#include "../../shared_constants.h"
 #include <cstring>
 #include <cctype> 
 
@@ -166,9 +167,19 @@ namespace Conductor_NS
                     train_arr[i].train_num = req->id;
                     train_arr[i].task_id = spawned_train_tid;
                     train_arr[i].isWaitingForCommand = true;
+                    train_arr[i].actual_speed_x10 = -1;
+                    train_arr[i].speed_level = -1;
+                    train_arr[i].recent_sensor_bank = '\0';
+                    train_arr[i].recent_sensor_num = -1;
+                    train_arr[i].next_predicted_bank = sensor_bank;
+                    train_arr[i].next_predicted_num = sensor_number;
+                    memset(train_arr[i].destination, 0, 5);
+                    train_arr[i].offset = -1;
                     break;
                 }
             }
+
+            Conductor::UpdateTrainDisplay();
 
             IO_NS::PrintTerminal("Train %d spawned successfully\r\n", req->id);
             break;
@@ -192,8 +203,50 @@ namespace Conductor_NS
         }
     }
 
+    
+    int Conductor::get_train_index(int train_num)
+    {
+        for (int i = 0; i < NUM_TRAINS; i++)
+        {
+            if (train_arr[i].train_num == train_num)
+            {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    void Conductor::UpdateTrainDisplay() {
+        int display_row = 0;
+        for (int i = 0; i < NUM_TRAINS; i++) {
+            if (train_arr[i].train_num == -1) continue;
+
+            IO_NS::Print(MOVE_CURSOR "%d",
+                        TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 2, train_arr[i].train_num);
+            IO_NS::Print(MOVE_CURSOR "%d",
+                        TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 7, train_arr[i].speed_level);
+            IO_NS::Print(MOVE_CURSOR "%d.%d",
+                        TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 21, train_arr[i].actual_speed_x10, train_arr[i].actual_speed_x10 % 10);
+            IO_NS::Print(MOVE_CURSOR "%c",
+                        TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 36, train_arr[i].recent_sensor_bank);
+            IO_NS::Print(MOVE_CURSOR "%d",
+                        TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 37, train_arr[i].recent_sensor_num);
+            IO_NS::Print(MOVE_CURSOR "%c",
+                        TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 50, train_arr[i].next_predicted_bank);
+            IO_NS::Print(MOVE_CURSOR "%d",
+                        TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 51, train_arr[i].next_predicted_num);
+            IO_NS::Print(MOVE_CURSOR "%s",
+                        TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 64, train_arr[i].destination);
+            IO_NS::Print(MOVE_CURSOR "%d",
+                        TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 71, train_arr[i].offset);
+            display_row++;
+        }
+    }
+
+
     void start_conductor()
     {
+        InitializeTrainDisplay();
         Conductor conductor;
         int sender_tid;
         unsigned char track_id;
@@ -254,16 +307,19 @@ namespace Conductor_NS
         EXIT();
     }
 
-    int Conductor::get_train_index(int train_num)
-    {
-        for (int i = 0; i < NUM_TRAINS; i++)
+    void InitializeTrainDisplay() {
+        // Header
+        IO_NS::Print(COLOR_WHITE MOVE_CURSOR "+-----------------------------------------------------------------------------+\r\n", TRAIN_TABLE_Y + 0, TRAIN_TABLE_X);
+        IO_NS::Print(COLOR_WHITE MOVE_CURSOR "|                                Active Trains:                               |\r\n", TRAIN_TABLE_Y + 1, TRAIN_TABLE_X);
+        IO_NS::Print(COLOR_WHITE MOVE_CURSOR "-------------------------------------------------------------------------------\r\n", TRAIN_TABLE_Y + 2, TRAIN_TABLE_X);
+        IO_NS::Print(COLOR_WHITE MOVE_CURSOR "| ID | Speed Level | Actual Speed | Last Sensor | Next Sensor | Dest | Offset |\r\n", TRAIN_TABLE_Y + 3, TRAIN_TABLE_X);
+        IO_NS::Print(COLOR_WHITE MOVE_CURSOR "-------------------------------------------------------------------------------\r\n", TRAIN_TABLE_Y + 4, TRAIN_TABLE_X);
+        for (int i = 0; i < NUM_TRAINS; ++i)
         {
-            if (train_arr[i].train_num == train_num)
-            {
-                return i;
-            }
+            int location_y = TRAIN_TABLE_Y + 5 + i;
+            IO_NS::Print(COLOR_WHITE MOVE_CURSOR "|    |             |              |             |             |      |        |", location_y, TRAIN_TABLE_X);
         }
-        return -1;
+        IO_NS::Print(COLOR_WHITE MOVE_CURSOR "+-----------------------------------------------------------------------------+\r\n", TRAIN_TABLE_Y + 5 + NUM_TRAINS, TRAIN_TABLE_X);
     }
 
 } // namespace Conductor_NS
