@@ -43,7 +43,6 @@ namespace Switch_NS
     };
 
     void SwitchServer();
-    void switch_timer();
     // ui.h for switch display
 };
 

@@ -2,7 +2,6 @@
 #include "../include/uassert.h"
 #include "../include/clock_server.h"
 #include "../marklin/train.h"
-#include "../include/conductor.h"
 
 #define USE_CTS 1
 namespace Sensors_NS
@@ -29,7 +28,6 @@ namespace Sensors_NS
         }
 
         MARKLIN_IO_SERVER_TID = WHOIS("MarklinIOServer");
-        CONDUCTOR_TID = WHOIS("Conductor");
         Reset(true); // send reset command to the marklin
     }
 
@@ -88,7 +86,7 @@ namespace Sensors_NS
 
     void SensorManager::ReadAll(int num_banks)
     {
-        IO_NS::PrintTerminal("READING ALL BANKS\r\n");
+        IO_NS::PrintTerminal("SensorManager::ReadAll: Reading all sensors\r\n");
         num_banks = VALIDATE_BANK(num_banks);
 
         MARKLIN_IO_SERVER::MarklinRequest request = {true, READ_ALL_SENSOR_BASE + num_banks};
@@ -96,17 +94,21 @@ namespace Sensors_NS
         uassert(ret >= 0 && "SensorManager::ReadAll: command sent to MarklinIOServer failed");
         IO_NS::PrintTerminal("SensorManager::ReadAll: Sent command to MarklinIOServer\r\n");
 
+        IO_NS::PrintTerminal("SensorManager::ReadAll: Reading sensors up to bank %d\r\n", num_banks);
+
         BANK_MASK bank_mask;
         for (int bank = 1; bank <= num_banks; ++bank)
         {
+            IO_NS::PrintTerminal("SensorManager::ReadAll: Reading bank %d\r\n", bank);
+
             uint8_t byte1 = MARKLIN_IO_SERVER::Getc(MARKLIN_IO_SERVER_TID);
-            // uassert(false && "Successfully Read Byte1");
             uassert(byte1 >= 0 && "SensorManager::ReadAll: Getc failed");
+
             uint8_t byte2 = MARKLIN_IO_SERVER::Getc(MARKLIN_IO_SERVER_TID);
-            // uassert(false && "Successfully Read Byte2");
             uassert(byte2 >= 0 && "SensorManager::ReadAll: Getc failed");
+
             processSensorData(bank, byte1, byte2, &bank_mask);
-            // uassert(false && "Successfully Read Bank");
+            IO_NS::PrintTerminal("SensorManager::ReadAll: Finished reading bank %d\r\n", bank);
         }
         // uassert(false && "Successfully Read All Banks");
     }
@@ -122,7 +124,7 @@ namespace Sensors_NS
         {
             int idx = ((bank - 1) * SENSORS_PER_BANK) + (sensor - 1);
             int new_state = (sensor < 9) ? SENSOR_TRIGGERED(byte1, sensor) : SENSOR_TRIGGERED(byte2, sensor);
-            IO_NS::PrintTerminal("NEW STATE: %d\r\n", new_state);
+            // IO_NS::PrintTerminal("NEW STATE: %d\r\n", new_state);
 
             int old_state = sensor_data[idx].status;
             sensor_data[idx].status = new_state;
@@ -134,12 +136,6 @@ namespace Sensors_NS
                 if (sensor_data[idx].bank != last_triggered_bank ||
                     sensor_data[idx].id != last_triggered_id)
                 {
-                    //char sensor_bank[2] = {0};
-                    //sensor_bank[0] = sensor_data[idx].bank;
-                    //int command_received = -3;
-            
-                    //ConductorRequest request(COMMAND::SENSOR_TRIGGER, sensor_data[idx].id, 0, sensor_bank);
-                    //SEND(CONDUCTOR_TID, (char *)&request, sizeof(ConductorRequest), (char *)command_received, sizeof(int));
 
                     if (recent_sensors.IsFull())
                     {
@@ -270,6 +266,7 @@ namespace Sensors_NS
             {
                 // uassert(false && "THIS SHOULD BE REPLYING!");
                 IO_NS::PrintTerminal("SensorServer: Sending reply to sensor ticker\r\n");
+                // uassert(false && "SensorServer: REPLYING TO SENSOR TICKER");
                 is_ticker_available = false;
                 REPLY(sensor_ticker_tid, nullptr, 0);
             }

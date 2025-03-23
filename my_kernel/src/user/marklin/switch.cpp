@@ -77,35 +77,6 @@ namespace Switch_NS
             IO_NS::Print(MOVE_CURSOR COLOR_GREEN "S", SWITCH_LOCATION + 3 + i, SWITCH_STATUS_COL);
         }
 
-        /*
-        IO_NS::PrintTerminal("SwitchServer: STARTING SWITCH TEST\r\n");
-        int index = 0;
-        for (int i = 0; i < 20; ++i)
-        {
-            bool isStraight = i % 2 == 0;
-
-            switches[index].SetSwitch(isStraight ? SWITCH_STATE::STRAIGHT : SWITCH_STATE::CURVED);
-            if (isStraight)
-            {
-                IO_NS::Print(MOVE_CURSOR COLOR_GREEN "S", SWITCH_LOCATION + 3 + index, SWITCH_STATUS_COL);
-            }
-            else
-            {
-                IO_NS::Print(MOVE_CURSOR COLOR_RED "C", SWITCH_LOCATION + 3 + index, SWITCH_STATUS_COL);
-            }
-            IO_NS::PrintTerminal("DELAYING FOR 200 TICKS\r\n");
-            DELAY(CLOCK_SERVER_TID, 200);
-        }
-        uassert(false && "SwitchServer: Finished switch test");
-        */
-
-        // switches[NUM_SWITCHES - 1].SendOffCommand();
-
-        // int timer_tid = CREATE(PRIORITY::P0, switch_timer);
-        // uassert(timer_tid >= 0 && "SwitchServer: failed to CREATE timer");
-        // IO_NS::PrintTerminal("SwitchServer: Timer created with tid{%d}\r\n", timer_tid);
-        // bool isTimerActive = true;
-
         int sender_tid;
         // int last_switch_index = -1;
         SwitchRequest request;
@@ -115,19 +86,6 @@ namespace Switch_NS
             IO_NS::PrintTerminal("SwitchServer: Received message from tid{%d}\r\n", sender_tid);
             IO_NS::PrintTerminal("SwitchServer: IS TIME REQUEST: %d\r\n", request.isTimer);
             uassert(ret >= 0 && "SwitchServer: RECEIVE failed");
-
-            // if (request.isTimer)
-            // {
-            //     IO_NS::PrintTerminal("SwitchServer: Timer expired\r\n");
-            //     isTimerActive = false;
-            //     if (last_switch_index >= 0)
-            //     {
-            //         IO_NS::PrintTerminal("SwitchServer: Sending off command to switch index %d\r\n", last_switch_index);
-            //         switches[last_switch_index].SendOffCommand();
-            //         last_switch_index = -1;
-            //     }
-            // }
-            // else
             {
                 // ASSUME SWITCH COMMANDS ARE VALIDATED ALREADY
                 SWITCH_STATE alignment = request.switch_state;
@@ -149,21 +107,4 @@ namespace Switch_NS
         }
     }
 
-    void switch_timer()
-    {
-        REGISTERAS("SwitchTimer");
-        int CLOCK_SERVER_TID = WHOIS("ClockServer");
-        uassert(CLOCK_SERVER_TID >= 0 && "SwitchTimer: WHOIS failed");
-        int switch_server_tid = WHOIS("SwitchServer");
-        uassert(switch_server_tid >= 0 && "SwitchTimer: WHOIS failed");
-
-        SwitchRequest request = {true};
-        while (true)
-        {
-            int ret = SEND(switch_server_tid, (char *)&request, sizeof(SwitchRequest), nullptr, 0);
-
-            // delay for 20 ticks when freed
-            DELAY(CLOCK_SERVER_TID, 20);
-        }
-    }
 }

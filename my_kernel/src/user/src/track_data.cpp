@@ -2434,26 +2434,26 @@ void Track::initialize_loop()
         int num;
     };
     Queue<SensorNode, 20> loop_sensors;
-    loop_sensors.Push({"A", 3});  // A {3,4}
-    loop_sensors.Push({"B", 1});  // B {1,2}
-    loop_sensors.Push({"B", 3});  // B {3,4}
-    loop_sensors.Push({"B", 5});  // B {5,6}
-    loop_sensors.Push({"B", 13}); // B {13,14}
+    loop_sensors.Push({"A", 3}); // A {3,4}
+    loop_sensors.Push({"B", 1}); // B {1,2}
+    // loop_sensors.Push({"B", 3}); // B {3,4}
+    loop_sensors.Push({"B", 5}); // B {5,6}
+    // loop_sensors.Push({"B", 13}); // B {13,14}
     loop_sensors.Push({"B", 15}); // B {15, 16}
-    loop_sensors.Push({"C", 1});  // C {1, 2}
+    // loop_sensors.Push({"C", 1});  // C {1, 2}
     loop_sensors.Push({"C", 9});  // C {9, 10}
     loop_sensors.Push({"C", 11}); // C {11, 12}
-    loop_sensors.Push({"D", 1});  // D {1, 2}
+    // loop_sensors.Push({"D", 1});  // D {1, 2}
     loop_sensors.Push({"D", 3});  // D {3, 4}
     loop_sensors.Push({"D", 5});  // D {5, 6}
     loop_sensors.Push({"D", 13}); // D {13, 14}
-    loop_sensors.Push({"D", 15}); // D {15, 16}
-    loop_sensors.Push({"E", 1});  // E {1, 2}
-    loop_sensors.Push({"E", 3});  // E {3, 4}
+    // loop_sensors.Push({"D", 15}); // D {15, 16}
+    // loop_sensors.Push({"E", 1});  // E {1, 2}
+    // loop_sensors.Push({"E", 3});  // E {3, 4}
     loop_sensors.Push({"E", 5});  // E {5, 6}
     loop_sensors.Push({"E", 9});  // E {9, 10}
     loop_sensors.Push({"E", 13}); // E {13, 14}
-    loop_sensors.Push({"E", 15}); // E {15, 16}
+    // loop_sensors.Push({"E", 15}); // E {15, 16}
 
     while (!loop_sensors.IsEmpty())
     {
@@ -2464,6 +2464,44 @@ void Track::initialize_loop()
         track[idx].is_node_in_loop = true;
         track[idx + 1].is_node_in_loop = true;
     }
+}
+
+void Track::getLoop(Queue<PathNode, NUM_SWITCHES> *switch_config, int *distance)
+{
+    int total_distance = 0;
+    // START AT B5
+    track_node *start = get_node_by_name("B5");
+    IO_NS::PrintTerminal("Track::getLoop: Starting at %s\r\n", start->name);
+    total_distance += start->edge[DIR_AHEAD].dist;
+
+    track_node *next = start->edge[DIR_AHEAD].dest;
+    while (next != start)
+    {
+        int DIR = DIR_STRAIGHT;
+        if (next->type == NODE_BRANCH)
+        {
+            if (next->edge[DIR_CURVED].dest->is_node_in_loop)
+            {
+                // CURVED branch
+                switch_config->Push({next, Switch_NS::SWITCH_STATE::CURVED});
+                DIR = DIR_CURVED;
+                IO_NS::PrintTerminal("Track::getLoop: Switch %s to CURVED\r\n", next->name);
+            }
+            else
+            {
+                // STRAIGHT branch
+                switch_config->Push({next, Switch_NS::SWITCH_STATE::STRAIGHT});
+                DIR = DIR_STRAIGHT;
+                IO_NS::PrintTerminal("Track::getLoop: Switch %s to STRAIGHT\r\n", next->name);
+            }
+        }
+
+        total_distance += next->edge[DIR].dist;
+        next = next->edge[DIR].dest;
+    }
+    IO_NS::PrintTerminal("Track::getLoop: Total distance: %d\r\n", total_distance);
+
+    *distance = total_distance;
 }
 
 track_node *Track::get_node_by_name(const char *name)
@@ -2536,7 +2574,7 @@ static int get_node_index(track_node *node)
 /*
   Find a path from the destination into the loop
 */
-void Track::find_path(const char *start, const char *dest)
+void Track::find_path(const char *start, const char *dest, Stack<PathNode, TRACK_MAX> *path)
 {
     IO_NS::PrintTerminal("Track::find_path: Finding path from %s to %s\r\n", start, dest);
     const int MAX_DIST = (1 << 31) - 1; // since we are using signed integers
@@ -2673,8 +2711,4 @@ void Track::find_path(const char *start, const char *dest)
         }
         IO_NS::PrintTerminal("; Total distance: %d\r\n", dist[dest_index]);
     }
-}
-
-void Track::figure_eight()
-{
 }
