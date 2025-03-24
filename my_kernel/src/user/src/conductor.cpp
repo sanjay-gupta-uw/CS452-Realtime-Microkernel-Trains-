@@ -119,6 +119,10 @@ namespace Conductor_NS
                 IO_NS::PrintTerminal("Train %d found at index %d, sending ACCELERATE command\r\n", train_num, train_index);
             }
 
+            train_arr[train_index].speed_level = speed;
+            //train_arr[train_index].actual_speed_x10 = ;
+            Conductor::UpdateTrainDisplay();
+
             TrainResponse response = {TRAIN_COMMAND::ACCELERATE, speed};
             train_arr[train_index].train_response_queue.Push(response);
             break;
@@ -155,6 +159,20 @@ namespace Conductor_NS
             IO_NS::PrintTerminal("Parsed sensor: bank=%c, number=%d (from '%s')\r\n",
                                  sensor_bank, sensor_number, sensor_id);
 
+            bool spawned = false;
+
+            for (int i = 0; i < NUM_TRAINS; i++)
+            {
+                if (train_arr[i].train_num == req->id)
+                {
+                    IO_NS::PrintTerminal("Train %d spawned already\r\n", req->id);
+                    spawned = true;
+                    break;
+                }
+            }
+
+            if(spawned) break;
+
             int spawned_train_tid = CREATE(PRIORITY::DEVICE_SERVER, Trains_NS::spawn_train);
             uassert(spawned_train_tid > 0);
             IO_NS::PrintTerminal("Train %d spawned with TID %d\r\n", req->id, spawned_train_tid);
@@ -174,8 +192,8 @@ namespace Conductor_NS
                     train_arr[i].train_num = req->id;
                     train_arr[i].task_id = spawned_train_tid;
                     train_arr[i].isWaitingForCommand = true;
-                    train_arr[i].actual_speed_x10 = -1;
-                    train_arr[i].speed_level = -1;
+                    train_arr[i].speed_level = 0;                  
+                    train_arr[i].actual_speed_x10 = 0;
                     train_arr[i].recent_sensor_bank = '\0';
                     train_arr[i].recent_sensor_num = -1;
                     train_arr[i].next_predicted_bank = sensor_bank;
@@ -193,8 +211,13 @@ namespace Conductor_NS
         }
         case COMMAND::GOTO:
         {
-            IO_NS::PrintTerminal("UNIMPLEMENTED: Conductor received GOTO request\r\n");
+            IO_NS::PrintTerminal("Conductor received SPAWN_TRAIN request for train %d\r\n", req->id);
 
+            // Extract destination from request
+            char *dest = req->src;
+            IO_NS::PrintTerminal("Sending Train %d to %s %d\r\n",
+                req->id, dest, req->data);
+                                 
             // track.find_path((char *)req->data);
             break;
         }
@@ -246,8 +269,11 @@ namespace Conductor_NS
                 {
                     IO_NS::PrintTerminal("Sending STOP command to Train %d\r\n", train_arr[i].train_num);
                     TrainResponse response = {TRAIN_COMMAND::ACCELERATE, 0};
+                    train_arr[i].speed_level = 0;
+                    train_arr[i].actual_speed_x10 = 0;;
                     train_arr[i].train_response_queue.Push(response);
                 }
+                Conductor::UpdateTrainDisplay();
             }
             break;
         }
@@ -283,18 +309,34 @@ namespace Conductor_NS
                          TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 7, train_arr[i].speed_level);
             IO_NS::Print(MOVE_CURSOR "%d.%d",
                          TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 21, train_arr[i].actual_speed_x10, train_arr[i].actual_speed_x10 % 10);
-            IO_NS::Print(MOVE_CURSOR "%c",
+            if(train_arr[i].recent_sensor_bank == '\0') {
+                IO_NS::Print(MOVE_CURSOR "-",
+                         TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 36);
+            }         
+            else
+            {
+                IO_NS::Print(MOVE_CURSOR "%c",
                          TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 36, train_arr[i].recent_sensor_bank);
-            IO_NS::Print(MOVE_CURSOR "%d",
+                IO_NS::Print(MOVE_CURSOR "%d",
                          TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 37, train_arr[i].recent_sensor_num);
+            }
             IO_NS::Print(MOVE_CURSOR "%c",
                          TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 50, train_arr[i].next_predicted_bank);
             IO_NS::Print(MOVE_CURSOR "%d",
                          TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 51, train_arr[i].next_predicted_num);
-            IO_NS::Print(MOVE_CURSOR "%s",
+            if(train_arr[i].destination == "") {
+                IO_NS::Print(MOVE_CURSOR "-",
+                         TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 64);
+                IO_NS::Print(MOVE_CURSOR "-",
+                         TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 71);
+            }         
+            else
+            {
+                IO_NS::Print(MOVE_CURSOR "%s",
                          TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 64, train_arr[i].destination);
-            IO_NS::Print(MOVE_CURSOR "%d",
+                IO_NS::Print(MOVE_CURSOR "%d",
                          TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 71, train_arr[i].offset);
+            }            
             display_row++;
         }
     }

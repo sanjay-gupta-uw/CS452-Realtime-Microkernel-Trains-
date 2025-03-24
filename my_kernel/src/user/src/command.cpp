@@ -334,30 +334,55 @@ namespace UI_CMD_NS
         else if ((first == 'G' || first == 'g') &&
                  (second == 'O' || second == 'o'))
         {
-            // ignore spaces
             const char *ptr = str + 2;
+            
+            // Parse train num
+            int train_num = 0;
+            while (*ptr == ' ')
+            {
+                ptr++;
+            }
+            while (*ptr >= '0' && *ptr <= '9') {
+                train_num = train_num * 10 + (*ptr - '0');
+                ptr++;
+            }
+
+            // capitalize the first letter
+            char node_name[5];
+            
             while (*ptr == ' ')
             {
                 ptr++;
             }
 
-            // extract train num
-
-            // capitalize the first letter
-            char node_name[5];
             for (int i = 0; i < 4; i++)
             {
                 node_name[i] = *ptr;
                 ptr++;
             }
             node_name[4] = '\0';
-            if (node_name[0] >= 'a' && node_name[0] <= 'z')
+            node_name[0] = std::toupper(node_name[0]);
+
+            // Parse offset
+            int offset = 0;
+            while (*ptr == ' ')
             {
-                node_name[0] = node_name[0] - 32;
+                ptr++;
             }
-            ConductorRequest request(COMMAND::GOTO, 0, 0, node_name, node_name);
+            int sign = 1;
+            if (*ptr == '-') {
+                sign = -1;
+                ptr++;
+            }
+            while (*ptr >= '0' && *ptr <= '9') {
+                offset = offset * 10 + (*ptr - '0');
+                ptr++;
+            }
+            offset *= sign;
+
+            ConductorRequest request(COMMAND::GOTO, train_num, offset, node_name);
             // send node name to conductor
-            IO_NS::PrintTerminal("Attempting to find path to %s, sending to Conductor tid: %d\r\n", node_name, CONDUCTOR_TID);
+            IO_NS::PrintTerminal("Attempting to find path for Train %d to go to %s %d, sending to Conductor tid: %d\r\n", train_num, node_name, offset, CONDUCTOR_TID);
             SEND(CONDUCTOR_TID, (char *)&request, sizeof(request), nullptr, 0);
         }
 
