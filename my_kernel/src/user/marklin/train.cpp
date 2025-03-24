@@ -250,20 +250,22 @@ namespace Trains_NS
 
     void spawn_train()
     {
+        // SET SPEED TO 0
         int conductor_tid;
 
         TrainParams train_params;
         int retval = RECEIVE(&conductor_tid, (char *)&train_params, sizeof(TrainParams));
 
         int train_num = train_params.train_num;
-        // SET SPEED TO 0
         uassert(retval >= 0 && "Error receiving train_num from Conductor");
+
         IO_NS::PrintTerminal("Train %d spawned\r\n", train_num);
         REPLY(conductor_tid, (char *)true, sizeof(bool));
 
         int MARKLIN_IO_SERVER_TID = WHOIS("MarklinIOServer");
         uassert(MARKLIN_IO_SERVER_TID > 0 && "Error finding MarklinIOServer");
         int CLOCK_SERVER_TID = WHOIS("ClockServer");
+        IO_NS::PrintTerminal("CLOCK SERVER TID: %d\r\n", CLOCK_SERVER_TID);
         uassert(CLOCK_SERVER_TID > 0 && "Error finding ClockServer");
 
         // CREATE MESSENGER
@@ -305,6 +307,7 @@ namespace Trains_NS
     // SENSOR/CONDUCTOR MESSENGER
     void train_messenger()
     {
+        int my_tid = MYTID();
         // Train task should spawn its own messenger
         int train_num;
         int train_task_tid;
@@ -312,7 +315,7 @@ namespace Trains_NS
         uassert(param_init_retval >= 0 && train_task_tid >= 0 && "TRAIN MESSENGER: Error receiving train_num from parent task");
         REPLY(train_task_tid, nullptr, 0);
 
-        IO_NS::PrintTerminal("Train %d messenger spawned\r\n", train_num);
+        IO_NS::PrintTerminal("Train %d messenger spawned with TID %d\r\n", train_num, my_tid);
 
         int conductor_tid = WHOIS("Conductor");
         uassert(conductor_tid > 0 && "TRAIN MESSENGER: Error finding Conductor");
@@ -325,8 +328,11 @@ namespace Trains_NS
         while (true)
         {
             // SEND SEGMENT REQUEST TO CONDUCTOR
+            IO_NS::PrintTerminal("Train %d requesting segment from Conductor\r\n", train_num);
             int retval = SEND(conductor_tid, (char *)&conductor_request, sizeof(ConductorRequest), (char *)&segment_reply, sizeof(SegmentReply));
             uassert(retval >= 0 && "TRAIN MESSENGER: Error sending SegmentRequest to Conductor");
+
+            IO_NS::PrintTerminal("Train %d received segment from Conductor\r\n", train_num);
 
             // SEND SENSOR QUERY TO SENSOR SERVER
             // HAVE SENSOR SERVER REPLY TO SENSOR MESSENGER IMMEDIATELY

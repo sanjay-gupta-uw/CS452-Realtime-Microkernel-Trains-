@@ -26,6 +26,7 @@ namespace Conductor_NS
         ~Conductor();
 
     private:
+        void DispatchCommand();
         SensorStruct LOOP_START_SENSOR_DATA;
         int SWITCH_SERVER_TID;
         int SENSOR_SERVER_TID;
@@ -48,6 +49,7 @@ namespace Conductor_NS
             CALIBRATION_STAGE calibration_stage;
             int train_num;    // train number
             int messenger_id; // TID
+            bool sentReply;
             int train_task_tid;
             const char *target_sensor_name;
 

@@ -360,6 +360,41 @@ namespace UI_CMD_NS
             SEND(CONDUCTOR_TID, (char *)&request, sizeof(request), nullptr, 0);
         }
 
+        else if ((first == 'C' || first == 'c') &&
+                 (second == 'A' || second == 'a'))
+        {
+            char third = str[2];
+            if (third == 'L' || third == 'l')
+            {
+                int train_num = 0;
+                bool num_set = false;
+
+                const char *ptr = str + 3;
+                while (*ptr == ' ')
+                {
+                    ptr++;
+                }
+
+                // extract train num
+                while (*ptr >= '0' && *ptr <= '9')
+                {
+                    train_num = train_num * 10 + (*ptr - '0');
+                    ptr++;
+                    num_set = true;
+                }
+
+                if (!num_set)
+                {
+                    IO_NS::PrintTerminal("Invalid Train Calibrate Command\r\n");
+                    return;
+                }
+
+                // create conductor request
+                IO_NS::PrintTerminal("Attempting to calibrate Train %d\r\n", train_num);
+                ConductorRequest request(COMMAND::CALIBRATE, train_num, 0);
+            }
+        }
+
         else
         {
             IO_NS::PrintTerminal("Invalid Command\r\n");
@@ -408,6 +443,7 @@ namespace UI_CMD_NS
         }
         break;
         case '\b':
+        case 127:
         {
             if (BUFFER_INDEX > 0)
             {

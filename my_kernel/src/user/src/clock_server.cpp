@@ -9,6 +9,12 @@
 #include "../../clock.h"
 static int CLOCK_SERVER_TID = -1;
 
+#if IRQEn == 1
+#define IRQ_ENABLED 1
+#else
+#define IRQ_ENABLED 0
+#endif
+
 class TimeServer
 {
 public:
@@ -16,6 +22,8 @@ public:
     {
         CLOCK_SERVER_TID = MYTID();
         REGISTERAS("ClockServer");
+        IO_NS::PrintTerminal("ClockServer started with TID %d\r\n", CLOCK_SERVER_TID);
+        EXIT();
         int notifierTid = CREATE(PRIORITY::CORE_NOTIFIER, ClockNotifier);
         uassert(notifierTid > 0 && "Error starting Clock Notifier");
 
@@ -146,15 +154,14 @@ void ClockNotifier()
     int clockServerTid = WHOIS("ClockServer");
     while (true)
     {
+#if IRQEn == 1
         int ret = AWAITEVENT(TIMER_TICK);
+// #else
+//         clock.Delay(10);
+#endif
+
         // IO_NS::PrintTerminal("ClockNotifier::Tick\r\n");
         clock.Display();
-
-        if (ret < 0)
-        {
-            // delay until the next tick
-            // clock.Delay(1);
-        }
 
         ClockRequest tickReq = {ClockRequestType::TICK, 0};                  // No ticks needed for a notification
         SEND(clockServerTid, (char *)&tickReq, sizeof(tickReq), nullptr, 0); // Notify the clock server with a TICK
