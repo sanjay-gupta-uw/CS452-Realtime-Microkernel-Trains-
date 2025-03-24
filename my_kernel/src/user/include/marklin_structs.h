@@ -17,6 +17,7 @@ enum class COMMAND
     GOTO,
     NAVIGATE_LOOP, // NEED TO IMPLEMENT IN COMMAND.cpp
     SENSOR_TRIGGER,
+    STOP_ALL,
     INVALID,
 };
 
