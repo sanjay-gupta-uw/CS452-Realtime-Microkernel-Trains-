@@ -290,7 +290,7 @@ namespace Trains_NS
                 REPLY(personal_train_messenger_tid, nullptr, 0);
                 personal_train_messenger_tid = -1;
                 free_train_messenger = false;
-                // uassert(false);
+                uassert(false && "freed train messenger");
             }
         }
     }
