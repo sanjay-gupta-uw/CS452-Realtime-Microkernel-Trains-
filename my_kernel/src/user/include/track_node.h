@@ -1,6 +1,7 @@
 #ifndef TRACK_NODE_H
 #define TRACK_NODE_H
 
+#include "../marklin/switch.h"
 typedef enum
 {
     NODE_NONE,
@@ -47,5 +48,17 @@ typedef struct
     int switch_num;
     SwitchDirection dir;
 } SwitchSetting;
+
+typedef struct
+{
+    int segment_length;
+    track_node *sensor_node;
+} SegmentReply;
+
+struct PathNode
+{
+    track_node *node;
+    Switch_NS::SWITCH_STATE switch_state;
+};
 
 #endif // TRACK_NODE_H

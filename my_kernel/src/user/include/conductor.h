@@ -9,6 +9,8 @@
 
 namespace Conductor_NS
 {
+#define LOOP_START_NODE "B5"
+
     class Conductor
     {
     public:
@@ -16,6 +18,7 @@ namespace Conductor_NS
         ~Conductor();
 
     private:
+        SensorStruct LOOP_START_SENSOR_DATA;
         int SWITCH_SERVER_TID;
         int SENSOR_SERVER_TID;
         // Switch_NS::Switches switches;
@@ -29,14 +32,16 @@ namespace Conductor_NS
 
         void ConductorLoop();
         void ConductorTest();
+        int GetNextSegment(int train_num);
 
+        // Queue<TrainResponse, 8> train_response_queue;
+        Queue<PathNode, NUM_SWITCHES> loop_switch_config;
         struct train_task_mapping
         {
             /* data */
             bool isWaitingForCommand;
             int task_id;   // TID
             int train_num; // train number
-            Queue<TrainResponse, 8> train_response_queue;
 
             int speed_level;
             int actual_speed_x10;
@@ -46,6 +51,9 @@ namespace Conductor_NS
             int next_predicted_num;
             char destination[5];
             int offset;
+
+            char *current_sensor_name;
+            Stack<PathNode, TRACK_MAX> path;
         };
 
         train_task_mapping train_arr[NUM_TRAINS];

@@ -4,17 +4,52 @@
 #include "../marklin/train.h"
 
 #define USE_CTS 1
+
 namespace Sensors_NS
 {
-
     static const char BANK_LABELS[NUM_BANKS] = {'A', 'B', 'C', 'D', 'E'};
 
+    static void test_sensor_masks()
+    {
+        // test SENSOR_TRIGGERED
+        {
+            IO_NS::PrintTerminal("SensorServer: Testing SENSOR_TRIGGERED\r\n");
+
+            uint8_t sensor_bytes[16] = {
+                0b10000000,
+                0b01000000,
+                0b00100000,
+                0b00010000,
+                0b00001000,
+                0b00000100,
+                0b00000010,
+                0b00000001,
+                0b10000000,
+                0b01000000,
+                0b00100000,
+                0b00010000,
+                0b00001000,
+                0b00000100,
+                0b00000010,
+                0b00000001};
+
+            for (int i = 1; i <= 16; ++i)
+            {
+                IO_NS::PrintTerminal("SensorServer: Testing sensor %d\r\n", i);
+                uassert(SENSOR_TRIGGERED(sensor_bytes[i - 1], i) && "SensorServer: Error testing SENSOR_TRIGGERED");
+            }
+
+            IO_NS::PrintTerminal("SensorServer: Finished testing SENSOR_TRIGGERED\r\n");
+        }
+    }
+
     SensorManager::SensorManager()
-        : UPDATE_DISPLAY(false), last_triggered_bank('\0'), last_triggered_id(0)
     {
         IO_NS::PrintTerminal("SensorManager::SensorManager: Initializing SensorManager\r\n");
+        REGISTERAS("SensorServer");
         last_triggered_bank = '\0';
         last_triggered_id = 0;
+        UPDATE_DISPLAY = false;
 
         for (int bank = 0; bank < NUM_BANKS; ++bank)
         {
@@ -23,12 +58,25 @@ namespace Sensors_NS
                 int idx = (bank * SENSORS_PER_BANK) + sensor;
                 sensor_data[idx].bank = BANK_LABELS[bank];
                 sensor_data[idx].id = sensor + 1;
-                sensor_data[idx].status = SensorState::SEN_OFF;
+                sensor_data[idx].status = SEN_OFF;
             }
         }
 
         MARKLIN_IO_SERVER_TID = WHOIS("MarklinIOServer");
+        SENSOR_TICKER_TID = -1;
+        isTickerRunning = false;
         Reset(true); // send reset command to the marklin
+        SensorLoop();
+
+        int train_nums[NUM_TRAINS] = {1, 54, 55, 58, 77};
+
+        for (int i = 0; i < NUM_TRAINS; ++i)
+        {
+            waiting_trains[i] = {-1, train_nums[i], -1, -1};
+            waiting_trains[i].messenger_tid = CREATE(PRIORITY::DEVICE_NOTIFIER, SensorMessenger);
+            uassert(waiting_trains[i].messenger_tid > 0 && "SensorManager::SensorManager: Error creating SensorMessenger");
+            SEND(waiting_trains[i].messenger_tid, (char *)&waiting_trains[i].train_tid, sizeof(int), nullptr, 0);
+        }
     }
 
     SensorManager::~SensorManager()
@@ -42,51 +90,8 @@ namespace Sensors_NS
         uassert(ret >= 0 && "SensorManager::Reset: command sent to MarklinIOServer failed");
     }
 
-    void SensorManager::ReadBank(int bank_num, BANK_MASK *bank_mask)
-    {
-        // invalidate bank_mask
-        for (int i = 0; i < SENSORS_PER_BANK; ++i)
-        {
-            bank_mask->sensor[i] = false;
-        }
-        bank_num = VALIDATE_BANK(bank_num);
-
-        // send command to marklin
-        if (USE_CTS)
-        {
-            MARKLIN_IO_SERVER::MarklinRequest request = {true, READ_ONE_SENSOR_BASE + bank_num};
-            int ret = MARKLIN_IO_SERVER::SendCmd(MARKLIN_IO_SERVER_TID, &request);
-            uassert(ret >= 0 && "SensorManager::ReadBank: FAILED to command sent to MarklinIOServer");
-        }
-        else
-        {
-            uart_putc(MARKLIN, READ_ONE_SENSOR_BASE + bank_num);
-            // uassert(false && "SensorManager::ReadBank: Sent command to Marklin");
-        }
-
-        // get response from marklin -- 2 bytes per bank
-        char bytes[2];
-        for (int i = 0; i < 2; ++i)
-        {
-            // get byte from marklin io
-            // bytes[i] = uart_getc(MARKLIN);
-            if (USE_CTS)
-            {
-                bytes[i] = MARKLIN_IO_SERVER::Getc(MARKLIN_IO_SERVER_TID);
-            }
-            else
-            {
-                bytes[i] = uart_getc(MARKLIN);
-            }
-            // uassert(false && "SensorManager::ReadBank: Successfully Read Byte");
-            uassert(bytes[i] >= 0 && "SensorManager::ReadBank: Getc failed");
-        }
-        processSensorData(bank_num, bytes[0], bytes[1], bank_mask);
-    }
-
     void SensorManager::ReadAll(int num_banks)
     {
-        IO_NS::PrintTerminal("SensorManager::ReadAll: Reading all sensors\r\n");
         num_banks = VALIDATE_BANK(num_banks);
 
         MARKLIN_IO_SERVER::MarklinRequest request = {true, READ_ALL_SENSOR_BASE + num_banks};
@@ -94,26 +99,22 @@ namespace Sensors_NS
         uassert(ret >= 0 && "SensorManager::ReadAll: command sent to MarklinIOServer failed");
         IO_NS::PrintTerminal("SensorManager::ReadAll: Sent command to MarklinIOServer\r\n");
 
-        IO_NS::PrintTerminal("SensorManager::ReadAll: Reading sensors up to bank %d\r\n", num_banks);
-
-        BANK_MASK bank_mask;
         for (int bank = 1; bank <= num_banks; ++bank)
         {
-            IO_NS::PrintTerminal("SensorManager::ReadAll: Reading bank %d\r\n", bank);
-
             uint8_t byte1 = MARKLIN_IO_SERVER::Getc(MARKLIN_IO_SERVER_TID);
             uassert(byte1 >= 0 && "SensorManager::ReadAll: Getc failed");
-
             uint8_t byte2 = MARKLIN_IO_SERVER::Getc(MARKLIN_IO_SERVER_TID);
             uassert(byte2 >= 0 && "SensorManager::ReadAll: Getc failed");
 
-            processSensorData(bank, byte1, byte2, &bank_mask);
-            IO_NS::PrintTerminal("SensorManager::ReadAll: Finished reading bank %d\r\n", bank);
+            if (byte1 == 0 && byte2 == 0)
+            {
+                continue;
+            }
+            processSensorData(bank, byte1, byte2);
         }
-        // uassert(false && "Successfully Read All Banks");
     }
 
-    void SensorManager::processSensorData(int bank, uint8_t byte1, uint8_t byte2, BANK_MASK *bank_mask)
+    void SensorManager::processSensorData(int bank, uint8_t byte1, uint8_t byte2)
     {
         if (byte1 == 0 && byte2 == 0)
         {
@@ -124,15 +125,13 @@ namespace Sensors_NS
         {
             int idx = ((bank - 1) * SENSORS_PER_BANK) + (sensor - 1);
             int new_state = (sensor < 9) ? SENSOR_TRIGGERED(byte1, sensor) : SENSOR_TRIGGERED(byte2, sensor);
-            // IO_NS::PrintTerminal("NEW STATE: %d\r\n", new_state);
+            IO_NS::PrintTerminal("NEW STATE: %d\r\n", new_state);
 
             int old_state = sensor_data[idx].status;
             sensor_data[idx].status = new_state;
 
             if (new_state == SEN_ON && old_state == SEN_OFF)
             {
-                uassert(bank_mask != nullptr && "SensorManager::processSensorData: bank_mask is null");
-
                 if (sensor_data[idx].bank != last_triggered_bank ||
                     sensor_data[idx].id != last_triggered_id)
                 {
@@ -148,9 +147,9 @@ namespace Sensors_NS
                     last_triggered_bank = sensor_data[idx].bank;
                     last_triggered_id = sensor_data[idx].id;
 
-                    bank_mask->sensor[sensor - 1] = true;
                     UPDATE_DISPLAY = true;
                 }
+                sensor_data[idx].status = SEN_ON;
             }
         }
     }
@@ -183,97 +182,86 @@ namespace Sensors_NS
         UPDATE_DISPLAY = false;
     }
 
-    void SensorServer()
+    void SensorManager::SensorLoop()
     {
-        REGISTERAS("SensorServer");
-        SensorManager sensors;
-
-        struct SensorTaskPair
-        {
-            int tid;
-            int sensor;
-        };
-
         // create sensor ticker
-        int sensor_ticker_tid = CREATE(PRIORITY::DEVICE_NOTIFIER, SensorTicker);
-        Queue<SensorTaskPair, NUM_TRAINS> awaiting_for_sensor[NUM_TRAINS];
+        isTickerRunning = true;
+        SENSOR_TICKER_TID = CREATE(PRIORITY::DEVICE_NOTIFIER, SensorTicker);
 
-        bool is_ticker_available = false;
         int sender_tid;
         SensorQuery query;
 
-        // test SENSOR_TRIGGERED
-        {
-            IO_NS::PrintTerminal("SensorServer: Testing SENSOR_TRIGGERED\r\n");
-
-            uint8_t sensor_bytes[16] = {
-                0b10000000,
-                0b01000000,
-                0b00100000,
-                0b00010000,
-                0b00001000,
-                0b00000100,
-                0b00000010,
-                0b00000001,
-                0b10000000,
-                0b01000000,
-                0b00100000,
-                0b00010000,
-                0b00001000,
-                0b00000100,
-                0b00000010,
-                0b00000001};
-
-            for (int i = 1; i <= 16; ++i)
-            {
-                IO_NS::PrintTerminal("SensorServer: Testing sensor %d\r\n", i);
-                uassert(SENSOR_TRIGGERED(sensor_bytes[i - 1], i) && "SensorServer: Error testing SENSOR_TRIGGERED");
-            }
-
-            IO_NS::PrintTerminal("SensorServer: Finished testing SENSOR_TRIGGERED\r\n");
-        }
+        test_sensor_masks();
+        int CLOCK_SERVER_TID = WHOIS("ClockServer");
+        uassert(CLOCK_SERVER_TID > 0 && "SensorServer: Error finding ClockServer");
 
         while (true)
         {
-            // BANK_MASK bank_mask;
-
-            // // sensors.ReadBank(1, &bank_mask);
-            // sensors.ReadAll(NUM_BANKS);
-            // sensors.Display(); // this can block the server until IO is ready
-
-            // uassert(false && "SensorServer: Finished reading bank A");
-
             int retval = RECEIVE(&sender_tid, (char *)&query, sizeof(query));
             uassert(retval >= 0 && "SensorServer: Error receiving SensorQuery");
+            cur_tick = TIME(CLOCK_SERVER_TID);
 
             switch (query.command)
             {
             case SENSOR_COMMAND::TICK:
             {
-                IO_NS::PrintTerminal("SensorServer: Received TICK request -- READING ALL BANKS\r\n");
-                is_ticker_available = true;
-                sensors.ReadAll(NUM_BANKS);
-                IO_NS::PrintTerminal("SensorServer: Finished reading all banks\r\n");
+                // IO_NS::PrintTerminal("SensorServer: Received TICK request -- READING ALL BANKS\r\n");
                 break;
+            }
+            case SENSOR_COMMAND::RESET:
+            {
+                // IO_NS::PrintTerminal("SensorServer: Received RESET request\r\n");
+                Reset(true);
+                break;
+            }
+            case SENSOR_COMMAND::TRAIN_SENSOR:
+            {
+                // train expects to hit a sensor in the near future
+                // IO_NS::PrintTerminal("SensorServer: Received TRAIN_SENSOR request\r\n");
+                SensorStruct sensor = query.sensor;
+                int idx = (int(sensor.bank) * SENSORS_PER_BANK) + (sensor.id - 1); // convert sensor to bank and id to compute index
+                for (int i = 0; i < NUM_TRAINS; ++i)
+                {
+                    if (waiting_trains[i].train_num == query.train_num)
+                    {
+                        waiting_trains[i] = {query.train_tid, query.train_num, idx};
+                        break;
+                    }
+                }
             }
             default:
                 break;
             }
 
-            sensors.Display(); // this can block the server until IO is ready
+            ReadAll(NUM_BANKS);
+            HandleWaitingTrains();
 
-            if (is_ticker_available)
+            Display(); // this can block the server until IO is ready
+            REPLY(sender_tid, nullptr, 0);
+        }
+    }
+
+    void SensorManager::HandleWaitingTrains()
+    {
+        for (int i = 0; i < NUM_TRAINS; ++i)
+        {
+            WaitingTrain *train = &waiting_trains[i];
+            if (train->idx >= 0 && sensor_data[train->idx].status == SEN_ON)
             {
-                // uassert(false && "THIS SHOULD BE REPLYING!");
-                IO_NS::PrintTerminal("SensorServer: Sending reply to sensor ticker\r\n");
-                // uassert(false && "SensorServer: REPLYING TO SENSOR TICKER");
-                is_ticker_available = false;
-                REPLY(sensor_ticker_tid, nullptr, 0);
+                train->idx = -1;
+                SensorResponse response = {true, cur_tick};
+                int retval = REPLY(train->messenger_tid, (char *)&response, sizeof(SensorResponse));
+                uassert(retval >= 0 && "SensorManager::HandleWaitingTrains: Error replying to train");
             }
         }
     }
 
-    // sensor notifier
+    void SensorServer()
+    {
+        Sensors_NS::SensorManager sensors;
+    }
+
+    // sensor notifier -- sends a tick to the sensor server every 200ms
     void SensorTicker()
     {
         REGISTERAS("SensorTicker");
@@ -289,6 +277,31 @@ namespace Sensors_NS
             uassert(retval >= 0 && "SensorTicker: Error sending SensorQuery to SensorServer");
             IO_NS::PrintTerminal("SensorTicker: DELAYING\r\n");
             DELAY(CLOCK_SERVER_TID, 20);
+        }
+    }
+
+    void SensorMessenger()
+    {
+        int sensor_server_tid = WHOIS("SensorServer");
+        uassert(sensor_server_tid > 0 && "SensorMessenger: Error finding SensorServer");
+
+        int train_tid;
+        int sender_tid;
+        int retval = RECEIVE(&sender_tid, (char *)&train_tid, sizeof(train_tid));
+        uassert(retval >= 0 && "SensorMessenger: Error receiving train_tid");
+        uassert(sender_tid == sensor_server_tid && "SensorMessenger: Received params from invalid src");
+
+        SensorQuery sensor_query = {SENSOR_COMMAND::MESSENGER_READY};
+        while (true)
+        {
+            SensorResponse response;
+            int ret = SEND(sensor_server_tid, (char *)&sensor_query, sizeof(sensor_query), (char *)&response, sizeof(response));
+            uassert(ret >= 0 && "SensorMessenger: Error sending to SensorServer");
+
+            // send reply to train task
+            // need to make train receive compatible with SensorResponse
+            // ret = SEND(train_tid, (char *)&response, sizeof(SensorResponse), nullptr, 0);
+            // uassert(ret >= 0 && "SensorMessenger: Error replying to train task");
         }
     }
 } // namespace Sensors_NS

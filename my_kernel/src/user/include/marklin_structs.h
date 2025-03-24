@@ -16,6 +16,7 @@ enum class COMMAND
     SPAWN_TRAIN,
     GOTO,
     NAVIGATE_LOOP, // NEED TO IMPLEMENT IN COMMAND.cpp
+    CALIBRATE,
     SENSOR_TRIGGER,
     INVALID,
 };
@@ -27,12 +28,6 @@ struct CMDRequest
     int data;
     char *src;
     char *dest;
-};
-
-enum class RequestType
-{
-    CMD,
-    TRAIN
 };
 
 enum class BANKS
@@ -54,11 +49,6 @@ enum class DIRECTION
     FORWARD,
     REVERSE,
 };
-struct TrainQuery
-{
-    SensorStruct sensor;
-    DIRECTION direction; // direction of the train
-};
 
 enum class TRAIN_COMMAND
 {
@@ -66,12 +56,26 @@ enum class TRAIN_COMMAND
     REVERSE,
     STOP,
     TICK,
+    SENSOR_TARGET,
 };
 struct TrainResponse
 {
     TRAIN_COMMAND command; // command to be executed, if any
     int speed;             // assume stop is only issued when next sensor is the destination
     SensorStruct sensor;
+    int segment_length;
+};
+
+struct TrainQuery
+{
+    SensorStruct sensor;
+    DIRECTION direction; // direction of the train
+};
+
+enum class RequestType
+{
+    CMD,
+    GET_SEGMENT,
 };
 struct ConductorRequest
 {
@@ -80,7 +84,7 @@ struct ConductorRequest
     union Data
     {
         CMDRequest cmdRequest;
-        TrainQuery trainQuery;
+        int spawned_train_tid;
 
         // Add a constructor to avoid potential undefined behavior
         Data() {}  // Default constructor
@@ -102,10 +106,10 @@ struct ConductorRequest
     }
 
     // Constructor for TrainQuery
-    ConductorRequest(SensorStruct sensor, DIRECTION direction)
-        : requestType(RequestType::TRAIN)
+    ConductorRequest(int train_tid)
+        : requestType(RequestType::GET_SEGMENT)
     {
-        data.trainQuery = {sensor, direction};
+        data.spawned_train_tid = train_tid;
     }
 };
 

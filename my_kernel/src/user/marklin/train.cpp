@@ -6,21 +6,51 @@
 #include "../include/clock_server.h"
 #include "../include/uassert.h"
 #include "../../include/syscall.h"
+#include "../include/track_node.h"
 namespace Trains_NS
 {
     static int MARKLIN_IO_SERVER_TID;
     // ********* Train Class *********
     // initialize with invaid train number
+
+    static int get_speed_level_index(int speed)
+    {
+        if (speed <= LOW_SPEED)
+        {
+            return 0;
+        }
+        else if (speed <= MEDIUM_SPEED)
+        {
+            return 1;
+        }
+        else
+        {
+            return 2;
+        }
+    }
     Train::Train()
     {
         train_num = -1;
         train_speed = 0;
         MARKLIN_IO_SERVER_TID = -1;
         isReversed = false;
+        cur_tick = 0;
+        prev_tick = 0;
+
+        initialize_distance_stacks();
     }
 
     Train::~Train()
     {
+    }
+
+    // sets all stack contents to 0
+    void Train::initialize_distance_stacks()
+    {
+        dist_travelled.Push(0);
+        dist_travelled.Push(0);
+        stopping_target.Push(0);
+        stopping_target.Push(0);
     }
 
     // use this constructor to set the train number
@@ -29,6 +59,8 @@ namespace Trains_NS
     {
         train_speed = 0;
         isReversed = false;
+
+        TrainLoop();
     }
 
     void Train::Accelerate(int speed)
@@ -93,9 +125,111 @@ namespace Trains_NS
         return false;
     }
 
+    void Train::update_position()
+    {
+        // calculate distance travelled
+        if (train_speed <= 0)
+        {
+            return;
+        }
+
+        int index = get_speed_level_index(train_speed);
+        if (approximate_speed[index] == -1)
+        {
+            return;
+        }
+
+        int dist = (cur_tick - prev_tick) * approximate_speed[index];
+
+        // update distance travelled in segment
+        int dist_travelled_in_segment;
+        dist_travelled.Pop(&dist_travelled_in_segment);
+        dist_travelled_in_segment += dist;
+        dist_travelled.Push(dist_travelled_in_segment);
+        // update stopping target in case it's within this segment
+        int stopping_target_dist;
+        stopping_target.Pop(&stopping_target_dist);
+        stopping_target.Push(stopping_target_dist - dist);
+
+        // check if we need to stop
+        int stopping_target_dist;
+        stopping_target.Pop(&stopping_target_dist);
+        if (stopping_target_dist <= stopping_distance[get_speed_level_index(train_speed)])
+        {
+            // stop train
+            Stop();
+        }
+
+        // NEED TO HANDLE:
+        // CHECK IF SENSOR TRIGGER IS WITHIN A SPECFIC TIME FRAME
+        // int dist_to_next_sensor = segment_length - dist_travelled_in_segment;
+        // IF WINDOW IS EXCEEDED, REPLY TO MESSENGER FOR NEXT SEGMENT
+        // ON INITIALIZATION, SET EXPECTED TIME TO BE LONGER THAN THE TIME IT TAKES TO TRAVEL THE SEGMENT
+    }
+
+    void Train::process_train_command(TrainResponse *response)
+    {
+        // process train command
+        switch (response->command)
+        {
+        case TRAIN_COMMAND::ACCELERATE:
+            IO_NS::PrintTerminal("Train %d: Accelerating to speed %d\r\n", train_num, response->speed);
+            Accelerate(response->speed);
+            break;
+        case TRAIN_COMMAND::REVERSE:
+            IO_NS::PrintTerminal("Train %d: Reversing\r\n", train_num);
+            Reverse();
+            break;
+        case TRAIN_COMMAND::STOP:
+            IO_NS::PrintTerminal("Received command from conductor to stop train %d\r\n", train_num);
+            Stop();
+            break;
+        case TRAIN_COMMAND::TICK:
+        {
+            // update train position
+            update_position();
+        }
+        case TRAIN_COMMAND::SENSOR_TARGET:
+        {
+            // IMMEDIATELY POLL SENSOR SERVER --
+            // if (dist_to_next_sensor <= SENSOR_POLLING_DISTANCE)
+            // {
+            //     // poll sensor server
+            //     // REPLY TO SENSOR MESSENGER
+            // }
+        }
+        // SENSOR_TRIGGERED
+        // update train position (first stack element)
+        default:
+            break;
+        }
+    }
+
+    void Train::TrainLoop()
+    {
+        // ConductorRequest train_query({BANKS::A, 1}, DIRECTION::FORWARD);
+
+        int sensor_server_tid = WHOIS("SensorServer");
+        uassert(sensor_server_tid > 0 && "Error finding SensorServer");
+        // train loop
+        // distance to next node
+        int conductor_tid = WHOIS("Conductor");
+        while (true)
+        {
+            cur_tick = TIME(CLOCK_SERVER_TID);
+            TrainResponse response;
+            int retval = RECEIVE(&conductor_tid, (char *)&response, sizeof(TrainResponse));
+            uassert(retval >= 0 && "Error receiving TrainResponse from Conductor");
+
+            process_train_command(&response);
+
+            // process sensor
+            prev_tick = cur_tick;
+        }
+    }
+
     void spawn_train()
     {
-        // only conductor should be interacting with this
         int conductor_tid;
 
         TrainParams train_params;
@@ -113,50 +247,71 @@ namespace Trains_NS
         uassert(CLOCK_SERVER_TID > 0 && "Error finding ClockServer");
         // initialize train: get location of train
         // DETERMINE PATH TO NAVIGATE LOOP
-        Trains_NS::Train train(train_num, MARKLIN_IO_SERVER_TID, CLOCK_SERVER_TID);
-        ConductorRequest train_query({BANKS::A, 1}, DIRECTION::FORWARD);
+        Train train(train_num, MARKLIN_IO_SERVER_TID, CLOCK_SERVER_TID);
+    }
 
-        int sensor_server_tid = WHOIS("SensorServer");
-        uassert(sensor_server_tid > 0 && "Error finding SensorServer");
-        // train loop
+    // DELAY and resends message to parent train task
+    void train_ticker()
+    {
+        int train_tid = MYPARENTTID();
+        uassert(train_tid > 0 && "TRAIN TICKKER:Error finding parent task");
+
+        int CLOCK_SERVER_TID = WHOIS("ClockServer");
+        uassert(CLOCK_SERVER_TID > 0 && "TRAIN TICKER:Error finding ClockServer");
+
+        TrainResponse response = {TRAIN_COMMAND::TICK, 0};
         while (true)
         {
-            // Send to the conductor with the current position and direction of travel
-            TrainResponse response;
-            int retval = SEND(conductor_tid, (char *)&train_query, sizeof(train_query), (char *)&response, sizeof(TrainResponse));
-            uassert(retval >= 0 && "Error sending TrainQuery to Conductor");
-            switch (response.command)
-            {
-            case TRAIN_COMMAND::ACCELERATE:
-                IO_NS::PrintTerminal("Accelerating train %d to speed %d\r\n", train_num, response.speed);
-                uassert(response.speed >= 0 && response.speed <= 14);
-                train.Accelerate(response.speed);
-                break;
-            case TRAIN_COMMAND::REVERSE:
-                IO_NS::PrintTerminal("Reversing train %d\r\n", train_num);
-                train.ReverseTrain();
-                break;
-            case TRAIN_COMMAND::STOP:
-                // USE BIJECTION METHOD TO HAVE FINAL STOP AS CLOSE TO SENSOR AS POSSIBLE
-                // SHOULD COMPUTE MEAN STOPPING DISTANCE/VELOCITY
-                train.Stop();
-                break;
-            default:
-                break;
-            }
+            int retval = SEND(train_tid, (char *)&response, sizeof(TrainResponse), nullptr, 0);
+            DELAY(CLOCK_SERVER_TID, 10);
+        }
+    }
 
-            // Reply contains the next sensor node to query for
-            // Poll from next expected sensor bank
-            // SensorStruct next_sensor;
-            // next_sensor.bank = BANKS::A;
-            // next_sensor.id = 3; // A4
+    static SensorStruct get_sensor_from_conductor_request(SegmentReply *segment)
+    {
+        const char *sensor_name = segment->sensor_node->name;
+        SensorStruct sensor = {};
+        sensor.bank = BANKS(sensor_name[0] - 'A');
+        sensor.id = a2ui((char **)&sensor_name[1], 3);
+        return sensor;
+    }
 
-            // Sensors_NS::SensorQuery sensor_query = {Sensors_NS::SENSOR_COMMAND::READ_BANK, next_sensor};
-            // retval = SEND(sensor_server_tid, (char *)&sensor_query, sizeof(Sensors_NS::SensorQuery), nullptr, 0);
-            // uassert(retval >= 0 && "Error sending SensorQuery to SensorServer");
+    // SENSOR/CONDUCTOR MESSENGER
+    void train_messenger()
+    {
+        // Train task should spawn its own messenger
+        int train_num;
+        int train_task_tid;
+        int param_init_retval = RECEIVE(&train_task_tid, (char *)&train_num, sizeof(int));
+        uassert(param_init_retval >= 0 && train_task_tid >= 0 && "TRAIN MESSENGER: Error receiving train_num from parent task");
+        REPLY(train_task_tid, nullptr, 0);
 
-            // // send waits for the sensor to be hit (not robust incase sensor is broken)
-            // train_query.data.trainQuery.sensor = response.sensor;
+        int conductor_tid = WHOIS("Conductor");
+        uassert(conductor_tid > 0 && "TRAIN MESSENGER: Error finding Conductor");
+
+        int sensor_server_tid = WHOIS("SensorServer");
+        uassert(sensor_server_tid > 0 && "TRAIN MESSENGER: Error finding SensorServer");
+
+        SegmentReply segment_reply;
+        ConductorRequest conductor_request(train_task_tid);
+        while (true)
+        {
+            // SEND SEGMENT REQUEST TO CONDUCTOR
+            int retval = SEND(conductor_tid, (char *)&conductor_request, sizeof(ConductorRequest), (char *)&segment_reply, sizeof(SegmentReply));
+            uassert(retval >= 0 && "TRAIN MESSENGER: Error sending SegmentRequest to Conductor");
+
+            // SEND SENSOR QUERY TO SENSOR SERVER
+            // HAVE SENSOR SERVER REPLY TO SENSOR MESSENGER IMMEDIATELY
+            // SEND MESSAGE TO TRAIN TASK IF SENSOR IS TRIGGERED
+            // NEED TO PASS TRAIN TID TO SENSOR SERVER
+            SensorStruct sensor = get_sensor_from_conductor_request(&segment_reply);
+            Sensors_NS::SensorQuery sensor_query = {Sensors_NS::SENSOR_COMMAND::TRAIN_SENSOR, sensor, train_task_tid, train_num};
+            retval = SEND(sensor_server_tid, (char *)&sensor_query, sizeof(Sensors_NS::SensorQuery), nullptr, 0);
+            uassert(retval >= 0 && "TRAIN MESSENGER: Error sending SensorQuery to SensorServer");
+
+            // NOTIFY TRAIN TASK THAT SENSOR WAS QUERIED, and pass train command if necessary
+            // TRAIN WILL REPLY TO THIS IF IT RECEIVES MESSAGE FROM SENSOR SERVER, or if the time is up
+            // THIS SHOULDN"T BE FREED UNTIL THE WINDOW FOR THE SENSOR TRIGGER HAS PASSED
         }
     }
 

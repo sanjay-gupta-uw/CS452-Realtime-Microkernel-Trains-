@@ -10,11 +10,7 @@
 // The track initialization functions expect an array of this size.
 #define TRACK_MAX 144
 #define REVERSE_COST 300
-struct PathNode
-{
-    track_node *node;
-    Switch_NS::SWITCH_STATE switch_state;
-};
+
 class Track
 {
 private:

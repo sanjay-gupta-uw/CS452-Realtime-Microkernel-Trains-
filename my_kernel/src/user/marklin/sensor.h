@@ -8,13 +8,11 @@
 #include "../../clock.h"
 #include "../include/name_server.h"
 #include "../../shared_constants.h"
+#include "train.h"
 
-struct SensorResponse
-{
-    int id; // -1 if no sensor triggered
-};
 namespace Sensors_NS
 {
+#define NUM_TRAINS 5
 #define VALIDATE_BANK(bank) (int)(bank > 0 && bank <= NUM_BANKS ? bank : NUM_BANKS)
 #define SENSOR_TRIGGERED(byte, sensor) ((byte >> (8 - ((sensor > 8) ? (sensor - 8) : sensor))) & 0b00000001)
 
@@ -28,15 +26,10 @@ namespace Sensors_NS
 #define RESET_MODE_ON READ_ONE_SENSOR_BASE
 #define RESET_MODE_OFF READ_ALL_SENSOR_BASE
 
-    struct BANK_MASK
-    {
-        bool sensor[16];
-    };
-
     enum class SENSOR_COMMAND
     {
-        READ_BANK,
-        READ_ALL,
+        TRAIN_SENSOR,
+        MESSENGER_READY,
         RESET,
         TICK,
     };
@@ -46,44 +39,67 @@ namespace Sensors_NS
     {
         SENSOR_COMMAND command;
         SensorStruct sensor;
+        int train_tid;
+        int train_num;
     };
 
-    typedef enum
+    struct SensorResponse
     {
-        SEN_OFF,
-        SEN_ON,
-    } SensorState;
+        bool success;
+        int trigger_tick;
+    };
+
+#define SEN_OFF 0
+#define SEN_ON 1
 
     class SensorManager
     {
     public:
         SensorManager();
         ~SensorManager();
-        void ReadBank(int bank_num, BANK_MASK *bank_mask);
-        void ReadAll(int num_banks);
+        void ReadAll(int num_bank);
         void Reset(bool reset_on);
-        void Display();
 
     private:
-        void processSensorData(int bank, uint8_t byte1, uint8_t byte2, BANK_MASK *bank_mask);
+        struct WaitingTrain
+        {
+            int train_tid;
+            int train_num;
+            int idx; // idx of sensor_data it is waiting for
+            int messenger_tid;
+        };
+
+        void SensorLoop();
+        void Display();
+
+        void processSensorData(int bank, uint8_t byte1, uint8_t byte2);
         Queue<int, MAX_RECENT_SENSORS> recent_sensors;
+
         struct Sensor
         {
             char bank;
             uint8_t id;
             int status;
         };
-
         Sensor sensor_data[NUM_BANKS * SENSORS_PER_BANK];
+
+        void HandleWaitingTrains();
+        void push_waiting_train(int idx, int train_tid, int train_num);
+        WaitingTrain waiting_trains[NUM_TRAINS];
+
         bool UPDATE_DISPLAY;
         char last_triggered_bank;
         uint8_t last_triggered_id;
         int MARKLIN_IO_SERVER_TID;
-        int CONDUCTOR_TID;
+        int SENSOR_TICKER_TID;
+        bool isTickerRunning;
+
+        int cur_tick;
     };
 
     void SensorServer();
     void SensorTicker();
+    void SensorMessenger();
 } // namespace Sensors_NS
 
 #endif // SENSOR_H
