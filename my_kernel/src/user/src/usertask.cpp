@@ -77,7 +77,8 @@ void FirstUserTask()
     IO_NS::PrintTerminal("UI Task started with TID %d\r\n", uiTaskTid);
 
     // create conductor for communicating between trains/sensors/switches
-    int ConductorTid = CREATE(PRIORITY::ORCHESTRATOR, Conductor_NS::start_conductor);
+    // int ConductorTid = CREATE(PRIORITY::ORCHESTRATOR, Conductor_NS::start_conductor);
+    int ConductorTid = CREATE(PRIORITY::DEVICE_NOTIFIER, Conductor_NS::start_conductor);
     uassert(ConductorTid > 0 && "Error starting Conductor");
     IO_NS::PrintTerminal("Conductor started with TID %d\r\n", ConductorTid);
 

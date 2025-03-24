@@ -2723,11 +2723,7 @@ void Track::find_path(const char *start, const char *dest, Stack<PathNode, TRACK
         int count = 0;
         while (cur_index != -1)
         {
-            if (strcmp(start, dest) == 0)
-            {
-                break;
-            }
-            IO_NS::PrintTerminal("%s \r\n", track[cur_index].name);
+            IO_NS::PrintTerminal("%s ", track[cur_index].name);
             track_node *node = &track[cur_index];
             if (node->type == track_node_type::NODE_BRANCH && prior_index >= 0)
             {
@@ -2744,7 +2740,7 @@ void Track::find_path(const char *start, const char *dest, Stack<PathNode, TRACK
                     // IO_NS::PrintTerminal("CURVED ");
                 }
             }
-            else if (node->type == track_node_type::NODE_SENSOR)
+            else
             {
                 path->Push({node, Switch_NS::SWITCH_STATE::UNINITIALIZED});
             }
@@ -2760,6 +2756,10 @@ void Track::find_path(const char *start, const char *dest, Stack<PathNode, TRACK
                 break;
             }
         }
+        // push the start node
+        path->Push({start_node, Switch_NS::SWITCH_STATE::UNINITIALIZED});
+
+        IO_NS::PrintTerminal(" %s\r\n", track[cur_index].name);
         IO_NS::PrintTerminal("; Total distance: %d, Count: %d\r\n", dist[dest_index], count);
     }
 }

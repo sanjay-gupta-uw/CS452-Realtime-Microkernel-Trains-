@@ -347,9 +347,10 @@ namespace Trains_NS
             SensorStruct sensor = train_response.sensor;
             if (sensor.id > 0)
             {
-                IO_NS::PrintTerminal("Sensor: %c%d\r\n", sensor.bank, sensor.id);
+                char bank = int(sensor.bank) + 'A';
                 Sensors_NS::SensorResponse sensor_response;
                 Sensors_NS::SensorQuery sensor_query = {Sensors_NS::SENSOR_COMMAND::TRAIN_SENSOR, sensor, train_task_tid, train_num};
+                IO_NS::PrintTerminal("Querying Sensor %c%d for Train %d, Sensor TID: %d\r\n", bank, sensor.id, train_num, sensor_server_tid);
                 retval = SEND(sensor_server_tid, (char *)&sensor_query, sizeof(Sensors_NS::SensorQuery), (char *)&sensor_response, sizeof(Sensors_NS::SensorResponse));
                 uassert(retval >= 0 && "TRAIN MESSENGER: Error sending SensorQuery to SensorServer");
             }
@@ -360,6 +361,9 @@ namespace Trains_NS
 
             IO_NS::PrintTerminal("Train %d messenger sending segment to train task %d\r\n", train_num, train_task_tid);
             IO_NS::PrintTerminal("~~~~Command: %d, Speed: %d, Segment Length: %d, Trigger Tick: %d\r\n", train_response.command, train_response.speed, train_response.segment_length, train_response.trigger_tick);
+
+            // uassert(false && "FORCED ERROR");
+
             // NOTIFY TRAIN TASK THAT SENSOR WAS QUERIED, and pass train command if necessary
             // TRAIN WILL REPLY TO THIS IF IT RECEIVES MESSAGE FROM SENSOR SERVER, or if the time is up
             // THIS SHOULDN"T BE FREED UNTIL THE WINDOW FOR THE SENSOR TRIGGER HAS PASSED

@@ -15,6 +15,7 @@ namespace UI_CMD_NS
 {
     void display_track(const TrackConfig *config)
     {
+        return;
         int y = TRACK_LAYOUT_LOCATION_Y;
         int x = TRACK_LAYOUT_LOCATION_X;
 
@@ -390,8 +391,11 @@ namespace UI_CMD_NS
                 }
 
                 // create conductor request
+                IO_NS::PrintTerminal(CLEAR_SCREEN);
                 IO_NS::PrintTerminal("Attempting to calibrate Train %d\r\n", train_num);
                 ConductorRequest request(COMMAND::CALIBRATE, train_num, 0);
+                int retval = SEND(CONDUCTOR_TID, (char *)&request, sizeof(ConductorRequest), (char *)command_received, sizeof(int));
+                uassert(retval >= 0 && "Error sending calibrate request to Conductor");
             }
         }
 

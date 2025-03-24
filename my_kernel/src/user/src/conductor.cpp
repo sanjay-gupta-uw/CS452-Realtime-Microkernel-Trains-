@@ -11,6 +11,7 @@
 #include <cstring>
 #include <cctype>
 
+#define TEST_ENABLED 0
 typedef struct IO_REQUEST
 {
     unsigned char ch;
@@ -18,6 +19,7 @@ typedef struct IO_REQUEST
 
 namespace Conductor_NS
 {
+
     static void InitializeTrainDisplay()
     {
         // Header
@@ -76,6 +78,7 @@ namespace Conductor_NS
 
     static void get_switch_queue(Stack<PathNode, TRACK_MAX> *path, Queue<PathNode, NUM_SWITCHES> *switch_nodes)
     {
+        Stack<PathNode, TRACK_MAX> temp;
         while (!path->IsEmpty())
         {
             PathNode node;
@@ -84,14 +87,27 @@ namespace Conductor_NS
             {
                 switch_nodes->Push(node);
             }
+            temp.Push(node);
+        }
+
+        while (!temp.IsEmpty())
+        {
+            PathNode node;
+            temp.Pop(&node);
+            path->Push(node);
         }
     }
 
-    static SensorStruct name_to_sensor_struct(const char *sensor_name)
+    static SensorStruct name_to_sensor_struct(char sensor_name[4])
     {
+        IO_NS::PrintTerminal("name_to_sensor_struct: name-%s\r\n", sensor_name);
         SensorStruct sensor = {};
-        sensor.bank = BANKS(sensor_name[0] - 'A');
-        sensor.id = a2ui((char **)&sensor_name[1], 3);
+
+        sensor.bank = static_cast<BANKS>(sensor_name[0] - 'A');
+        const char *sensor_name_ptr = sensor_name + 1;
+        sensor.id = a2ui((char **)&sensor_name_ptr, 10);
+
+        IO_NS::PrintTerminal("name_to_sensor_struct: bank-%d, id-%d\r\n", int(sensor.bank), sensor.id);
         return sensor;
     }
 
@@ -179,7 +195,8 @@ namespace Conductor_NS
             {
                 if (train_arr[i].train_num == -1)
                 {
-                    train_arr[i].target_sensor_name = req->src;
+                    memset(train_arr[i].target_sensor_name, 0, 4);
+                    strncpy(train_arr[i].target_sensor_name, sensor_id, 4);
                     train_arr[i].train_task_tid = spawned_train_tid;
                     train_arr[i].messenger_id = -1;
                     train_arr[i].calibration_stage = CALIBRATION_STAGE::NONE;
@@ -194,6 +211,7 @@ namespace Conductor_NS
                     train_arr[i].recent_sensor_num = -1;
                     memset(train_arr[i].destination, 0, 5);
 
+                    IO_NS::PrintTerminal("Index: %d, Train %d spawned with Sensor %s\r\n", i, train_arr[i].train_num, train_arr[i].target_sensor_name);
                     break;
                 }
             }
@@ -218,16 +236,11 @@ namespace Conductor_NS
             }
 
             // get path to calibration sensor
-            train_arr[train_index].calibration_stage = CALIBRATION_STAGE::CALIBRATE_NAV_TO_LOOP;
+            train_task_mapping *train = &train_arr[train_index];
+            train->calibration_stage = CALIBRATION_STAGE::CALIBRATE_NAV_TO_LOOP;
+            IO_NS::PrintTerminal("index: %d, Train %d, TID: %d calibrating -- start: %s", train_index, train->train_num, train->train_task_tid, train->target_sensor_name);
 
-            const char *start_node_name = train_arr[train_index].target_sensor_name;
-            track.find_path(start_node_name, LOOP_START_NODE, &train_arr[train_index].path);
-            Queue<PathNode, NUM_SWITCHES> switch_nodes;
-            get_switch_queue(&train_arr[train_index].path, &switch_nodes);
-            SetSwitches(&switch_nodes);
-
-            TrainResponse response = {TrainResponseType::TRAIN_MESSENGER, TRAIN_COMMAND::ACCELERATE, train_arr[train_index].speed_level};
-            train_arr[train_index].train_response_queue.Push(response);
+            CalibrateTrain(&train_arr[train_index]);
 
             break;
         }
@@ -303,6 +316,10 @@ namespace Conductor_NS
 
     void Conductor::ConductorTest()
     {
+        if (!TEST_ENABLED)
+        {
+            return;
+        }
         // TEST LOOP SWITCHES
         // IO_NS::PrintTerminal("Conductor testing loop switches\r\n");
         // Queue<PathNode, NUM_SWITCHES> switch_config;
@@ -332,14 +349,19 @@ namespace Conductor_NS
         if (segment_length == 0)
         {
             IO_NS::PrintTerminal("Train %d has reached destination\r\n", train->train_num);
+            UpdateCalibrationStage(train);
             CalibrateTrain(train);
             return;
         }
+
+        IO_NS::PrintTerminal("Conductor::SendSegmentToMessenger -- Segment length: %d\r\n", segment_length);
         SensorStruct sensor = name_to_sensor_struct(train->target_sensor_name);
         COMMAND cmd = COMMAND::ACCELERATE_TRAIN;
         int speed = train->speed_level;
+        IO_NS::PrintTerminal("HERE\r\n");
         TrainResponse response = {TrainResponseType::TRAIN_MESSENGER, TRAIN_COMMAND::ACCELERATE, speed, sensor, segment_length};
 
+        IO_NS::PrintTerminal("Conductor::SendSegmentToMessenger -- Sending segment to messenger %d\r\n", messenger_tid);
         // reply to messenger task with segment data
         REPLY(messenger_tid, (char *)&response, sizeof(TrainResponse));
     }
@@ -353,11 +375,17 @@ namespace Conductor_NS
             IO_NS::PrintTerminal("Conductor::CalibrateTrain -- CALIBRATION_STAGE::NAV TO LOOP\r\n");
             // find path to loop start
             const char *start_node_name = train->target_sensor_name;
+            IO_NS::PrintTerminal("Conductor::CalibrateTrain -- Finding path from %s to %s\r\n", start_node_name, LOOP_START_NODE);
             track.find_path(start_node_name, LOOP_START_NODE, &train->path);
+            uassert(!train->path.IsEmpty() && "CalibrateTrain: Path is empty");
             Queue<PathNode, NUM_SWITCHES> switch_nodes;
+            IO_NS::PrintTerminal("Conductor::CalibrateTrain -- Found path from %s to %s\r\n", start_node_name, LOOP_START_NODE);
+            IO_NS::PrintTerminal("Conductor::CalibrateTrain -- Setting switches\r\n");
             get_switch_queue(&train->path, &switch_nodes);
             SetSwitches(&switch_nodes);
-            train->calibration_stage = CALIBRATION_STAGE::CALIBRATE_LOOP;
+            // this should be set when path is empty
+            // train->calibration_stage = CALIBRATION_STAGE::CALIBRATE_LOOP;
+            IO_NS::PrintTerminal("Conductor::CalibrateTrain -- Set all switches -- can safely navigate from %s to %s\r\n", start_node_name, LOOP_START_NODE);
             break;
         }
         case CALIBRATE_NAV_TO_STOP:
@@ -369,7 +397,7 @@ namespace Conductor_NS
             Queue<PathNode, NUM_SWITCHES> switch_nodes;
             get_switch_queue(&train->path, &switch_nodes);
             SetSwitches(&switch_nodes);
-            train->calibration_stage = CALIBRATION_STAGE::NONE;
+            // train->calibration_stage = CALIBRATION_STAGE::NONE;
             break;
         }
         case CALIBRATE_LOOP:
@@ -383,7 +411,7 @@ namespace Conductor_NS
             get_switch_queue(&train->path, &switch_nodes);
             SetSwitches(&switch_nodes);
             // ONLU ALLOW
-            train->calibration_stage = CALIBRATION_STAGE::CALIBRATE_NAV_TO_STOP;
+            // train->calibration_stage = CALIBRATION_STAGE::CALIBRATE_NAV_TO_STOP;
             break;
         }
 
@@ -449,7 +477,7 @@ namespace Conductor_NS
             {
                 if (!train->train_response_queue.IsEmpty())
                 {
-                    IO_NS::PrintTerminal("Conductor::DispatchCommand -- Sending segment to messenger %d\r\n", train->messenger_id);
+                    IO_NS::PrintTerminal("Conductor::DispatchCommand -- Sending Train Command to messenger %d\r\n", train->messenger_id);
                     TrainResponse response;
                     train->train_response_queue.Pop(&response);
                     response.segment_length = 69;
@@ -460,6 +488,7 @@ namespace Conductor_NS
                 }
                 else
                 {
+                    IO_NS::PrintTerminal("Conductor::DispatchCommand -- Extracting segment for train %d\r\n", train->train_num);
                     SendSegmentToMessenger(train->messenger_id, train);
                 }
                 break;
@@ -484,48 +513,84 @@ namespace Conductor_NS
         Stack<PathNode, TRACK_MAX> *path = &train_arr[train_index].path;
         if (path->IsEmpty())
         {
-            // IO_NS::PrintTerminal("Train %d has reached destination\r\n", train_num);
+            IO_NS::PrintTerminal("PATH IS EMPTY\r\n");
             return 0;
         }
+        IO_NS::PrintTerminal("cur sensor: %s, Processing segment until next sensor\r\n", train_arr[train_index].target_sensor_name);
 
-        PathNode next_node;
-        path->Pop(&next_node);
-        uassert(next_node.node->type == NODE_SENSOR && "GET-NEXT-SEGMENT::Next is not a sensor");
+        PathNode cur_node;
+        path->Pop(&cur_node);
+        uassert(cur_node.node->type == NODE_SENSOR && "GET-NEXT-SEGMENT::Next is not a sensor");
+        IO_NS::PrintTerminal("Setting recent sensor data to %s\r\n", cur_node.node->name);
         // update recent sensor
-        train_arr[train_index].recent_sensor_bank = next_node.node->name[0];
-        train_arr[train_index].recent_sensor_num = a2ui((char **)&next_node.node->name[1], 3);
+        train_arr[train_index].recent_sensor_bank = cur_node.node->name[0];
+        const char *num_ascii = cur_node.node->name + 1;
+        train_arr[train_index].recent_sensor_num = a2ui((char **)&num_ascii, 10);
+        IO_NS::PrintTerminal("Set recent sensor data to %c%d\r\n", train_arr[train_index].recent_sensor_bank, train_arr[train_index].recent_sensor_num);
+        int segment_length = 0;
+        // cur_node.node->edge[DIR_AHEAD].dist;
 
-        int segment_length = next_node.node->edge[DIR_AHEAD].dist;
+        if (path->IsEmpty())
+        {
+            IO_NS::PrintTerminal("PATH IS EMPTY\r\n");
+            return segment_length;
+        }
 
         // process untill next sensor
+        bool start = true;
         while (!path->IsEmpty())
         {
-            PathNode node;
-            path->Pop(&node);
-            if (node.node->type == NODE_SENSOR)
+            IO_NS::PrintTerminal("Processing segment %s\r\n", cur_node.node->name);
+            if (cur_node.node->type == NODE_SENSOR && !start)
             {
                 break;
             }
-            if (node.node->type == NODE_BRANCH)
+            if (cur_node.node->type == NODE_BRANCH)
             {
-                uassert(node.switch_state == Switch_NS::SWITCH_STATE::STRAIGHT || node.switch_state == Switch_NS::SWITCH_STATE::CURVED);
-                segment_length += node.node->edge[node.switch_state].dist;
+                uassert(cur_node.switch_state == Switch_NS::SWITCH_STATE::STRAIGHT || cur_node.switch_state == Switch_NS::SWITCH_STATE::CURVED);
+                segment_length += cur_node.node->edge[cur_node.switch_state].dist;
             }
             else
             {
-                segment_length += node.node->edge[DIR_AHEAD].dist;
+                segment_length += cur_node.node->edge[DIR_AHEAD].dist;
             }
+
+            path->Pop(&cur_node);
+            start = false;
         }
 
         // update current sensor name
-        if (next_node.node->type == NODE_SENSOR)
+        if (cur_node.node->type == NODE_SENSOR)
         {
-            train_arr[train_index].target_sensor_name = next_node.node->name;
+            path->Push(cur_node);
+            IO_NS::PrintTerminal("Setting target sensor data to %s\r\n", cur_node.node->name);
+            strncpy(train_arr[train_index].target_sensor_name, cur_node.node->name, 4);
+            IO_NS::PrintTerminal("Set target sensor data to %s\r\n", train_arr[train_index].target_sensor_name);
         }
 
         IO_NS::PrintTerminal("Calculating segment length for train %d: %d\r\n", train_num, segment_length);
-        uassert(false && "FORCED PANIC");
         return segment_length;
+    }
+
+    void Conductor::UpdateCalibrationStage(train_task_mapping *train)
+    {
+        switch (train->calibration_stage)
+        {
+        case CALIBRATE_NAV_TO_LOOP:
+            IO_NS::PrintTerminal("Conductor::UpdateCalibrationStage -- CALIBRATION_STAGE::CALIBRATE_LOOP\r\n");
+            train->calibration_stage = CALIBRATION_STAGE::CALIBRATE_LOOP;
+            break;
+        case CALIBRATE_LOOP:
+            IO_NS::PrintTerminal("Conductor::UpdateCalibrationStage -- CALIBRATION_STAGE::CALIBRATE_NAV_TO_STOP\r\n");
+            train->calibration_stage = CALIBRATION_STAGE::CALIBRATE_NAV_TO_STOP;
+            break;
+        case CALIBRATE_NAV_TO_STOP:
+            IO_NS::PrintTerminal("Conductor::UpdateCalibrationStage -- CALIBRATION_STAGE::NONE\r\n");
+            train->calibration_stage = CALIBRATION_STAGE::NONE;
+            break;
+        default:
+            break;
+        }
     }
 
     /*

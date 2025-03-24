@@ -5,6 +5,12 @@
 
 #define USE_CTS 1
 
+#if IRQEn == 1
+#define IRQ_ENABLED 1
+#else
+#define IRQ_ENABLED 0
+#endif
+
 namespace Sensors_NS
 {
     static const char BANK_LABELS[NUM_BANKS] = {'A', 'B', 'C', 'D', 'E'};
@@ -186,7 +192,11 @@ namespace Sensors_NS
     {
         // create sensor ticker
         isTickerRunning = true;
-        SENSOR_TICKER_TID = CREATE(PRIORITY::DEVICE_NOTIFIER, SensorTicker);
+        if (IRQ_ENABLED)
+        {
+            SENSOR_TICKER_TID = CREATE(PRIORITY::DEVICE_NOTIFIER, SensorTicker);
+            uassert(SENSOR_TICKER_TID > 0 && "SensorManager::SensorLoop: Error creating SensorTicker");
+        }
 
         int sender_tid;
         SensorQuery query;
@@ -199,13 +209,14 @@ namespace Sensors_NS
         {
             int retval = RECEIVE(&sender_tid, (char *)&query, sizeof(query));
             uassert(retval >= 0 && "SensorServer: Error receiving SensorQuery");
+            IO_NS::PrintTerminal("SensorServer: Received SensorQuery from %d\r\n", sender_tid);
             cur_tick = TIME(CLOCK_SERVER_TID);
 
             switch (query.command)
             {
             case SENSOR_COMMAND::TICK:
             {
-                // IO_NS::PrintTerminal("SensorServer: Received TICK request -- READING ALL BANKS\r\n");
+                IO_NS::PrintTerminal("SensorServer: Received TICK request -- READING ALL BANKS\r\n");
                 break;
             }
             case SENSOR_COMMAND::RESET:
@@ -217,7 +228,7 @@ namespace Sensors_NS
             case SENSOR_COMMAND::TRAIN_SENSOR:
             {
                 // train expects to hit a sensor in the near future
-                // IO_NS::PrintTerminal("SensorServer: Received TRAIN_SENSOR request\r\n");
+                IO_NS::PrintTerminal("SensorServer: Received TRAIN_SENSOR request\r\n");
                 SensorStruct sensor = query.sensor;
                 int idx = (int(sensor.bank) * SENSORS_PER_BANK) + (sensor.id - 1); // convert sensor to bank and id to compute index
                 for (int i = 0; i < NUM_TRAINS; ++i)
@@ -233,7 +244,10 @@ namespace Sensors_NS
                 break;
             }
 
-            ReadAll(NUM_BANKS);
+            if (IRQ_ENABLED)
+            {
+                ReadAll(NUM_BANKS);
+            }
             HandleWaitingTrains();
 
             Display(); // this can block the server until IO is ready

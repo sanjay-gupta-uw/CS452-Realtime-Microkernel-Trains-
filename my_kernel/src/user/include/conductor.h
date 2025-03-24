@@ -51,7 +51,7 @@ namespace Conductor_NS
             int messenger_id; // TID
             bool sentReply;
             int train_task_tid;
-            const char *target_sensor_name;
+            char target_sensor_name[4];
 
             int speed_level;
             int actual_speed_x10;
@@ -68,6 +68,7 @@ namespace Conductor_NS
 
         void SendSegmentToMessenger(int messenger_tid, train_task_mapping *train);
         void CalibrateTrain(train_task_mapping *train);
+        void UpdateCalibrationStage(train_task_mapping *train);
 
         train_task_mapping train_arr[NUM_TRAINS];
         Track track;
