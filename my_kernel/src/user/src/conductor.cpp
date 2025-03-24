@@ -351,7 +351,11 @@ namespace Conductor_NS
             IO_NS::PrintTerminal("Train %d has reached destination\r\n", train->train_num);
             UpdateCalibrationStage(train);
             CalibrateTrain(train);
-            return;
+            if (train->calibration_stage == CALIBRATION_STAGE::NONE)
+            {
+                return;
+            }
+            segment_length = GetSegmentLength(train->train_num);
         }
 
         IO_NS::PrintTerminal("Conductor::SendSegmentToMessenger -- Segment length: %d\r\n", segment_length);
@@ -388,6 +392,21 @@ namespace Conductor_NS
             IO_NS::PrintTerminal("Conductor::CalibrateTrain -- Set all switches -- can safely navigate from %s to %s\r\n", start_node_name, LOOP_START_NODE);
             break;
         }
+        case CALIBRATE_LOOP:
+        {
+            IO_NS::PrintTerminal("Conductor::CalibrateTrain -- CALIBRATION_STAGE::CALIBRATE_LOOP\r\n");
+            // find path to loop start
+            const char *start_node_name = train->target_sensor_name;
+            // update this so it finds shortest path back to start (loop)
+            uassert(strcmp(start_node_name, LOOP_START_NODE) == 0 && "CalibrateTrain: Start node is not loop start");
+            track.find_path(start_node_name, LOOP_START_NODE, &train->path, false);
+            Queue<PathNode, NUM_SWITCHES> switch_nodes;
+            get_switch_queue(&train->path, &switch_nodes);
+            SetSwitches(&switch_nodes);
+            // ONLU ALLOW
+            // train->calibration_stage = CALIBRATION_STAGE::CALIBRATE_NAV_TO_STOP;
+            break;
+        }
         case CALIBRATE_NAV_TO_STOP:
         {
             IO_NS::PrintTerminal("Conductor::CalibrateTrain -- CALIBRATION_STAGE::NAV TO STOP\r\n");
@@ -400,26 +419,13 @@ namespace Conductor_NS
             // train->calibration_stage = CALIBRATION_STAGE::NONE;
             break;
         }
-        case CALIBRATE_LOOP:
-        {
-            IO_NS::PrintTerminal("Conductor::CalibrateTrain -- CALIBRATION_STAGE::CALIBRATE_LOOP\r\n");
-            // find path to loop start
-            const char *start_node_name = train->target_sensor_name;
-            // update this so it finds shortest path back to start (loop)
-            track.find_path(start_node_name, LOOP_START_NODE, &train->path, false);
-            Queue<PathNode, NUM_SWITCHES> switch_nodes;
-            get_switch_queue(&train->path, &switch_nodes);
-            SetSwitches(&switch_nodes);
-            // ONLU ALLOW
-            // train->calibration_stage = CALIBRATION_STAGE::CALIBRATE_NAV_TO_STOP;
-            break;
-        }
-
         case CALIBRATION_STAGE::NONE:
         {
             IO_NS::PrintTerminal("Conductor::CalibrateTrain -- CALIBRATION_STAGE::NONE\r\n");
             break;
         }
+        default:
+            break;
         }
     }
 
