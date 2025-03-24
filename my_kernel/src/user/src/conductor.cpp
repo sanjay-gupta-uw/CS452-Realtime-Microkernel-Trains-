@@ -203,7 +203,7 @@ namespace Conductor_NS
 
                     train_arr[i].train_num = req->id;
                     train_arr[i].actual_speed_x10 = -1;
-                    train_arr[i].speed_level = -1;
+                    train_arr[i].speed_level = 0;
                     train_arr[i].next_predicted_bank = sensor_bank;
                     train_arr[i].next_predicted_num = sensor_number;
                     train_arr[i].offset = -1;
