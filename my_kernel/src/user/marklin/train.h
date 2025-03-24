@@ -44,6 +44,7 @@ namespace Trains_NS
 
         void process_train_command(TrainResponse *response);
         void update_position();
+        void sensor_pos_update(int trigger_tick, int segment_length);
 
         void Reverse();   // sends reverse train command to marklin
         void TrainLoop(); // train loop task

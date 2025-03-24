@@ -299,9 +299,8 @@ namespace Sensors_NS
             uassert(ret >= 0 && "SensorMessenger: Error sending to SensorServer");
 
             // send reply to train task
-            // need to make train receive compatible with SensorResponse
-            // ret = SEND(train_tid, (char *)&response, sizeof(SensorResponse), nullptr, 0);
-            // uassert(ret >= 0 && "SensorMessenger: Error replying to train task");
+            ret = SEND(train_tid, (char *)&response, sizeof(SensorResponse), nullptr, 0);
+            uassert(ret >= 0 && "SensorMessenger: Error replying to train task");
         }
     }
 } // namespace Sensors_NS

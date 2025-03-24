@@ -6,10 +6,18 @@
 #include "../marklin/switch.h"
 #include "../marklin/train.h"
 #include "../include/marklin_structs.h"
-
 namespace Conductor_NS
 {
 #define LOOP_START_NODE "B5"
+
+    // CALIBRATION STAGES
+    typedef enum
+    {
+        NONE,
+        CALIBRATE_NAV_TO_LOOP,
+        CALIBRATE_LOOP,
+        CALIBRATE_NAV_TO_STOP
+    } CALIBRATION_STAGE;
 
     class Conductor
     {
@@ -24,24 +32,24 @@ namespace Conductor_NS
         // Switch_NS::Switches switches;
 
         int get_train_index(int train_num);
-        void CalibrateTrain(int train_num);
         void SetSwitches(Queue<PathNode, NUM_SWITCHES> *switch_nodes);
         void ProcessRequest(CMDRequest *req);
-        void DispatchTrainCommand();
         void UpdateTrainDisplay();
 
         void ConductorLoop();
         void ConductorTest();
-        int GetNextSegment(int train_num);
+        int GetSegmentLength(int train_num);
 
         // Queue<TrainResponse, 8> train_response_queue;
         Queue<PathNode, NUM_SWITCHES> loop_switch_config;
         struct train_task_mapping
         {
             /* data */
-            bool isWaitingForCommand;
-            int task_id;   // TID
-            int train_num; // train number
+            CALIBRATION_STAGE calibration_stage;
+            int train_num;    // train number
+            int messenger_id; // TID
+            int train_task_tid;
+            const char *target_sensor_name;
 
             int speed_level;
             int actual_speed_x10;
@@ -52,9 +60,12 @@ namespace Conductor_NS
             char destination[5];
             int offset;
 
-            char *current_sensor_name;
+            Queue<TrainResponse, 3> train_response_queue;
             Stack<PathNode, TRACK_MAX> path;
         };
+
+        void SendSegmentToMessenger(int messenger_tid, train_task_mapping *train);
+        void CalibrateTrain(train_task_mapping *train);
 
         train_task_mapping train_arr[NUM_TRAINS];
         Track track;

@@ -28,7 +28,7 @@ public:
     void getLoop(Queue<PathNode, NUM_SWITCHES> *switch_config, int *distance);
     void init(char track_id); // initialized either track a or b
     track_node *get_node_by_name(const char *name);
-    void find_path(const char *start, const char *dest, Stack<PathNode, TRACK_MAX> *path);
+    void find_path(const char *start, const char *dest, Stack<PathNode, TRACK_MAX> *path, bool check_start_dest = true);
     // int get_node_num_by_name_b(const char *name);
 };
 

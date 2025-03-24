@@ -58,12 +58,23 @@ enum class TRAIN_COMMAND
     TICK,
     SENSOR_TARGET,
 };
+
+enum class TrainResponseType
+{
+    TRAIN_MESSENGER,
+    TRAIN_TICKER,
+    SENSOR_MESSENGER,
+};
+
 struct TrainResponse
 {
+    TrainResponseType type;
+
     TRAIN_COMMAND command; // command to be executed, if any
     int speed;             // assume stop is only issued when next sensor is the destination
     SensorStruct sensor;
     int segment_length;
+    int trigger_tick;
 };
 
 struct TrainQuery

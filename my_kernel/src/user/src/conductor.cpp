@@ -53,9 +53,8 @@ namespace Conductor_NS
         // initialize train_arr
         for (int i = 0; i < NUM_TRAINS; i++)
         {
-            train_arr[i].task_id = -1;
+            train_arr[i].messenger_id = -1;
             train_arr[i].train_num = -1;
-            train_arr[i].isWaitingForCommand = false;
         }
 
         int sender_tid;
@@ -75,22 +74,6 @@ namespace Conductor_NS
     {
     }
 
-    void Conductor::DispatchTrainCommand()
-    {
-        for (int i = 0; i < NUM_TRAINS; i++)
-        {
-            if (train_arr[i].isWaitingForCommand && !train_arr[i].train_response_queue.IsEmpty())
-            {
-                // IO_NS::PrintTerminal("Conductor dispatching command to train %d\r\n", train_arr[i].train_num);
-                TrainResponse response;
-                int retval = train_arr[i].train_response_queue.Pop(&response);
-                uassert(retval >= 0 && "Error popping train response");
-                train_arr[i].isWaitingForCommand = false;
-                REPLY(train_arr[i].task_id, (char *)&response, sizeof(TrainResponse));
-            }
-        }
-    }
-
     static void get_switch_queue(Stack<PathNode, TRACK_MAX> *path, Queue<PathNode, NUM_SWITCHES> *switch_nodes)
     {
         while (!path->IsEmpty())
@@ -102,6 +85,14 @@ namespace Conductor_NS
                 switch_nodes->Push(node);
             }
         }
+    }
+
+    static SensorStruct name_to_sensor_struct(const char *sensor_name)
+    {
+        SensorStruct sensor = {};
+        sensor.bank = BANKS(sensor_name[0] - 'A');
+        sensor.id = a2ui((char **)&sensor_name[1], 3);
+        return sensor;
     }
 
     void Conductor::ProcessRequest(CMDRequest *req)
@@ -135,8 +126,10 @@ namespace Conductor_NS
                 IO_NS::PrintTerminal("Train %d found at index %d, sending ACCELERATE command\r\n", train_num, train_index);
             }
 
-            TrainResponse response = {TRAIN_COMMAND::ACCELERATE, speed};
-            train_arr[train_index].train_response_queue.Push(response);
+            TrainResponse response = {TrainResponseType::TRAIN_MESSENGER, TRAIN_COMMAND::ACCELERATE, speed};
+
+            train_arr[train_index]
+                .train_response_queue.Push(response);
             break;
         }
         case COMMAND::REVERSE_TRAIN:
@@ -155,7 +148,7 @@ namespace Conductor_NS
                 IO_NS::PrintTerminal("Train %d found, sending REVERSE command\r\n", train_num);
             }
 
-            TrainResponse response = {TRAIN_COMMAND::REVERSE, 0};
+            TrainResponse response = {TrainResponseType::TRAIN_MESSENGER, TRAIN_COMMAND::REVERSE};
             train_arr[train_index].train_response_queue.Push(response);
             break;
         }
@@ -187,7 +180,10 @@ namespace Conductor_NS
             {
                 if (train_arr[i].train_num == -1)
                 {
-                    train_arr[i].current_sensor_name = req->src;
+                    train_arr[i].target_sensor_name = req->src;
+                    train_arr[i].train_task_tid = spawned_train_tid;
+                    train_arr[i].messenger_id = -1;
+                    train_arr[i].calibration_stage = CALIBRATION_STAGE::NONE;
 
                     train_arr[i].train_num = req->id;
                     train_arr[i].actual_speed_x10 = -1;
@@ -223,18 +219,13 @@ namespace Conductor_NS
             }
 
             // get path to calibration sensor
-            const char *start_node = train_arr[train_index].current_sensor_name;
-            track.find_path(start_node, LOOP_START_NODE, &train_arr[train_index].path);
+            const char *start_node_name = train_arr[train_index].target_sensor_name;
+            track.find_path(start_node_name, LOOP_START_NODE, &train_arr[train_index].path);
             Queue<PathNode, NUM_SWITCHES> switch_nodes;
             get_switch_queue(&train_arr[train_index].path, &switch_nodes);
             SetSwitches(&switch_nodes);
-
-            int segment_length = GetNextSegment(train_num);
-            // TrainResponse response = {TRAIN_COMMAND::ACCELERATE, 0, LOOP_START_SENSOR_DATA};
-            // train_arr[train_index].train_response_queue.Push(response);
             break;
         }
-
         default:
             IO_NS::PrintTerminal("Conductor received INVALID request\r\n");
             break;
@@ -282,6 +273,7 @@ namespace Conductor_NS
             display_row++;
         }
     }
+
     void Conductor::SetSwitches(Queue<PathNode, NUM_SWITCHES> *switch_nodes)
     {
         while (!switch_nodes->IsEmpty())
@@ -325,6 +317,77 @@ namespace Conductor_NS
         IO_NS::PrintTerminal("Conductor finished testing path finding\r\n");
     }
 
+    void Conductor::SendSegmentToMessenger(int messenger_tid, train_task_mapping *train)
+    {
+        char *destination = train->destination;
+
+        int segment_length = GetSegmentLength(train->train_num);
+        if (segment_length == 0)
+        {
+            IO_NS::PrintTerminal("Train %d has reached destination\r\n", train->train_num);
+            CalibrateTrain(train);
+            return;
+        }
+        SensorStruct sensor = name_to_sensor_struct(train->target_sensor_name);
+        COMMAND cmd = COMMAND::ACCELERATE_TRAIN;
+        int speed = train->speed_level;
+        TrainResponse response = {TrainResponseType::TRAIN_MESSENGER, TRAIN_COMMAND::ACCELERATE, speed, sensor, segment_length};
+
+        // reply to messenger task with segment data
+        REPLY(messenger_tid, (char *)&response, sizeof(TrainResponse));
+    }
+
+    void Conductor::CalibrateTrain(train_task_mapping *train)
+    {
+        switch (train->calibration_stage)
+        {
+        case CALIBRATE_NAV_TO_LOOP:
+        {
+            IO_NS::PrintTerminal("Conductor::CalibrateTrain -- CALIBRATION_STAGE::NAV TO LOOP\r\n");
+            // find path to loop start
+            const char *start_node_name = train->target_sensor_name;
+            track.find_path(start_node_name, LOOP_START_NODE, &train->path);
+            Queue<PathNode, NUM_SWITCHES> switch_nodes;
+            get_switch_queue(&train->path, &switch_nodes);
+            SetSwitches(&switch_nodes);
+            train->calibration_stage = CALIBRATION_STAGE::CALIBRATE_LOOP;
+            break;
+        }
+        case CALIBRATE_NAV_TO_STOP:
+        {
+            IO_NS::PrintTerminal("Conductor::CalibrateTrain -- CALIBRATION_STAGE::NAV TO STOP\r\n");
+            // find path to loop start
+            const char *start_node_name = train->target_sensor_name;
+            track.find_path(start_node_name, train->destination, &train->path);
+            Queue<PathNode, NUM_SWITCHES> switch_nodes;
+            get_switch_queue(&train->path, &switch_nodes);
+            SetSwitches(&switch_nodes);
+            train->calibration_stage = CALIBRATION_STAGE::NONE;
+            break;
+        }
+        case CALIBRATE_LOOP:
+        {
+            IO_NS::PrintTerminal("Conductor::CalibrateTrain -- CALIBRATION_STAGE::CALIBRATE_LOOP\r\n");
+            // find path to loop start
+            const char *start_node_name = train->target_sensor_name;
+            // update this so it finds shortest path back to start (loop)
+            track.find_path(start_node_name, LOOP_START_NODE, &train->path, false);
+            Queue<PathNode, NUM_SWITCHES> switch_nodes;
+            get_switch_queue(&train->path, &switch_nodes);
+            SetSwitches(&switch_nodes);
+            // ONLU ALLOW
+            train->calibration_stage = CALIBRATION_STAGE::CALIBRATE_NAV_TO_STOP;
+            break;
+        }
+
+        case CALIBRATION_STAGE::NONE:
+        {
+            IO_NS::PrintTerminal("Conductor::CalibrateTrain -- CALIBRATION_STAGE::NONE\r\n");
+            break;
+        }
+        }
+    }
+
     void Conductor::ConductorLoop()
     {
         ConductorTest();
@@ -343,25 +406,31 @@ namespace Conductor_NS
                 ProcessRequest(&(req.data.cmdRequest));
                 sendReply = true;
             }
-            else
+            else if (req.requestType == RequestType::GET_SEGMENT)
             {
+                // extract messenger TID
+                int messenger_tid = sender_tid;
                 IO_NS::PrintTerminal("Conductor received non-cmd request\r\n");
-                // find train from TID and set isWaitingForCommand to true
                 for (int i = 0; i < NUM_TRAINS; i++)
                 {
-                    if (train_arr[i].task_id == sender_tid)
+                    if (train_arr[i].train_task_tid == req.data.spawned_train_tid)
                     {
-                        IO_NS::PrintTerminal("Train %d is waiting for command\r\n", train_arr[i].train_num);
-                        train_arr[i].isWaitingForCommand = true;
+                        // THESE WOULD CORRESEPOND TO USER INPUTTED TR/RV COMMANDS
+                        if (!train_arr[i].train_response_queue.IsEmpty())
+                        {
+                            TrainResponse response;
+                            train_arr[i].train_response_queue.Pop(&response);
+                            REPLY(messenger_tid, (char *)&response, sizeof(TrainResponse));
+                            break;
+                        }
+                        else
+                        {
+                            SendSegmentToMessenger(messenger_tid, &train_arr[i]);
+                        }
                         break;
                     }
                 }
             }
-
-            DispatchTrainCommand();
-
-            // find path to node
-            // conductor.track.find_path((char *)find_node_name.node_name);
 
             if (sendReply)
             {
@@ -371,13 +440,14 @@ namespace Conductor_NS
         EXIT();
     }
 
-    int Conductor::GetNextSegment(int train_num)
+    // returns segment length, and
+    int Conductor::GetSegmentLength(int train_num)
     {
         int train_index = get_train_index(train_num);
         if (train_index == -1)
         {
             IO_NS::PrintTerminal("Train %d not found or initialized.\r\n", train_num);
-            return;
+            return 0;
         }
         else
         {
@@ -388,12 +458,15 @@ namespace Conductor_NS
         if (path->IsEmpty())
         {
             IO_NS::PrintTerminal("Train %d has reached destination\r\n", train_num);
-            return;
+            return 0;
         }
 
         PathNode next_node;
         path->Pop(&next_node);
         uassert(next_node.node->type == NODE_SENSOR && "GET-NEXT-SEGMENT::Next is not a sensor");
+        // update recent sensor
+        train_arr[train_index].recent_sensor_bank = next_node.node->name[0];
+        train_arr[train_index].recent_sensor_num = a2ui((char **)&next_node.node->name[1], 3);
 
         int segment_length = next_node.node->edge[DIR_AHEAD].dist;
 
@@ -415,6 +488,12 @@ namespace Conductor_NS
             {
                 segment_length += node.node->edge[DIR_AHEAD].dist;
             }
+        }
+
+        // update current sensor name
+        if (next_node.node->type == NODE_SENSOR)
+        {
+            train_arr[train_index].target_sensor_name = next_node.node->name;
         }
 
         return segment_length;
@@ -440,8 +519,7 @@ namespace Conductor_NS
     }
     */
 
-    void
-    start_conductor()
+    void start_conductor()
     {
         Conductor conductor;
     }

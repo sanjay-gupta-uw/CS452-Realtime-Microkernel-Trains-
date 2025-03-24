@@ -2574,9 +2574,9 @@ static int get_node_index(track_node *node)
 /*
   Find a path from the destination into the loop
 */
-void Track::find_path(const char *start, const char *dest, Stack<PathNode, TRACK_MAX> *path)
+void Track::find_path(const char *start, const char *dest, Stack<PathNode, TRACK_MAX> *path, bool check_start_dest)
 {
-    IO_NS::PrintTerminal("Track::find_path: Finding path from %s to %s\r\n", start, dest);
+    IO_NS::PrintTerminal("Track::find_path: Finding path from %s to %s, checking start and dest: %d\r\n", start, dest, check_start_dest);
     const int MAX_DIST = (1 << 31) - 1; // since we are using signed integers
 
     int dist[TRACK_MAX];
@@ -2603,6 +2603,7 @@ void Track::find_path(const char *start, const char *dest, Stack<PathNode, TRACK
 
     bool path_found = false;
     // Dijkstra's algorithm
+    bool start_iter = true;
     while (!pq.isEmpty())
     {
         int index;
@@ -2616,6 +2617,11 @@ void Track::find_path(const char *start, const char *dest, Stack<PathNode, TRACK
         // check if we have reached the destination
         if (strcmp(curnode->name, dest) == 0)
         {
+            if (check_start_dest && start)
+            {
+                start_iter = false;
+                continue;
+            }
             // IO_NS::PrintTerminal("Track::find_path: Found path to %s\r\n", dest);
             path_found = true;
             break;
@@ -2673,6 +2679,7 @@ void Track::find_path(const char *start, const char *dest, Stack<PathNode, TRACK
                 pq.Push(dest_index, dist[dest_index]);
             }
         }
+        start_iter = false;
         // IO_NS::PrintTerminal("} ");
     }
 

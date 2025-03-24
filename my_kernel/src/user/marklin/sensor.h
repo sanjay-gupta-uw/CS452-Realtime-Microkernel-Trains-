@@ -59,6 +59,7 @@ namespace Sensors_NS
         ~SensorManager();
         void ReadAll(int num_bank);
         void Reset(bool reset_on);
+        void Display();
 
     private:
         struct WaitingTrain
@@ -70,7 +71,6 @@ namespace Sensors_NS
         };
 
         void SensorLoop();
-        void Display();
 
         void processSensorData(int bank, uint8_t byte1, uint8_t byte2);
         Queue<int, MAX_RECENT_SENSORS> recent_sensors;
