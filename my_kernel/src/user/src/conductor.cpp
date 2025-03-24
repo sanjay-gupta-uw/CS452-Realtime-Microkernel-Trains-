@@ -198,8 +198,9 @@ namespace Conductor_NS
                     train_arr[i].recent_sensor_num = -1;
                     train_arr[i].next_predicted_bank = sensor_bank;
                     train_arr[i].next_predicted_num = sensor_number;
-                    memset(train_arr[i].destination, 0, 5);
-                    train_arr[i].offset = -1;
+                    memset(train_arr[i].destination, '-', 4);
+                    train_arr[i].destination[4] = '\0'; 
+                    train_arr[i].offset = 0;
                     break;
                 }
             }
@@ -214,9 +215,28 @@ namespace Conductor_NS
             IO_NS::PrintTerminal("Conductor received SPAWN_TRAIN request for train %d\r\n", req->id);
 
             // Extract destination from request
+            int train_num = req->id;
             char *dest = req->src;
-            IO_NS::PrintTerminal("Sending Train %d to %s %d\r\n",
-                req->id, dest, req->data);
+            int offset = req->data;
+
+
+            int train_index = get_train_index(train_num);
+            if (train_index == -1)
+            {
+                IO_NS::PrintTerminal("Train %d not found or initialized.\r\n", train_num);
+                return;
+            }
+            else
+            {
+                IO_NS::PrintTerminal("Train %d found, sending it to %s %d\r\n",
+                    train_num, dest, offset);
+            }
+
+            memcpy(train_arr[train_index].destination, dest, 4);
+            train_arr[train_index].destination[4] = '\0'; 
+            train_arr[train_index].offset = offset;
+
+            Conductor::UpdateTrainDisplay();
                                  
             // track.find_path((char *)req->data);
             break;
@@ -324,7 +344,7 @@ namespace Conductor_NS
                          TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 50, train_arr[i].next_predicted_bank);
             IO_NS::Print(MOVE_CURSOR "%d",
                          TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 51, train_arr[i].next_predicted_num);
-            if(train_arr[i].destination == "") {
+            if(train_arr[i].destination[0] == '-') {
                 IO_NS::Print(MOVE_CURSOR "-",
                          TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 64);
                 IO_NS::Print(MOVE_CURSOR "-",
