@@ -126,7 +126,7 @@ namespace Conductor_NS
                 IO_NS::PrintTerminal("Train %d found at index %d, sending ACCELERATE command\r\n", train_num, train_index);
             }
 
-            TrainResponse response = {TrainResponseType::TRAIN_MESSENGER, TRAIN_COMMAND::ACCELERATE, speed};
+            TrainResponse response = {TrainResponseType::TRAIN_MESSENGER, TRAIN_COMMAND::ACCELERATE, speed, {BANKS::A, -1}, 0, 0};
 
             train_arr[train_index].train_response_queue.Push(response);
             break;
@@ -147,7 +147,7 @@ namespace Conductor_NS
                 IO_NS::PrintTerminal("Train %d found, sending REVERSE command\r\n", train_num);
             }
 
-            TrainResponse response = {TrainResponseType::TRAIN_MESSENGER, TRAIN_COMMAND::REVERSE};
+            TrainResponse response = {TrainResponseType::TRAIN_MESSENGER, TRAIN_COMMAND::REVERSE, 0, {BANKS::A, -1}, 0, 0};
             train_arr[train_index].train_response_queue.Push(response);
             break;
         }
@@ -452,6 +452,9 @@ namespace Conductor_NS
                     IO_NS::PrintTerminal("Conductor::DispatchCommand -- Sending segment to messenger %d\r\n", train->messenger_id);
                     TrainResponse response;
                     train->train_response_queue.Pop(&response);
+                    response.segment_length = 69;
+
+                    IO_NS::PrintTerminal("segment length: %d\r\n", response.segment_length);
                     REPLY(train->messenger_id, (char *)&response, sizeof(TrainResponse));
                     train->sentReply = true;
                 }
@@ -520,6 +523,8 @@ namespace Conductor_NS
             train_arr[train_index].target_sensor_name = next_node.node->name;
         }
 
+        IO_NS::PrintTerminal("Calculating segment length for train %d: %d\r\n", train_num, segment_length);
+        uassert(false && "FORCED PANIC");
         return segment_length;
     }
 

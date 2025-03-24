@@ -23,9 +23,13 @@ public:
         CLOCK_SERVER_TID = MYTID();
         REGISTERAS("ClockServer");
         IO_NS::PrintTerminal("ClockServer started with TID %d\r\n", CLOCK_SERVER_TID);
-        EXIT();
-        int notifierTid = CREATE(PRIORITY::CORE_NOTIFIER, ClockNotifier);
-        uassert(notifierTid > 0 && "Error starting Clock Notifier");
+
+        if (IRQ_ENABLED)
+        {
+            // Enable the timer interrupt
+            int notifierTid = CREATE(PRIORITY::CORE_NOTIFIER, ClockNotifier);
+            uassert(notifierTid > 0 && "Error starting Clock Notifier");
+        }
 
         run();
     }
@@ -156,8 +160,8 @@ void ClockNotifier()
     {
 #if IRQEn == 1
         int ret = AWAITEVENT(TIMER_TICK);
-// #else
-//         clock.Delay(10);
+#else
+        clock.Delay(10);
 #endif
 
         // IO_NS::PrintTerminal("ClockNotifier::Tick\r\n");

@@ -59,7 +59,6 @@ namespace Trains_NS
     {
         train_speed = 0;
         isReversed = false;
-
         TrainLoop();
     }
 
@@ -226,19 +225,21 @@ namespace Trains_NS
     void Train::TrainLoop()
     {
         // ConductorRequest train_query({BANKS::A, 1}, DIRECTION::FORWARD);
-
         int sensor_server_tid = WHOIS("SensorServer");
         uassert(sensor_server_tid > 0 && "Error finding SensorServer");
+        IO_NS::PrintTerminal("Train %d: SensorServer TID: %d\r\n", train_num, sensor_server_tid);
         // train loop
         // distance to next node
         int sender_tid;
         while (true)
         {
+            IO_NS::PrintTerminal("Getting tick from ClockServer\r\n");
             cur_tick = TIME(CLOCK_SERVER_TID);
+            IO_NS::PrintTerminal("TICK: %d\r\n", cur_tick);
             TrainResponse response;
             int retval = RECEIVE(&sender_tid, (char *)&response, sizeof(TrainResponse));
             uassert(retval >= 0 && "Error receiving TrainResponse");
-
+            IO_NS::PrintTerminal("TrainLoop::Sender: %d, Command: %d, Speed: %d, Segment length: %d\r\n", sender_tid, response.command, response.speed, response.segment_length);
             process_train_command(&response);
 
             // process sensor
@@ -297,7 +298,9 @@ namespace Trains_NS
 
     static SensorStruct get_sensor_from_conductor_request(SegmentReply *segment)
     {
-        const char *sensor_name = segment->sensor_node->name;
+        IO_NS::PrintTerminal("Sensor num: %d\r\n", segment->segment_length);
+        uassert(false && "forced panic");
+        const char *sensor_name = segment->sensor_node->name; // THIS IS CAUSING THE ERROR
         SensorStruct sensor = {};
         sensor.bank = BANKS(sensor_name[0] - 'A');
         sensor.id = a2ui((char **)&sensor_name[1], 3);
@@ -323,32 +326,43 @@ namespace Trains_NS
         int sensor_server_tid = WHOIS("SensorServer");
         uassert(sensor_server_tid > 0 && "TRAIN MESSENGER: Error finding SensorServer");
 
-        SegmentReply segment_reply;
+        TrainResponse train_response;
         ConductorRequest conductor_request(train_task_tid);
         while (true)
         {
             // SEND SEGMENT REQUEST TO CONDUCTOR
             IO_NS::PrintTerminal("Train %d requesting segment from Conductor\r\n", train_num);
-            int retval = SEND(conductor_tid, (char *)&conductor_request, sizeof(ConductorRequest), (char *)&segment_reply, sizeof(SegmentReply));
+            int retval = SEND(conductor_tid, (char *)&conductor_request, sizeof(ConductorRequest), (char *)&train_response, sizeof(TrainResponse));
             uassert(retval >= 0 && "TRAIN MESSENGER: Error sending SegmentRequest to Conductor");
 
             IO_NS::PrintTerminal("Train %d received segment from Conductor\r\n", train_num);
+            IO_NS::PrintTerminal("Segment length: %d\r\n", train_response.segment_length);
 
             // SEND SENSOR QUERY TO SENSOR SERVER
             // HAVE SENSOR SERVER REPLY TO SENSOR MESSENGER IMMEDIATELY
             // SEND MESSAGE TO TRAIN TASK IF SENSOR IS TRIGGERED
             // NEED TO PASS TRAIN TID TO SENSOR SERVER
-            SensorStruct sensor = get_sensor_from_conductor_request(&segment_reply);
+            // SensorStruct sensor = get_sensor_from_conductor_request(&train_response);
 
-            Sensors_NS::SensorResponse sensor_response;
-            Sensors_NS::SensorQuery sensor_query = {Sensors_NS::SENSOR_COMMAND::TRAIN_SENSOR, sensor, train_task_tid, train_num};
-            retval = SEND(sensor_server_tid, (char *)&sensor_query, sizeof(Sensors_NS::SensorQuery), (char *)&sensor_response, sizeof(Sensors_NS::SensorResponse));
-            uassert(retval >= 0 && "TRAIN MESSENGER: Error sending SensorQuery to SensorServer");
+            SensorStruct sensor = train_response.sensor;
+            if (sensor.id > 0)
+            {
+                IO_NS::PrintTerminal("Sensor: %c%d\r\n", sensor.bank, sensor.id);
+                Sensors_NS::SensorResponse sensor_response;
+                Sensors_NS::SensorQuery sensor_query = {Sensors_NS::SENSOR_COMMAND::TRAIN_SENSOR, sensor, train_task_tid, train_num};
+                retval = SEND(sensor_server_tid, (char *)&sensor_query, sizeof(Sensors_NS::SensorQuery), (char *)&sensor_response, sizeof(Sensors_NS::SensorResponse));
+                uassert(retval >= 0 && "TRAIN MESSENGER: Error sending SensorQuery to SensorServer");
+            }
+            else
+            {
+                IO_NS::PrintTerminal("Train was not sent sensor data\r\n");
+            }
 
+            IO_NS::PrintTerminal("Train %d messenger sending segment to train task %d\r\n", train_num, train_task_tid);
+            IO_NS::PrintTerminal("~~~~Command: %d, Speed: %d, Segment Length: %d, Trigger Tick: %d\r\n", train_response.command, train_response.speed, train_response.segment_length, train_response.trigger_tick);
             // NOTIFY TRAIN TASK THAT SENSOR WAS QUERIED, and pass train command if necessary
             // TRAIN WILL REPLY TO THIS IF IT RECEIVES MESSAGE FROM SENSOR SERVER, or if the time is up
             // THIS SHOULDN"T BE FREED UNTIL THE WINDOW FOR THE SENSOR TRIGGER HAS PASSED
-            TrainResponse train_response = {TrainResponseType::TRAIN_MESSENGER, TRAIN_COMMAND::SENSOR_TARGET, 0, sensor, segment_reply.segment_length};
             retval = SEND(train_task_tid, (char *)&train_response, sizeof(TrainResponse), nullptr, 0);
         }
     }
