@@ -63,9 +63,10 @@ namespace Sensors_NS
         void ReadAll(int num_banks);
         void Reset(bool reset_on);
         void Display();
+        
+        void processSensorData(int bank, uint8_t byte1, uint8_t byte2, BANK_MASK *bank_mask);
 
     private:
-        void processSensorData(int bank, uint8_t byte1, uint8_t byte2, BANK_MASK *bank_mask);
         Queue<int, MAX_RECENT_SENSORS> recent_sensors;
         struct Sensor
         {

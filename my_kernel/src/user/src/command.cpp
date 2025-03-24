@@ -458,7 +458,8 @@ namespace UI_CMD_NS
         IO_NS::PrintTerminal("Please enter the Track ID: ");
         while (true)
         {
-            unsigned char track_id = (unsigned char)(IO_SERVER::Getc(commandPrompt.IO_SERVER_TID));
+            // unsigned char track_id = (unsigned char)(IO_SERVER::Getc(commandPrompt.IO_SERVER_TID));
+            unsigned char track_id = 'B';
             IO_NS::PrintTerminal("%c\r\n", track_id);
             if (track_id == 'A' || track_id == 'a' || track_id == 'B' || track_id == 'b')
             {
@@ -475,7 +476,7 @@ namespace UI_CMD_NS
 
                 // create conductor
                 IO_NS::PrintTerminal("Attempting to start Conductor with track ID: %c, CONDUCTOR_TID: %d\r\n", track_id, commandPrompt.CONDUCTOR_TID);
-                SEND(commandPrompt.CONDUCTOR_TID, (char *)&track_id, sizeof(char), nullptr, 0);
+                //SEND(commandPrompt.CONDUCTOR_TID, (char *)&track_id, sizeof(char), nullptr, 0);
                 // send message to conductor
                 break;
             }

@@ -2,6 +2,7 @@
 #include "../include/uassert.h"
 #include "../include/clock_server.h"
 #include "../marklin/train.h"
+#include "../include/marklin_structs.h"
 
 #define USE_CTS 1
 namespace Sensors_NS
@@ -28,6 +29,9 @@ namespace Sensors_NS
         }
 
         MARKLIN_IO_SERVER_TID = WHOIS("MarklinIOServer");
+        CONDUCTOR_TID = WHOIS("Conductor");
+        IO_NS::PrintTerminal("Conductor server tid: %d\r\n", CONDUCTOR_TID);
+
         Reset(true); // send reset command to the marklin
     }
 
@@ -136,6 +140,15 @@ namespace Sensors_NS
                 if (sensor_data[idx].bank != last_triggered_bank ||
                     sensor_data[idx].id != last_triggered_id)
                 {
+                    IO_NS::PrintTerminal("Sensor Jack ------------ sending\r\n");
+                    char sensor_bank[2] = {0};
+                    sensor_bank[0] = sensor_data[idx].bank;
+                    int command_received = -3;
+            
+                    ConductorRequest request(COMMAND::SENSOR_TRIGGER, sensor_data[idx].id, 0, sensor_bank);
+                    // SEND(CONDUCTOR_TID, (char *)&request, sizeof(ConductorRequest), nullptr, 0);
+                    int retval = SEND(CONDUCTOR_TID, (char *)&request, sizeof(ConductorRequest), nullptr, 0);
+                    uassert(retval >= 0 && "JAck -------------- SensorTicker: Error sending SensorQuery to SensorServer");
 
                     if (recent_sensors.IsFull())
                     {
@@ -205,6 +218,7 @@ namespace Sensors_NS
         // test SENSOR_TRIGGERED
         {
             IO_NS::PrintTerminal("SensorServer: Testing SENSOR_TRIGGERED\r\n");
+            BANK_MASK bank_mask;
 
             uint8_t sensor_bytes[16] = {
                 0b10000000,
@@ -227,7 +241,7 @@ namespace Sensors_NS
             for (int i = 1; i <= 16; ++i)
             {
                 IO_NS::PrintTerminal("SensorServer: Testing sensor %d\r\n", i);
-                uassert(SENSOR_TRIGGERED(sensor_bytes[i - 1], i) && "SensorServer: Error testing SENSOR_TRIGGERED");
+                sensors.processSensorData('A', sensor_bytes[i], sensor_bytes[i], &bank_mask);
             }
 
             IO_NS::PrintTerminal("SensorServer: Finished testing SENSOR_TRIGGERED\r\n");
