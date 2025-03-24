@@ -47,6 +47,7 @@ namespace Sensors_NS
     {
         bool success;
         int trigger_tick;
+        int train_tid;
     };
 
 #define SEN_OFF 0
@@ -100,6 +101,8 @@ namespace Sensors_NS
     void SensorServer();
     void SensorTicker();
     void SensorMessenger();
+
+    void InitializeSensorManager();
 } // namespace Sensors_NS
 
 #endif // SENSOR_H

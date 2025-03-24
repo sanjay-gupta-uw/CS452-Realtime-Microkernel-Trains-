@@ -38,6 +38,8 @@ namespace Trains_NS
 
         int segment_length;
         int prev_tick, cur_tick;
+        int personal_train_messenger_tid;
+        bool free_train_messenger = true;
 
         int stopping_distance[NUM_SUPPORTED_SPEED_LEVELS] = {-1, -1, -1};
         int approximate_speed[NUM_SUPPORTED_SPEED_LEVELS] = {-1, -1, -1};

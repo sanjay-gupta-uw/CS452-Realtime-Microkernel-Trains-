@@ -231,21 +231,67 @@ namespace Trains_NS
         // train loop
         // distance to next node
         int sender_tid;
+        bool send_reply = false;
+        bool free_train_messenger = false;
+
+        int my_tid = MYTID();
+
+        personal_train_messenger_tid = -1;
         while (true)
         {
+            IO_NS::PrintTerminal(COLOR_MAGENTA "TRAIN %d: MYTID: %d\r\n", train_num, my_tid);
+
             IO_NS::PrintTerminal("Getting tick from ClockServer\r\n");
             cur_tick = TIME(CLOCK_SERVER_TID);
             IO_NS::PrintTerminal("TICK: %d\r\n", cur_tick);
             TrainResponse response;
             int retval = RECEIVE(&sender_tid, (char *)&response, sizeof(TrainResponse));
             uassert(retval >= 0 && "Error receiving TrainResponse");
-            IO_NS::PrintTerminal("TrainLoop::Sender: %d, Command: %d, Speed: %d, Segment length: %d\r\n", sender_tid, response.command, response.speed, response.segment_length);
-            process_train_command(&response);
+            IO_NS::PrintTerminal("TrainLoop::Sender: %d, Command: %d, Speed: %d, Segment length %d, sensor hit: %d\r\n", sender_tid, response.command, response.speed, response.segment_length, response.trigger_tick);
+
+            switch (response.type)
+            {
+            case TrainResponseType::TRAIN_MESSENGER:
+                /* code */
+                personal_train_messenger_tid = sender_tid;
+                process_train_command(&response);
+                // replied to when either sensor notification or window exceeded
+                // uassert(false);
+                break;
+            case TrainResponseType::SENSOR_MESSENGER:
+                IO_NS::PrintTerminal(COLOR_CYAN "Train %d: RECEIVED SENSOR HIT -- occured at tick %d\r\n", train_num, response.trigger_tick);
+                // UPDATE TRAIN POSITION (KNOW WE HIT THE DESIRED SENSOR)
+
+                // REPLY TO train messenger to get next segment
+                free_train_messenger = true;
+                send_reply = true; // reply to sensor messenger
+                break;
+            case TrainResponseType::TRAIN_TICKER:
+                // update train position
+                update_position();
+                send_reply = true;
+                break;
+
+            default:
+                break;
+            }
 
             // process sensor
             prev_tick = cur_tick;
 
-            REPLY(sender_tid, nullptr, 0);
+            if (send_reply)
+            {
+                REPLY(sender_tid, nullptr, 0);
+            }
+
+            if (free_train_messenger && personal_train_messenger_tid > 0)
+            {
+                IO_NS::PrintTerminal("REPLYING TO TRAIN MESSENGER (TID: %d)\r\n", personal_train_messenger_tid);
+                REPLY(personal_train_messenger_tid, nullptr, 0);
+                personal_train_messenger_tid = -1;
+                free_train_messenger = false;
+                // uassert(false);
+            }
         }
     }
 
@@ -344,6 +390,8 @@ namespace Trains_NS
             // NEED TO PASS TRAIN TID TO SENSOR SERVER
             // SensorStruct sensor = get_sensor_from_conductor_request(&train_response);
 
+            // SENSOR IS CURRENTLY REPLYING TO SPAWNED TRAIN AND NOT MESSENGER -- FIX!
+            IO_NS::PrintTerminal(COLOR_CYAN "TRAIN MESSENEGER:: MY TID: %d\r\n", my_tid);
             SensorStruct sensor = train_response.sensor;
             if (sensor.id > 0)
             {
@@ -353,6 +401,7 @@ namespace Trains_NS
                 IO_NS::PrintTerminal("Querying Sensor %c%d for Train %d, Sensor TID: %d\r\n", bank, sensor.id, train_num, sensor_server_tid);
                 retval = SEND(sensor_server_tid, (char *)&sensor_query, sizeof(Sensors_NS::SensorQuery), (char *)&sensor_response, sizeof(Sensors_NS::SensorResponse));
                 uassert(retval >= 0 && "TRAIN MESSENGER: Error sending SensorQuery to SensorServer");
+                // uassert(false && "RECEIVED REPLY FROM SENSOR SERVER");
             }
             else
             {
@@ -362,12 +411,18 @@ namespace Trains_NS
             IO_NS::PrintTerminal("Train %d messenger sending segment to train task %d\r\n", train_num, train_task_tid);
             IO_NS::PrintTerminal("~~~~Command: %d, Speed: %d, Segment Length: %d, Trigger Tick: %d\r\n", train_response.command, train_response.speed, train_response.segment_length, train_response.trigger_tick);
 
+            // uassert(false && "FORCED PANIC");
+
             // uassert(false && "FORCED ERROR");
 
             // NOTIFY TRAIN TASK THAT SENSOR WAS QUERIED, and pass train command if necessary
             // TRAIN WILL REPLY TO THIS IF IT RECEIVES MESSAGE FROM SENSOR SERVER, or if the time is up
             // THIS SHOULDN"T BE FREED UNTIL THE WINDOW FOR THE SENSOR TRIGGER HAS PASSED
+            train_response.type = TrainResponseType::TRAIN_MESSENGER;
             retval = SEND(train_task_tid, (char *)&train_response, sizeof(TrainResponse), nullptr, 0);
+            // uassert(false && "TRAIN TASK REPLIED TO MESSENGER");
+
+            IO_NS::PrintTerminal("Train task %d replied to messenger (%d)\r\n", train_task_tid, my_tid);
         }
     }
 
