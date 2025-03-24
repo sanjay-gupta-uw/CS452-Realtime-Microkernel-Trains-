@@ -49,7 +49,7 @@ static void CreateCoreServers()
     uassert(ioServerTid > 0 && "Error starting IO Server");
     IO_NS::PrintTerminal("IO Server started with TID %d\r\n", ioServerTid);
 
-    // create the clock server
+    // // create the clock server
     int clockServerTid = CREATE(PRIORITY::CORE, ClockServer); // Start the Clock Server
     uassert(clockServerTid > 0 && "Error starting Clock Server");
     IO_NS::PrintTerminal("Clock Server started with TID %d\r\n", clockServerTid);

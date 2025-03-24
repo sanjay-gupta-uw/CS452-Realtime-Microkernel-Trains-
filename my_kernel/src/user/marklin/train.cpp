@@ -265,6 +265,12 @@ namespace Trains_NS
         uassert(MARKLIN_IO_SERVER_TID > 0 && "Error finding MarklinIOServer");
         int CLOCK_SERVER_TID = WHOIS("ClockServer");
         uassert(CLOCK_SERVER_TID > 0 && "Error finding ClockServer");
+
+        // CREATE MESSENGER
+        int train_messenger_tid = CREATE(PRIORITY::DEVICE_NOTIFIER, Trains_NS::train_messenger);
+        uassert(train_messenger_tid > 0 && "Error creating train messenger");
+        retval = SEND(train_messenger_tid, (char *)&train_num, sizeof(int), nullptr, 0);
+
         // initialize train: get location of train
         // DETERMINE PATH TO NAVIGATE LOOP
         Train train(train_num, MARKLIN_IO_SERVER_TID, CLOCK_SERVER_TID);
@@ -305,6 +311,8 @@ namespace Trains_NS
         int param_init_retval = RECEIVE(&train_task_tid, (char *)&train_num, sizeof(int));
         uassert(param_init_retval >= 0 && train_task_tid >= 0 && "TRAIN MESSENGER: Error receiving train_num from parent task");
         REPLY(train_task_tid, nullptr, 0);
+
+        IO_NS::PrintTerminal("Train %d messenger spawned\r\n", train_num);
 
         int conductor_tid = WHOIS("Conductor");
         uassert(conductor_tid > 0 && "TRAIN MESSENGER: Error finding Conductor");

@@ -2604,6 +2604,18 @@ void Track::find_path(const char *start, const char *dest, Stack<PathNode, TRACK
     bool path_found = false;
     // Dijkstra's algorithm
     bool start_iter = true;
+
+    // push reverse node incase reversing provides a shorter path
+    track_node *reverse_node = start_node->reverse;
+    uassert(reverse_node != NULL && "Track::find_path: sensor reverse node is NULL");
+    int reverse_index = get_node_index(reverse_node);
+    if (dist[reverse_index] > dist[index] + REVERSE_COST)
+    {
+        dist[reverse_index] = dist[index] + REVERSE_COST;
+        prev_node[reverse_index] = index;
+        pq.Push(reverse_index, dist[reverse_index]);
+    }
+
     while (!pq.isEmpty())
     {
         int index;
@@ -2612,32 +2624,34 @@ void Track::find_path(const char *start, const char *dest, Stack<PathNode, TRACK
 
         track_node *curnode = &track[index];
 
+        // if (curnode->name[0] == 'B' && curnode->name[1] == 'R' && curnode->name[2] == '1' && curnode->name[3] == '3')
+        // {
+        //     IO_NS::PrintTerminal("Track::find_path: Found BR13\r\n");
+        //     IO_NS::PrintTerminal("COnnected to: ");
+        //     for (int i = 0; i < 2; i++)
+        //     {
+        //         const char *name = curnode->edge[i].dest->name;
+        //         track_node *node = curnode->edge[i].dest;
+        //         IO_NS::PrintTerminal("%s ", name);
+        //     }
+        //     IO_NS::PrintTerminal("------------------\r\n");
+        // }
+
         // IO_NS::PrintTerminal("{ %s  ", curnode->name);
 
         // check if we have reached the destination
         if (strcmp(curnode->name, dest) == 0)
         {
-            if (check_start_dest && start)
+            if (!start_iter)
             {
-                start_iter = false;
-                continue;
+                // IO_NS::PrintTerminal("FOUND DESTINATION: %s\r\n", dest);
+                // uassert(false && "Track::find_path: Found destination, breaking out");
             }
-            // IO_NS::PrintTerminal("Track::find_path: Found path to %s\r\n", dest);
-            path_found = true;
-            break;
-        }
-
-        // push reverse node incase reversing provides a shorter path
-        if (curnode->type == track_node_type::NODE_SENSOR)
-        {
-            track_node *reverse_node = curnode->reverse;
-            uassert(reverse_node != NULL && "Track::find_path: sensor reverse node is NULL");
-            int reverse_index = get_node_index(reverse_node);
-            if (dist[reverse_index] > dist[index] + REVERSE_COST)
+            if (!start_iter || check_start_dest)
             {
-                dist[reverse_index] = dist[index] + REVERSE_COST;
-                prev_node[reverse_index] = index;
-                pq.Push(reverse_index, dist[reverse_index]);
+                // IO_NS::PrintTerminal("Track::find_path: BREAKING OUT:Found path to %s\r\n", dest);
+                path_found = true;
+                break;
             }
         }
 
@@ -2671,16 +2685,26 @@ void Track::find_path(const char *start, const char *dest, Stack<PathNode, TRACK
             // IO_NS::PrintTerminal(" %s ", edge->dest->name);
             // IO_NS::PrintTerminal(" dist[index]:%d edge[dist]:%d dest_index:%d cur_dist:%d ", dist[index], edge->dist, dest_index, dist[dest_index]);
 
-            if (dist[dest_index] > dist[index] + edge->dist)
+            if ((dist[dest_index] > dist[index] + edge->dist) ||
+                (strcmp(start_node->name, dest) == 0 &&
+
+                 strcmp(start_node->name, edge->dest->name) == 0))
             {
                 // IO_NS::PrintTerminal(" ADDING TO PQ ");
                 dist[dest_index] = dist[index] + edge->dist;
                 prev_node[dest_index] = index;
                 pq.Push(dest_index, dist[dest_index]);
             }
+            // if (strcmp(start_node->name, edge->dest->name) == 0)
+            // {
+            //     IO_NS::PrintTerminal("HERE Track::find_path: Found path to %s\r\n", start_node->name);
+            //     IO_NS::PrintTerminal("DIST: %d\r\n", dist[dest_index]);
+            //     // uassert(false);
+            //     path_found = true;
+            //     break;
+            // }
         }
         start_iter = false;
-        // IO_NS::PrintTerminal("} ");
     }
 
     if (!path_found)
@@ -2690,13 +2714,20 @@ void Track::find_path(const char *start, const char *dest, Stack<PathNode, TRACK
     }
     else // print path
     {
+        // uassert(false && "FOUND PATH");
         int dest_index = get_node_index(get_node_by_name(dest));
         int cur_index = dest_index;
         IO_NS::PrintTerminal("Track::find_path: Path: ");
         int prior_index = -1;
-        Stack<track_node *, TRACK_MAX> path;
+
+        int count = 0;
         while (cur_index != -1)
         {
+            if (strcmp(start, dest) == 0)
+            {
+                break;
+            }
+            IO_NS::PrintTerminal("%s \r\n", track[cur_index].name);
             track_node *node = &track[cur_index];
             if (node->type == track_node_type::NODE_BRANCH && prior_index >= 0)
             {
@@ -2704,18 +2735,31 @@ void Track::find_path(const char *start, const char *dest, Stack<PathNode, TRACK
 
                 if (node->edge[DIR_STRAIGHT].dest == branch_result)
                 {
-                    IO_NS::PrintTerminal("STRAIGHT ");
+                    path->Push({node, Switch_NS::SWITCH_STATE::STRAIGHT});
+                    // IO_NS::PrintTerminal("STRAIGHT ");
                 }
                 else if (node->edge[DIR_CURVED].dest == branch_result)
                 {
-                    IO_NS::PrintTerminal("CURVED ");
+                    path->Push({node, Switch_NS::SWITCH_STATE::CURVED});
+                    // IO_NS::PrintTerminal("CURVED ");
                 }
             }
-            IO_NS::PrintTerminal("%s ", node->name);
+            else if (node->type == track_node_type::NODE_SENSOR)
+            {
+                path->Push({node, Switch_NS::SWITCH_STATE::UNINITIALIZED});
+            }
+            count++;
+
+            // IO_NS::PrintTerminal("%s ", node->name);
 
             prior_index = cur_index;
             cur_index = prev_node[cur_index];
+            // check if we have reached the start node
+            if (cur_index == index)
+            {
+                break;
+            }
         }
-        IO_NS::PrintTerminal("; Total distance: %d\r\n", dist[dest_index]);
+        IO_NS::PrintTerminal("; Total distance: %d, Count: %d\r\n", dist[dest_index], count);
     }
 }

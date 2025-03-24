@@ -45,7 +45,7 @@ namespace Conductor_NS
         SENSOR_SERVER_TID = CREATE(PRIORITY::DEVICE, Sensors_NS::SensorServer);
         uassert(SENSOR_SERVER_TID > 0 && "Conductor::Error creating sensor server");
         IO_NS::PrintTerminal("Sensor server created with TID %d\r\n", SENSOR_SERVER_TID);
-        // // create switch server
+        // create switch server
         SWITCH_SERVER_TID = CREATE(PRIORITY::DEVICE_SERVER, Switch_NS::SwitchServer);
         uassert(SWITCH_SERVER_TID > 0 && "Conductor::Error creating switch server");
         IO_NS::PrintTerminal("Switch server created with TID %d\r\n", SWITCH_SERVER_TID);
@@ -299,12 +299,12 @@ namespace Conductor_NS
     void Conductor::ConductorTest()
     {
         // TEST LOOP SWITCHES
-        IO_NS::PrintTerminal("Conductor testing loop switches\r\n");
-        Queue<PathNode, NUM_SWITCHES> switch_config;
-        int distance;
-        track.getLoop(&switch_config, &distance);
-        SetSwitches(&switch_config);
-        IO_NS::PrintTerminal("Conductor finished testing loop switches\r\n");
+        // IO_NS::PrintTerminal("Conductor testing loop switches\r\n");
+        // Queue<PathNode, NUM_SWITCHES> switch_config;
+        // int distance;
+        // track.getLoop(&switch_config, &distance);
+        // SetSwitches(&switch_config);
+        // IO_NS::PrintTerminal("Conductor finished testing loop switches\r\n");
 
         // test path finding
         IO_NS::PrintTerminal("Conductor testing path finding\r\n");
@@ -314,6 +314,8 @@ namespace Conductor_NS
         track.find_path("A1", "A2", &path);
         track.find_path("A1", "E7", &path);
         track.find_path("A2", "E7", &path);
+        track.find_path(LOOP_START_NODE, LOOP_START_NODE, &path, false);
+        // track.find_path(LOOP_START_NODE, "C11", &path);
         IO_NS::PrintTerminal("Conductor finished testing path finding\r\n");
     }
 
