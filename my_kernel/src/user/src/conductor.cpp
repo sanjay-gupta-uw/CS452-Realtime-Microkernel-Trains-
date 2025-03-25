@@ -179,7 +179,7 @@ namespace Conductor_NS
             IO_NS::PrintTerminal("Parsed sensor: bank=%c, number=%d (from '%s')\r\n",
                                  sensor_bank, sensor_number, sensor_id);
 
-            int spawned_train_tid = CREATE(PRIORITY::DEVICE_SERVER, Trains_NS::spawn_train);
+            int spawned_train_tid = CREATE(PRIORITY::CORE, Trains_NS::spawn_train);
             uassert(spawned_train_tid > 0);
             IO_NS::PrintTerminal("Train %d spawned with TID %d\r\n", req->id, spawned_train_tid);
             int trainSpawnedSuccess;

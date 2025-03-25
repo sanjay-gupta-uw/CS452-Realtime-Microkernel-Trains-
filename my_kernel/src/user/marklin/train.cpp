@@ -77,7 +77,6 @@ namespace Trains_NS
 
         train_ticker_tid = CREATE(PRIORITY::DEVICE_NOTIFIER, Trains_NS::train_ticker);
         uassert(train_ticker_tid > 0 && "Error creating train messenger");
-        retval = SEND(train_ticker_tid, (char *)&train_num, sizeof(int), nullptr, 0);
 
         TrainLoop();
     }
@@ -395,6 +394,7 @@ namespace Trains_NS
             IO_NS::PrintTerminal("PATH MESSENGER:: Sending data to Train task for Train %d\r\n", train_num);
             retval = SEND(train_task_tid, (char *)&conductor_response, sizeof(TrainMessage), nullptr, 0);
             uassert(retval >= 0 && "PATH MESSENGER: Error sending SegmentReply to Train task");
+            uassert(false && "THIS MUST BE HIT!");
         }
     }
 
