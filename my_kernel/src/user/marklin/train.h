@@ -26,6 +26,10 @@ namespace Trains_NS
     private:
         int MARKLIN_IO_SERVER_TID;
         int CLOCK_SERVER_TID;
+        int path_messenger_tid;
+        int sensor_messenger_tid;
+        int train_ticker_tid;
+
         int train_speed; // between 0 and 14
         bool isReversed;
 
@@ -38,18 +42,23 @@ namespace Trains_NS
 
         int segment_length;
         int prev_tick, cur_tick;
-        int personal_train_messenger_tid;
-        bool free_train_messenger = true;
 
-        int stopping_distance[NUM_SUPPORTED_SPEED_LEVELS] = {-1, -1, -1};
+        SensorStruct target_sensor;
+        bool has_read_target_sensor;
+        bool is_sensor_messenger_ready;
+        bool ReleaseSensorMessenger();
+
+        int stopping_distance[NUM_SUPPORTED_SPEED_LEVELS] = {-1,
+                                                             -1,
+                                                             -1};
         int approximate_speed[NUM_SUPPORTED_SPEED_LEVELS] = {-1, -1, -1};
 
-        void process_train_command(TrainResponse *response);
+        void process_train_command(TrainMessage *message);
         void update_position();
-        void sensor_pos_update(int trigger_tick, int segment_length);
 
         void Reverse();   // sends reverse train command to marklin
         void TrainLoop(); // train loop task
+        void CompleteSegment();
 
     public:
         int train_num;
@@ -74,7 +83,8 @@ namespace Trains_NS
     void spawn_train(); // individual train tasks
     void train_ticker();
 
-    void train_messenger();
+    void path_messenger();
+    void sensor_messenger();
 
 };
 

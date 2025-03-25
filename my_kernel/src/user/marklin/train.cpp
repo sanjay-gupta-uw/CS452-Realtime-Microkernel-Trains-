@@ -36,8 +36,6 @@ namespace Trains_NS
         isReversed = false;
         cur_tick = 0;
         prev_tick = 0;
-
-        initialize_distance_stacks();
     }
 
     Train::~Train()
@@ -59,6 +57,22 @@ namespace Trains_NS
     {
         train_speed = 0;
         isReversed = false;
+
+        initialize_distance_stacks();
+
+        // CREATE MESSENGERS
+        path_messenger_tid = CREATE(PRIORITY::DEVICE_NOTIFIER, Trains_NS::path_messenger);
+        uassert(path_messenger_tid > 0 && "Error creating train messenger");
+        int retval = SEND(path_messenger_tid, (char *)&train_num, sizeof(int), nullptr, 0);
+
+        sensor_messenger_tid = CREATE(PRIORITY::DEVICE_NOTIFIER, Trains_NS::sensor_messenger);
+        uassert(sensor_messenger_tid > 0 && "Error creating train messenger");
+        retval = SEND(sensor_messenger_tid, (char *)&train_num, sizeof(int), nullptr, 0);
+
+        train_ticker_tid = CREATE(PRIORITY::DEVICE_NOTIFIER, Trains_NS::train_ticker);
+        uassert(train_ticker_tid > 0 && "Error creating train messenger");
+        retval = SEND(train_ticker_tid, (char *)&train_num, sizeof(int), nullptr, 0);
+
         TrainLoop();
     }
 
@@ -124,6 +138,21 @@ namespace Trains_NS
         return false;
     }
 
+    // need to account for elapsed ticks since the sensor was hit and where we are now
+    void Train::CompleteSegment()
+    {
+        // update distance travelled in segment
+        int dist_travelled_in_segment;
+        int total_dist;
+        dist_travelled.Pop(&dist_travelled_in_segment);
+        dist_travelled.Pop(&total_dist);
+
+        dist_travelled.Push(total_dist + segment_length);
+        dist_travelled.Push(0);
+
+        // update stopping target
+    }
+
     void Train::update_position()
     {
         // calculate distance travelled
@@ -165,32 +194,14 @@ namespace Trains_NS
         // ON INITIALIZATION, SET EXPECTED TIME TO BE LONGER THAN THE TIME IT TAKES TO TRAVEL THE SEGMENT
     }
 
-    void Train::sensor_pos_update(int trigger_tick, int segment_length)
-    {
-        int total_dist;
-        dist_travelled.Pop(&total_dist);
-        dist_travelled.Pop(&total_dist);
-        dist_travelled.Push(total_dist + segment_length);
-        // if approximate speed > 0, we can compare the speed with ticks now vs when the sensor was triggered
-        dist_travelled.Push(0);
-
-        int stopping_target;
-        this->stopping_target.Pop(&stopping_target);
-        this->stopping_target.Pop(&stopping_target);
-
-        this->stopping_target.Push(stopping_target - segment_length);
-
-        this->segment_length = segment_length;
-    }
-
-    void Train::process_train_command(TrainResponse *response)
+    void Train::process_train_command(TrainMessage *message)
     {
         // process train command
-        switch (response->command)
+        switch (message->data.command)
         {
         case TRAIN_COMMAND::ACCELERATE:
-            IO_NS::PrintTerminal("Train %d: Accelerating to speed %d\r\n", train_num, response->speed);
-            Accelerate(response->speed);
+            IO_NS::PrintTerminal("Train %d: Accelerating to speed %d\r\n", train_num, message->data.speed);
+            Accelerate(message->data.speed);
             break;
         case TRAIN_COMMAND::REVERSE:
             IO_NS::PrintTerminal("Train %d: Reversing\r\n", train_num);
@@ -205,16 +216,6 @@ namespace Trains_NS
             // update train position
             update_position();
         }
-        case TRAIN_COMMAND::SENSOR_TARGET:
-        {
-            if (response->type == TrainResponseType::TRAIN_MESSENGER)
-            {
-            }
-            else if (response->type == TrainResponseType::SENSOR_MESSENGER)
-            {
-                sensor_pos_update(response->trigger_tick, response->segment_length);
-            }
-        }
         // SENSOR_TRIGGERED
         // update train position (first stack element)
         default:
@@ -222,58 +223,84 @@ namespace Trains_NS
         }
     }
 
+    bool Train::ReleaseSensorMessenger()
+    {
+        has_read_target_sensor = true;
+        REPLY(sensor_messenger_tid, (char *)&target_sensor, sizeof(SensorStruct));
+    }
+
     void Train::TrainLoop()
     {
-        // ConductorRequest train_query({BANKS::A, 1}, DIRECTION::FORWARD);
-        int sensor_server_tid = WHOIS("SensorServer");
-        uassert(sensor_server_tid > 0 && "Error finding SensorServer");
-        IO_NS::PrintTerminal("Train %d: SensorServer TID: %d\r\n", train_num, sensor_server_tid);
-        // train loop
-        // distance to next node
-        int sender_tid;
-        bool send_reply = false;
-        bool free_train_messenger = false;
-
         int my_tid = MYTID();
 
-        personal_train_messenger_tid = -1;
+        has_read_target_sensor = false;
+        is_sensor_messenger_ready = false;
+
         while (true)
         {
             IO_NS::PrintTerminal(COLOR_MAGENTA "TRAIN %d: MYTID: %d\r\n", train_num, my_tid);
-
-            IO_NS::PrintTerminal("Getting tick from ClockServer\r\n");
             cur_tick = TIME(CLOCK_SERVER_TID);
             IO_NS::PrintTerminal("TICK: %d\r\n", cur_tick);
-            TrainResponse response;
-            int retval = RECEIVE(&sender_tid, (char *)&response, sizeof(TrainResponse));
+            TrainMessage message;
+
+            int sender_tid;
+            bool send_reply = false;
+            int retval = RECEIVE(&sender_tid, (char *)&message, sizeof(TrainMessage));
             uassert(retval >= 0 && "Error receiving TrainResponse");
-            IO_NS::PrintTerminal("TrainLoop::Sender: %d, Command: %d, Speed: %d, Segment length %d, sensor hit: %d\r\n", sender_tid, response.command, response.speed, response.segment_length, response.trigger_tick);
+            IO_NS::PrintTerminal("TrainLoop::Sender: %d, Command: %d, Speed: %d, Segment length %d, sensor hit: %d\r\n", sender_tid, message.data.command, message.data.speed, message.data.segment.segment_length, message.data.triggered_sensor.id);
 
-            switch (response.type)
+            switch (message.type)
             {
-            case TrainResponseType::TRAIN_MESSENGER:
-                /* code */
-                personal_train_messenger_tid = sender_tid;
-                process_train_command(&response);
-                // replied to when either sensor notification or window exceeded
-                // uassert(false);
-                break;
-            case TrainResponseType::SENSOR_MESSENGER:
-                IO_NS::PrintTerminal(COLOR_CYAN "Train %d: RECEIVED SENSOR HIT -- occured at tick %d\r\n", train_num, response.trigger_tick);
-                // UPDATE TRAIN POSITION (KNOW WE HIT THE DESIRED SENSOR)
+            case TrainMessageType::PATH_MESSENGER:
+            {
+                SensorStruct sensor = message.data.segment.sensor;
+                // check if it's a valid sensor
+                if (sensor.id > 0)
+                {
+                    // valid sensor
+                    target_sensor.bank = sensor.bank;
+                    target_sensor.id = sensor.id;
 
-                // REPLY TO train messenger to get next segment
-                free_train_messenger = true;
-                send_reply = true; // reply to sensor messenger
+                    has_read_target_sensor = false;
+
+                    segment_length = message.data.segment.segment_length;
+                }
+
+                process_train_command(&message);
                 break;
-            case TrainResponseType::TRAIN_TICKER:
+            }
+            case TrainMessageType::SENSOR_MESSENGER:
+            {
+                SensorStruct triggered_sensor = message.data.triggered_sensor;
+                // check if request is for target sensor, not target hit
+                if (triggered_sensor.id < 0)
+                {
+                    is_sensor_messenger_ready = true;
+                }
+                else // this must be sensor hit
+                {
+                    CompleteSegment();
+                    // need to free path messenger (or if window exceeded)
+                    REPLY(path_messenger_tid, nullptr, 0);
+                    send_reply = true; // free the sensor messenger so it can query the next sensor
+                }
+                break;
+            }
+            case TrainMessageType::TRAIN_TICKER:
                 // update train position
-                update_position();
                 send_reply = true;
                 break;
 
             default:
                 break;
+            }
+
+            update_position();
+
+            if (is_sensor_messenger_ready && !has_read_target_sensor)
+            {
+                // REPLY TO SENSOR MESSENGER
+                ReleaseSensorMessenger();
             }
 
             // process sensor
@@ -282,15 +309,6 @@ namespace Trains_NS
             if (send_reply)
             {
                 REPLY(sender_tid, nullptr, 0);
-            }
-
-            if (free_train_messenger && personal_train_messenger_tid > 0)
-            {
-                IO_NS::PrintTerminal("REPLYING TO TRAIN MESSENGER (TID: %d)\r\n", personal_train_messenger_tid);
-                REPLY(personal_train_messenger_tid, nullptr, 0);
-                personal_train_messenger_tid = -1;
-                free_train_messenger = false;
-                uassert(false && "freed train messenger");
             }
         }
     }
@@ -315,11 +333,6 @@ namespace Trains_NS
         IO_NS::PrintTerminal("CLOCK SERVER TID: %d\r\n", CLOCK_SERVER_TID);
         uassert(CLOCK_SERVER_TID > 0 && "Error finding ClockServer");
 
-        // CREATE MESSENGER
-        int train_messenger_tid = CREATE(PRIORITY::DEVICE_NOTIFIER, Trains_NS::train_messenger);
-        uassert(train_messenger_tid > 0 && "Error creating train messenger");
-        retval = SEND(train_messenger_tid, (char *)&train_num, sizeof(int), nullptr, 0);
-
         // initialize train: get location of train
         // DETERMINE PATH TO NAVIGATE LOOP
         Train train(train_num, MARKLIN_IO_SERVER_TID, CLOCK_SERVER_TID);
@@ -334,95 +347,73 @@ namespace Trains_NS
         int CLOCK_SERVER_TID = WHOIS("ClockServer");
         uassert(CLOCK_SERVER_TID > 0 && "TRAIN TICKER:Error finding ClockServer");
 
-        TrainResponse response = {TrainResponseType::TRAIN_TICKER, TRAIN_COMMAND::TICK};
+        TrainMessage message();
         while (true)
         {
-            int retval = SEND(train_tid, (char *)&response, sizeof(TrainResponse), nullptr, 0);
+            int retval = SEND(train_tid, (char *)&message, sizeof(TrainMessage), nullptr, 0);
             DELAY(CLOCK_SERVER_TID, 20);
         }
     }
 
-    static SensorStruct get_sensor_from_conductor_request(SegmentReply *segment)
-    {
-        IO_NS::PrintTerminal("Sensor num: %d\r\n", segment->segment_length);
-        uassert(false && "forced panic");
-        const char *sensor_name = segment->sensor_node->name; // THIS IS CAUSING THE ERROR
-        SensorStruct sensor = {};
-        sensor.bank = BANKS(sensor_name[0] - 'A');
-        sensor.id = a2ui((char **)&sensor_name[1], 3);
-        return sensor;
-    }
-
     // SENSOR/CONDUCTOR MESSENGER
-    void train_messenger()
+    void path_messenger()
     {
         int my_tid = MYTID();
         // Train task should spawn its own messenger
         int train_num;
         int train_task_tid;
         int param_init_retval = RECEIVE(&train_task_tid, (char *)&train_num, sizeof(int));
-        uassert(param_init_retval >= 0 && train_task_tid >= 0 && "TRAIN MESSENGER: Error receiving train_num from parent task");
+        uassert(param_init_retval >= 0 && train_task_tid >= 0 && "PATH MESSENGER: Error receiving train_num from parent task");
         REPLY(train_task_tid, nullptr, 0);
 
-        IO_NS::PrintTerminal("Train %d messenger spawned with TID %d\r\n", train_num, my_tid);
+        IO_NS::PrintTerminal("PATH %d messenger spawned with TID %d\r\n", train_num, my_tid);
 
         int conductor_tid = WHOIS("Conductor");
-        uassert(conductor_tid > 0 && "TRAIN MESSENGER: Error finding Conductor");
+        uassert(conductor_tid > 0 && "PATH MESSENGER: Error finding Conductor");
 
-        int sensor_server_tid = WHOIS("SensorServer");
-        uassert(sensor_server_tid > 0 && "TRAIN MESSENGER: Error finding SensorServer");
-
-        TrainResponse train_response;
+        TrainMessage conductor_response({}, -1, TRAIN_COMMAND::TICK);
         ConductorRequest conductor_request(train_task_tid);
         while (true)
         {
             // SEND SEGMENT REQUEST TO CONDUCTOR
-            IO_NS::PrintTerminal("Train %d requesting segment from Conductor\r\n", train_num);
-            int retval = SEND(conductor_tid, (char *)&conductor_request, sizeof(ConductorRequest), (char *)&train_response, sizeof(TrainResponse));
-            uassert(retval >= 0 && "TRAIN MESSENGER: Error sending SegmentRequest to Conductor");
+            IO_NS::PrintTerminal("PATH MESSENGER:: requesting segment from Conductor for Train %d\r\n", train_num);
+            int retval = SEND(conductor_tid, (char *)&conductor_request, sizeof(ConductorRequest), (char *)&conductor_response, sizeof(TrainMessage));
+            uassert(retval >= 0 && "PATH MESSENGER: Error sending SegmentRequest to Conductor");
 
-            IO_NS::PrintTerminal("Train %d received segment from Conductor\r\n", train_num);
-            IO_NS::PrintTerminal("Segment length: %d\r\n", train_response.segment_length);
+            IO_NS::PrintTerminal("PATH MESSENGER:: received segment from Conductor for Train %d\r\n", train_num);
+            retval = SEND(train_task_tid, (char *)&conductor_response, sizeof(TrainMessage), nullptr, 0);
+            uassert(retval >= 0 && "PATH MESSENGER: Error sending SegmentReply to Train task");
+        }
+    }
 
-            // SEND SENSOR QUERY TO SENSOR SERVER
-            // HAVE SENSOR SERVER REPLY TO SENSOR MESSENGER IMMEDIATELY
-            // SEND MESSAGE TO TRAIN TASK IF SENSOR IS TRIGGERED
-            // NEED TO PASS TRAIN TID TO SENSOR SERVER
-            // SensorStruct sensor = get_sensor_from_conductor_request(&train_response);
+    void sensor_messenger()
+    {
+        // send to train task for current target sensor
+        int my_tid = MYTID();
+        int train_num;
+        int train_task_tid;
+        int param_init_retval = RECEIVE(&train_task_tid, (char *)&train_num, sizeof(int));
+        uassert(param_init_retval >= 0 && train_task_tid >= 0 && "SENSOR MESSENGER: Error receiving train_num from parent task");
+        REPLY(train_task_tid, nullptr, 0);
 
-            // SENSOR IS CURRENTLY REPLYING TO SPAWNED TRAIN AND NOT MESSENGER -- FIX!
-            IO_NS::PrintTerminal(COLOR_CYAN "TRAIN MESSENEGER:: MY TID: %d\r\n", my_tid);
-            SensorStruct sensor = train_response.sensor;
-            if (sensor.id > 0)
-            {
-                char bank = int(sensor.bank) + 'A';
-                Sensors_NS::SensorResponse sensor_response;
-                Sensors_NS::SensorQuery sensor_query = {Sensors_NS::SENSOR_COMMAND::TRAIN_SENSOR, sensor, train_task_tid, train_num};
-                IO_NS::PrintTerminal("Querying Sensor %c%d for Train %d, Sensor TID: %d\r\n", bank, sensor.id, train_num, sensor_server_tid);
-                retval = SEND(sensor_server_tid, (char *)&sensor_query, sizeof(Sensors_NS::SensorQuery), (char *)&sensor_response, sizeof(Sensors_NS::SensorResponse));
-                uassert(retval >= 0 && "TRAIN MESSENGER: Error sending SensorQuery to SensorServer");
-                // uassert(false && "RECEIVED REPLY FROM SENSOR SERVER");
-            }
-            else
-            {
-                IO_NS::PrintTerminal("Train was not sent sensor data\r\n");
-            }
+        int sensor_server_tid = WHOIS("SensorServer");
+        uassert(sensor_server_tid > 0 && "SENSOR MESSENGER: Error finding SensorServer");
 
-            IO_NS::PrintTerminal("Train %d messenger sending segment to train task %d\r\n", train_num, train_task_tid);
-            IO_NS::PrintTerminal("~~~~Command: %d, Speed: %d, Segment Length: %d, Trigger Tick: %d\r\n", train_response.command, train_response.speed, train_response.segment_length, train_response.trigger_tick);
+        SensorStruct request_sensor = {BANKS::A, -1};
+        TrainMessage sensor_request(-1, request_sensor);
+        uassert(sensor_request.type == TrainMessageType::SENSOR_MESSENGER && "SENSOR MESSENGER: Error initializing TrainMessage");
 
-            // uassert(false && "FORCED PANIC");
+        while (true)
+        {
+            // SEND MESSAGE TO PARENT FOR WHICH SENSOR TO WAIT FOR
+            // TRAIN TASK SHOULD NOT ALLOW THIS TO SPAM THE SAME SENSOR
+            int ret = SEND(train_task_tid, (char *)&sensor_request, sizeof(TrainMessage), nullptr, 0);
+            uassert(ret >= 0 && "SENSOR MESSENGER: Error retrieving target sensor from train task");
 
-            // uassert(false && "FORCED ERROR");
-
-            // NOTIFY TRAIN TASK THAT SENSOR WAS QUERIED, and pass train command if necessary
-            // TRAIN WILL REPLY TO THIS IF IT RECEIVES MESSAGE FROM SENSOR SERVER, or if the time is up
-            // THIS SHOULDN"T BE FREED UNTIL THE WINDOW FOR THE SENSOR TRIGGER HAS PASSED
-            train_response.type = TrainResponseType::TRAIN_MESSENGER;
-            retval = SEND(train_task_tid, (char *)&train_response, sizeof(TrainResponse), nullptr, 0);
-            // uassert(false && "TRAIN TASK REPLIED TO MESSENGER");
-
-            IO_NS::PrintTerminal("Train task %d replied to messenger (%d)\r\n", train_task_tid, my_tid);
+            // SEND TO SENSOR SERVER TO WAIT FOR SENSOR HIT
+            Sensors_NS::SensorQuery sensor_query = {Sensors_NS::SENSOR_COMMAND::TRAIN_SENSOR, request_sensor, train_task_tid, train_num};
+            int retval = SEND(sensor_server_tid, (char *)&sensor_query, sizeof(Sensors_NS::SensorQuery), nullptr, 0);
+            uassert(retval >= 0 && "SENSOR MESSENGER: Error sending SensorQuery to SensorServer");
         }
     }
 

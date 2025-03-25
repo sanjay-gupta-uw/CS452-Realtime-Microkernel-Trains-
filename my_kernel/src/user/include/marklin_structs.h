@@ -56,25 +56,68 @@ enum class TRAIN_COMMAND
     REVERSE,
     STOP,
     TICK,
-    SENSOR_TARGET,
 };
 
-enum class TrainResponseType
+enum class TrainMessageType
 {
-    TRAIN_MESSENGER,
-    TRAIN_TICKER,
+    PATH_MESSENGER,
     SENSOR_MESSENGER,
+    TRAIN_TICKER,
 };
 
+struct SegmentStruct
+{
+    SensorStruct sensor; // next sensor to query for
+    int segment_length;
+};
 struct TrainResponse
 {
-    TrainResponseType type;
+    TrainMessageType type;
 
     TRAIN_COMMAND command; // command to be executed, if any
     int speed;             // assume stop is only issued when next sensor is the destination
     SensorStruct sensor;
     int segment_length;
     int trigger_tick;
+};
+
+struct TrainMessage
+{
+    TrainMessageType type;
+
+    union Data
+    {
+        SegmentStruct segment;
+        TRAIN_COMMAND command;
+        int speed;
+        SensorStruct triggered_sensor;
+        int trigger_tick;
+        // Add a constructor to avoid potential undefined behavior
+        Data() {}  // Default constructor
+        ~Data() {} // Destructor
+    } data;        // Named union member
+
+    // default constructor
+    TrainMessage()
+        : type(TrainMessageType::TRAIN_TICKER)
+    {
+    }
+
+    // Constructor for PATH_MESSENGER
+    TrainMessage(SensorStruct sensor, int segment_length, TRAIN_COMMAND command)
+        : type(TrainMessageType::PATH_MESSENGER)
+    {
+        data.segment = {sensor, segment_length};
+        data.command = command;
+    }
+
+    // Constructor for SENSOR_MESSENGER
+    TrainMessage(int trigger_tick, SensorStruct sensor)
+        : type(TrainMessageType::SENSOR_MESSENGER)
+    {
+        data.trigger_tick = trigger_tick;
+        data.triggered_sensor = sensor;
+    }
 };
 
 struct TrainQuery
