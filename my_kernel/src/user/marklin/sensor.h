@@ -48,6 +48,7 @@ namespace Sensors_NS
         bool success;
         int trigger_tick;
         int train_tid;
+        SensorStruct sensor;
     };
 
 #define SEN_OFF 0

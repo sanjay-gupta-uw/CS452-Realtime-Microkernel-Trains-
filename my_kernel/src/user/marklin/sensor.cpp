@@ -206,7 +206,7 @@ namespace Sensors_NS
         int CLOCK_SERVER_TID = WHOIS("ClockServer");
         uassert(CLOCK_SERVER_TID > 0 && "SensorServer: Error finding ClockServer");
 
-        bool send_reply = true;
+        bool send_reply = false;
         while (true)
         {
             int retval = RECEIVE(&sender_tid, (char *)&query, sizeof(query));
@@ -219,12 +219,14 @@ namespace Sensors_NS
             case SENSOR_COMMAND::TICK:
             {
                 IO_NS::PrintTerminal(COLOR_YELLOW "SensorServer: Received TICK request -- READING ALL BANKS\r\n");
+                send_reply = true;
                 break;
             }
             case SENSOR_COMMAND::RESET:
             {
                 // IO_NS::PrintTerminal(COLOR_YELLOW"SensorServer: Received RESET request\r\n");
                 Reset(true);
+                send_reply = true;
                 break;
             }
             case SENSOR_COMMAND::TRAIN_SENSOR:
@@ -249,7 +251,7 @@ namespace Sensors_NS
             case SENSOR_COMMAND::MESSENGER_READY:
             {
                 IO_NS::PrintTerminal(COLOR_YELLOW "SensorServer: Received MESSENGER_READY request\r\n");
-                send_reply = false;
+                // dont send reply immediately (only reply when sensor is hit)
                 break;
             }
             default:
@@ -283,8 +285,11 @@ namespace Sensors_NS
             // UNCOMMENT SECOND CONDITION
             if ((train->idx >= 0) && (!IRQ_ENABLED || sensor_data[train->idx].status == SEN_ON))
             {
+                BANKS bank = static_cast<BANKS>(train->idx / SENSORS_PER_BANK);
+                int sensor_id = (train->idx % SENSORS_PER_BANK) + 1;
                 train->idx = -1;
-                SensorResponse response = {true, cur_tick, train->train_tid};
+
+                SensorResponse response = {true, cur_tick, train->train_tid, {bank, sensor_id}};
                 // REPLY TO SENSOR MESSENGER TO SEND TO TRAIN
                 IO_NS::PrintTerminal(COLOR_YELLOW "SensorManager::HandleWaitingTrains: Replying to sensor messenger for train %d (tid: %d)\r\n", train->train_num, train->messenger_tid);
                 int retval = REPLY(train->messenger_tid, (char *)&response, sizeof(SensorResponse));
@@ -319,8 +324,6 @@ namespace Sensors_NS
 
     void SensorMessenger()
     {
-        // REMOVE THIS
-
         int my_tid = MYTID();
         IO_NS::PrintTerminal(COLOR_YELLOW "SensorMessenger: Initializing SensorMessenger with TID %d\r\n", my_tid);
         int sensor_server_tid = WHOIS("SensorServer");
@@ -336,13 +339,11 @@ namespace Sensors_NS
 
             IO_NS::PrintTerminal(COLOR_YELLOW "SensorMessenger: Received response from SensorServer\r\n");
             // uassert(false && "FINALLY FREED~!");
+
             // send reply to train task
-            // NEEDS TRAINRESPONSE STRUCT
-            TrainResponse train_response;
-            train_response.type = TrainResponseType::SENSOR_MESSENGER;
-            train_response.trigger_tick = response.trigger_tick;
             IO_NS::PrintTerminal(COLOR_YELLOW "SensorMessenger: Sending reply to train tid %d\r\n", response.train_tid);
-            ret = SEND(response.train_tid, (char *)&train_response, sizeof(TrainResponse), nullptr, 0);
+            TrainMessage message(response.trigger_tick, response.sensor);
+            ret = SEND(response.train_tid, (char *)&message, sizeof(TrainMessage), nullptr, 0);
             uassert(ret >= 0 && "SensorMessenger: Error replying to train task");
         }
     }

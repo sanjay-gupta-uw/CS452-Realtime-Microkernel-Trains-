@@ -7,6 +7,12 @@
 #include "../include/uassert.h"
 #include "../../include/syscall.h"
 #include "../include/track_node.h"
+
+#if IRQEn == 1
+#define IRQ_ENABLED 1
+#else
+#define IRQ_ENABLED 0
+#endif
 namespace Trains_NS
 {
     static int MARKLIN_IO_SERVER_TID;
@@ -265,6 +271,10 @@ namespace Trains_NS
 
                     segment_length = message.data.segment.segment_length;
                 }
+                else
+                {
+                    send_reply = true; // just normal train command
+                }
 
                 process_train_command(&message);
                 break;
@@ -347,7 +357,7 @@ namespace Trains_NS
         int CLOCK_SERVER_TID = WHOIS("ClockServer");
         uassert(CLOCK_SERVER_TID > 0 && "TRAIN TICKER:Error finding ClockServer");
 
-        TrainMessage message();
+        TrainMessage message(TrainMessageType::TRAIN_TICKER);
         while (true)
         {
             int retval = SEND(train_tid, (char *)&message, sizeof(TrainMessage), nullptr, 0);
@@ -371,7 +381,7 @@ namespace Trains_NS
         int conductor_tid = WHOIS("Conductor");
         uassert(conductor_tid > 0 && "PATH MESSENGER: Error finding Conductor");
 
-        TrainMessage conductor_response({}, -1, TRAIN_COMMAND::TICK);
+        TrainMessage conductor_response({}, -1, TRAIN_COMMAND::TICK, -1);
         ConductorRequest conductor_request(train_task_tid);
         while (true)
         {
@@ -381,6 +391,8 @@ namespace Trains_NS
             uassert(retval >= 0 && "PATH MESSENGER: Error sending SegmentRequest to Conductor");
 
             IO_NS::PrintTerminal("PATH MESSENGER:: received segment from Conductor for Train %d\r\n", train_num);
+
+            IO_NS::PrintTerminal("PATH MESSENGER:: Sending data to Train task for Train %d\r\n", train_num);
             retval = SEND(train_task_tid, (char *)&conductor_response, sizeof(TrainMessage), nullptr, 0);
             uassert(retval >= 0 && "PATH MESSENGER: Error sending SegmentReply to Train task");
         }

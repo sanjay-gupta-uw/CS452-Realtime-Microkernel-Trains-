@@ -60,7 +60,9 @@
     "print": "cpp",
     "__node_handle": "cpp",
     "ratio": "cpp",
-    "variant": "cpp"
+    "variant": "cpp",
+    "__assert": "cpp",
+    "__assertion_handler": "cpp"
   },
   "makefile.configureOnOpen": false
 }

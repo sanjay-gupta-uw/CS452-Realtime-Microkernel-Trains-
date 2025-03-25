@@ -98,13 +98,13 @@ struct TrainMessage
     } data;        // Named union member
 
     // default constructor
-    TrainMessage()
-        : type(TrainMessageType::TRAIN_TICKER)
+    TrainMessage(TrainMessageType type = TrainMessageType::TRAIN_TICKER)
+        : type(type)
     {
     }
 
     // Constructor for PATH_MESSENGER
-    TrainMessage(SensorStruct sensor, int segment_length, TRAIN_COMMAND command)
+    TrainMessage(SensorStruct sensor, int segment_length, TRAIN_COMMAND command, int speed)
         : type(TrainMessageType::PATH_MESSENGER)
     {
         data.segment = {sensor, segment_length};

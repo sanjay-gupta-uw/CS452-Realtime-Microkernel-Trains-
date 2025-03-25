@@ -41,7 +41,7 @@ namespace Conductor_NS
         void ConductorTest();
         int GetSegmentLength(int train_num);
 
-        // Queue<TrainResponse, 8> train_response_queue;
+        // Queue<TrainResponse, 8> train_messages;
         Queue<PathNode, NUM_SWITCHES> loop_switch_config;
         struct train_task_mapping
         {
@@ -62,7 +62,7 @@ namespace Conductor_NS
             char destination[5];
             int offset;
 
-            Queue<TrainResponse, 3> train_response_queue;
+            Queue<TrainMessage, 3> train_messages;
             Stack<PathNode, TRACK_MAX> path;
         };
 
