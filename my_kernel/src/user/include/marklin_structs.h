@@ -1,6 +1,7 @@
 #ifndef _marklin_structs_h_
 #define _marklin_structs_h_
 
+#include "uassert.h"
 #include <cstdint>
 
 #define STRAIGHT_CMD 0x21
@@ -30,18 +31,10 @@ struct CMDRequest
     char *dest;
 };
 
-enum class BANKS
-{
-    A,
-    B,
-    C,
-    D,
-    E,
-};
 struct SensorStruct
 {
-    BANKS bank; // A, B, C, D, E
-    int id;     // 1-16
+    char bank;
+    int id;
 };
 
 enum class DIRECTION
@@ -60,25 +53,28 @@ enum class TRAIN_COMMAND
 
 enum class TrainMessageType
 {
+    TRAIN_COMMAND,
     PATH_MESSENGER,
     SENSOR_MESSENGER,
     TRAIN_TICKER,
 };
 
-struct SegmentStruct
+// USE THIS FOR SENDING SENSOR HIT BACK TO TRAIN
+struct SensorPingNotification
 {
-    SensorStruct sensor; // next sensor to query for
-    int segment_length;
+    SensorStruct triggered_sensor;
+    int trigger_tick;
 };
-struct TrainResponse
+struct SegmentNotification
 {
-    TrainMessageType type;
-
-    TRAIN_COMMAND command; // command to be executed, if any
-    int speed;             // assume stop is only issued when next sensor is the destination
     SensorStruct sensor;
     int segment_length;
-    int trigger_tick;
+};
+
+struct TrainCommandNotification
+{
+    TRAIN_COMMAND command;
+    int speed;
 };
 
 struct TrainMessage
@@ -87,11 +83,10 @@ struct TrainMessage
 
     union Data
     {
-        SegmentStruct segment;
-        TRAIN_COMMAND command;
-        int speed;
-        SensorStruct triggered_sensor;
-        int trigger_tick;
+        SegmentNotification segment;
+        TrainCommandNotification train_command;
+        SensorPingNotification sensor_ping;
+
         // Add a constructor to avoid potential undefined behavior
         Data() {}  // Default constructor
         ~Data() {} // Destructor
@@ -101,22 +96,31 @@ struct TrainMessage
     TrainMessage(TrainMessageType type = TrainMessageType::TRAIN_TICKER)
         : type(type)
     {
+        IO_NS::PrintTerminal("TrainMessage::TrainMessage CONSTRUCTOR -- %d\r\n", type);
     }
 
-    // Constructor for PATH_MESSENGER
-    TrainMessage(SensorStruct sensor, int segment_length, TRAIN_COMMAND command, int speed)
+    // Constructor for SegmentNotification
+    TrainMessage(char bank, int id, int segment_length)
         : type(TrainMessageType::PATH_MESSENGER)
     {
-        data.segment = {sensor, segment_length};
-        data.command = command;
+        data.segment = {SensorStruct{bank, id}, segment_length};
+        IO_NS::PrintTerminal("TrainMessage::SegmentNotification CONSTRUCTOR -- %c%d, %d\r\n", bank, id, segment_length);
     }
 
-    // Constructor for SENSOR_MESSENGER
-    TrainMessage(int trigger_tick, SensorStruct sensor)
+    // Constructor for TrainCommandNotification
+    TrainMessage(TRAIN_COMMAND command, int speed)
+        : type(TrainMessageType::TRAIN_COMMAND)
+    {
+        data.train_command = {command, speed};
+        IO_NS::PrintTerminal("TrainMessage::TrainCommandNotification CONSTRUCTOR -- %d, %d\r\n", command, speed);
+    }
+
+    // Constructor for SensorPingNotification
+    TrainMessage(int trigger_tick, char bank, int id)
         : type(TrainMessageType::SENSOR_MESSENGER)
     {
-        data.trigger_tick = trigger_tick;
-        data.triggered_sensor = sensor;
+        data.sensor_ping = {SensorStruct{bank, id}, trigger_tick};
+        IO_NS::PrintTerminal("TrainMessage::SensorPingNotification CONSTRUCTOR -- %d, %c%d\r\n", trigger_tick, bank, id);
     }
 };
 

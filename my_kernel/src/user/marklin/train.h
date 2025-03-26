@@ -46,7 +46,7 @@ namespace Trains_NS
         SensorStruct target_sensor;
         bool has_read_target_sensor;
         bool is_sensor_messenger_ready;
-        bool ReleaseSensorMessenger();
+        void ReleaseSensorMessenger();
 
         int stopping_distance[NUM_SUPPORTED_SPEED_LEVELS] = {-1,
                                                              -1,

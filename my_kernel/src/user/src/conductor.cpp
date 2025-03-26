@@ -48,7 +48,7 @@ namespace Conductor_NS
         uassert(SENSOR_SERVER_TID > 0 && "Conductor::Error creating sensor server");
         IO_NS::PrintTerminal("Sensor server created with TID %d\r\n", SENSOR_SERVER_TID);
         // create switch server
-        SWITCH_SERVER_TID = CREATE(PRIORITY::DEVICE_SERVER, Switch_NS::SwitchServer);
+        SWITCH_SERVER_TID = CREATE(PRIORITY::DEVICE, Switch_NS::SwitchServer);
         uassert(SWITCH_SERVER_TID > 0 && "Conductor::Error creating switch server");
         IO_NS::PrintTerminal("Switch server created with TID %d\r\n", SWITCH_SERVER_TID);
 
@@ -67,7 +67,7 @@ namespace Conductor_NS
         track.init(track_id);
         REPLY(sender_tid, nullptr, 0);
 
-        LOOP_START_SENSOR_DATA = {BANKS::B, 5};
+        LOOP_START_SENSOR_DATA = {'B', 5};
 
         InitializeTrainDisplay();
         ConductorLoop();
@@ -100,14 +100,13 @@ namespace Conductor_NS
 
     static SensorStruct name_to_sensor_struct(char sensor_name[4])
     {
-        IO_NS::PrintTerminal("name_to_sensor_struct: name-%s\r\n", sensor_name);
         SensorStruct sensor = {};
 
-        sensor.bank = static_cast<BANKS>(sensor_name[0] - 'A');
+        sensor.bank = sensor_name[0];
         const char *sensor_name_ptr = sensor_name + 1;
         sensor.id = a2ui((char **)&sensor_name_ptr, 10);
 
-        IO_NS::PrintTerminal("name_to_sensor_struct: bank-%d, id-%d\r\n", int(sensor.bank), sensor.id);
+        IO_NS::PrintTerminal("name_to_sensor_struct:: for %c%d\r\n", sensor.bank, sensor.id);
         return sensor;
     }
 
@@ -142,7 +141,7 @@ namespace Conductor_NS
                 IO_NS::PrintTerminal("Train %d found at index %d, sending ACCELERATE command\r\n", train_num, train_index);
             }
 
-            TrainMessage message({BANKS::A, -1}, -1, TRAIN_COMMAND::ACCELERATE, speed);
+            TrainMessage message(TRAIN_COMMAND::ACCELERATE, speed);
 
             train_arr[train_index].train_messages.Push(message);
             break;
@@ -162,7 +161,7 @@ namespace Conductor_NS
             {
                 IO_NS::PrintTerminal("Train %d found, sending REVERSE command\r\n", train_num);
             }
-            TrainMessage message({BANKS::A, -1}, -1, TRAIN_COMMAND::REVERSE, -1);
+            TrainMessage message(TRAIN_COMMAND::REVERSE, -1);
 
             train_arr[train_index].train_messages.Push(message);
             break;
@@ -179,7 +178,7 @@ namespace Conductor_NS
             IO_NS::PrintTerminal("Parsed sensor: bank=%c, number=%d (from '%s')\r\n",
                                  sensor_bank, sensor_number, sensor_id);
 
-            int spawned_train_tid = CREATE(PRIORITY::CORE, Trains_NS::spawn_train);
+            int spawned_train_tid = CREATE(PRIORITY::DEVICE, Trains_NS::spawn_train);
             uassert(spawned_train_tid > 0);
             IO_NS::PrintTerminal("Train %d spawned with TID %d\r\n", req->id, spawned_train_tid);
             int trainSpawnedSuccess;
@@ -364,9 +363,8 @@ namespace Conductor_NS
         // need to check if we need to reverse!
 
         int speed = train->speed_level;
-        TrainMessage message(sensor, segment_length, cmd, speed);
-
-        IO_NS::PrintTerminal("Conductor::SendSegmentToMessenger -- Sending segment to messenger %d\r\n", messenger_tid);
+        TrainMessage message(sensor.bank, sensor.id, segment_length);
+        IO_NS::PrintTerminal(COLOR_CYAN "Conductor::SendSegmentToMessenger -- Sending segment {with target sensor %c%d}to messenger %d\r\n", message.data.segment.sensor.bank, message.data.segment.sensor.id, messenger_tid);
         // reply to messenger task with segment data
         REPLY(messenger_tid, (char *)&message, sizeof(message));
     }
