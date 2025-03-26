@@ -63,12 +63,12 @@ namespace Conductor_NS
         }
 
         int sender_tid;
-        unsigned char track_id;
-        int retval = RECEIVE(&sender_tid, (char *)&track_id, sizeof(track_id));
+        unsigned char track_id = 'A';
+        //int retval = RECEIVE(&sender_tid, (char *)&track_id, sizeof(track_id));
         IO_NS::PrintTerminal("Conductor received request for track %c\r\n", track_id);
         uassert(track_id == 'A' || track_id == 'B' || track_id == 'a' || track_id == 'b');
         track.init(track_id);
-        REPLY(sender_tid, nullptr, 0);
+        ///REPLY(sender_tid, nullptr, 0);
 
         InitializeTrainDisplay();
         ConductorLoop();
@@ -252,14 +252,20 @@ namespace Conductor_NS
             // Sensor current_sensor = req->data;
             break;
         }
-        /*case COMMAND::SENSOR_TRIGGER:
+        case COMMAND::SENSOR_TRIGGER:
         {
             // Extract sensor ID from request
             int sensor_number = req->id;
             char sensor_bank = req->src[0];
 
-            IO_NS::PrintTerminal("Triggered sensor: bank=%c, number=%d\r\n", sensor_bank, sensor_number);
-            track_node* sensor_node = track.find_sensor(bank, number);
+            IO_NS::PrintTerminal("Jack -------- conductor: Triggered sensor: bank=%c, number=%d\r\n", sensor_bank, sensor_number);
+            for (int i = 0; i < NUM_TRAINS; i++) {
+                train_arr[i].recent_sensor_bank = sensor_bank;
+                train_arr[i].recent_sensor_num = sensor_number;
+                
+            }
+            UpdateTrainDisplay();
+            /*track_node* sensor_node = track.find_sensor(bank, number);
 
             for (int i = 0; i < NUM_TRAINS; i++) {
                 if (train_arr[i].next_predicted_id == sensor_node) {
@@ -282,9 +288,9 @@ namespace Conductor_NS
                     UpdateTrainDisplay();
                     break;
                 }
-                }
+            }*/
             break;
-        }*/
+        }
         case COMMAND::STOP_ALL:
         {
             IO_NS::PrintTerminal("JACK2----------------------Conductor received STOP_ALL request");
@@ -335,14 +341,14 @@ namespace Conductor_NS
             IO_NS::Print(MOVE_CURSOR "%d.%d",
                          TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 21, train_arr[i].actual_speed_x10, train_arr[i].actual_speed_x10 % 10);
             if(train_arr[i].recent_sensor_bank == '\0') {
-                IO_NS::Print(MOVE_CURSOR "-",
+                IO_NS::Print(MOVE_CURSOR "-  ",
                          TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 36);
             }         
             else
             {
                 IO_NS::Print(MOVE_CURSOR "%c",
                          TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 36, train_arr[i].recent_sensor_bank);
-                IO_NS::Print(MOVE_CURSOR "%d",
+                IO_NS::Print(MOVE_CURSOR "%d ",
                          TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 37, train_arr[i].recent_sensor_num);
             }
             IO_NS::Print(MOVE_CURSOR "%c",
@@ -350,9 +356,9 @@ namespace Conductor_NS
             IO_NS::Print(MOVE_CURSOR "%d",
                          TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 51, train_arr[i].next_predicted_num);
             if(train_arr[i].destination[0] == '-') {
-                IO_NS::Print(MOVE_CURSOR "-",
+                IO_NS::Print(MOVE_CURSOR "-  ",
                          TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 64);
-                IO_NS::Print(MOVE_CURSOR "-",
+                IO_NS::Print(MOVE_CURSOR "-    ",
                          TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 71);
             }         
             else
@@ -457,8 +463,8 @@ namespace Conductor_NS
     void SensorPoller()
     {
         REGISTERAS("SensorPoller");
-        //int conductor_tid = WHOIS("Conductor");
-        //uassert(conductor_tid > 0 && "SensorPoller: Conductor not found");
+        int conductor_tid = WHOIS("Conductor");
+        uassert(conductor_tid > 0 && "SensorPoller: Conductor not found");
         //int clock_server = WHOIS("ClockServer");
         //uassert(clock_server > 0 && "SensorPoller: ClockServer not found");
         char bank = '\0';
@@ -466,9 +472,16 @@ namespace Conductor_NS
 
         while (true)
         {
+            //if(bank != latest_sensor_bank || num != latest_sensor_num)
             bank = latest_sensor_bank;
             num = latest_sensor_num;
             IO_NS::PrintTerminal("Jack------Conductor Poller::Sensor %c%d triggered\r\n", bank, num);
+            char sensor_bank[2] = {0};
+            sensor_bank[0] = bank;
+            int command_received = -3;
+            ConductorRequest request(COMMAND::SENSOR_TRIGGER, num, 0, sensor_bank);
+            SEND(conductor_tid, (char *)&request, sizeof(ConductorRequest), (char *)command_received, sizeof(int));
+
         }
     }
 
