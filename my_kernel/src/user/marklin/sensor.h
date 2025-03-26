@@ -9,6 +9,9 @@
 #include "../include/name_server.h"
 #include "../../shared_constants.h"
 
+extern char latest_sensor_bank; 
+extern int latest_sensor_num;  
+
 struct SensorResponse
 {
     int id; // -1 if no sensor triggered

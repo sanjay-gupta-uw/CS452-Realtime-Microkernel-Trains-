@@ -4,6 +4,9 @@
 #include "../marklin/train.h"
 
 #define USE_CTS 1
+
+char latest_sensor_bank = '\0';
+int latest_sensor_num = -1;
 namespace Sensors_NS
 {
 
@@ -148,6 +151,10 @@ namespace Sensors_NS
                     last_triggered_bank = sensor_data[idx].bank;
                     last_triggered_id = sensor_data[idx].id;
 
+                    IO_NS::PrintTerminal("Jack---------Sensor: update\r\n");
+                    latest_sensor_bank = sensor_data[idx].bank;
+                    latest_sensor_num = sensor_data[idx].id;
+
                     bank_mask->sensor[sensor - 1] = true;
                     UPDATE_DISPLAY = true;
                 }
@@ -202,7 +209,7 @@ namespace Sensors_NS
         int sender_tid;
         SensorQuery query;
 
-        // test SENSOR_TRIGGERED
+        /*// test SENSOR_TRIGGERED
         {
             IO_NS::PrintTerminal("SensorServer: Testing SENSOR_TRIGGERED\r\n");
 
@@ -231,7 +238,7 @@ namespace Sensors_NS
             }
 
             IO_NS::PrintTerminal("SensorServer: Finished testing SENSOR_TRIGGERED\r\n");
-        }
+        }*/
 
         while (true)
         {

@@ -48,6 +48,11 @@ namespace Conductor_NS
         SWITCH_SERVER_TID = CREATE(PRIORITY::DEVICE_SERVER, Switch_NS::SwitchServer);
         uassert(SWITCH_SERVER_TID > 0 && "Conductor::Error creating switch server");
         IO_NS::PrintTerminal("Switch server created with TID %d\r\n", SWITCH_SERVER_TID);
+        
+        // Create SensorPoller task
+        sensor_poller_tid = CREATE(PRIORITY::LOWEST, SensorPoller);
+        uassert(sensor_poller_tid > 0 && "Conductor::Error creating SensorPoller");
+        IO_NS::PrintTerminal("SensorPoller created with TID %d\r\n", sensor_poller_tid);
 
         // initialize train_arr
         for (int i = 0; i < NUM_TRAINS; i++)
@@ -447,6 +452,24 @@ namespace Conductor_NS
             }
         }
         EXIT();
+    }
+
+    void SensorPoller()
+    {
+        REGISTERAS("SensorPoller");
+        //int conductor_tid = WHOIS("Conductor");
+        //uassert(conductor_tid > 0 && "SensorPoller: Conductor not found");
+        //int clock_server = WHOIS("ClockServer");
+        //uassert(clock_server > 0 && "SensorPoller: ClockServer not found");
+        char bank = '\0';
+        int num = -1;
+
+        while (true)
+        {
+            bank = latest_sensor_bank;
+            num = latest_sensor_num;
+            IO_NS::PrintTerminal("Jack------Conductor Poller::Sensor %c%d triggered\r\n", bank, num);
+        }
     }
 
     void start_conductor()

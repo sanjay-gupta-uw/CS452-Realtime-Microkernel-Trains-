@@ -18,6 +18,7 @@ namespace Conductor_NS
     private:
         int SWITCH_SERVER_TID;
         int SENSOR_SERVER_TID;
+        int sensor_poller_tid;
         // Switch_NS::Switches switches;
 
         int get_train_index(int train_num);
@@ -53,6 +54,7 @@ namespace Conductor_NS
     };
 
     void start_conductor();
+    void SensorPoller();
 }
 
 #endif // _CONDUCTOR_H_

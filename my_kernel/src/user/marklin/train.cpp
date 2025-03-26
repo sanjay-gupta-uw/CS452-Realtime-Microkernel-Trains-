@@ -126,6 +126,7 @@ namespace Trains_NS
             int retval = SEND(conductor_tid, (char *)&train_query, sizeof(train_query), (char *)&response, sizeof(TrainResponse));
             uassert(retval >= 0 && "Error sending TrainQuery to Conductor");
             switch (response.command)
+            
             {
             case TRAIN_COMMAND::ACCELERATE:
                 IO_NS::PrintTerminal("Accelerating train %d to speed %d\r\n", train_num, response.speed);
