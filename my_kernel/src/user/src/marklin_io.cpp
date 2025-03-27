@@ -146,6 +146,7 @@ namespace MARKLIN_IO_SERVER
         int sender_tid;
         IO_REQUEST req;
         canTransmit = false;
+        isReceiving = false;
         while (true)
         {
             int retval = RECEIVE(&sender_tid, (char *)&req, sizeof(req));
@@ -162,6 +163,14 @@ namespace MARKLIN_IO_SERVER
             {
                 unsigned char ch = (unsigned char)uart_getc_non_blocking(MARKLIN);
                 receive_buffer.Push(ch);
+                BYTES_RECEIVED++;
+                if (BYTES_RECEIVED == TOTAL_BYTES_TO_RECEIVE)
+                {
+                    isReceiving = false;
+                    BYTES_RECEIVED = 0;
+                    TOTAL_BYTES_TO_RECEIVE = 0;
+                    IO_NS::PrintTerminal("MarklinIO_server::RX_NOTIFIER: Finished receiving %d bytes\r\n", TOTAL_BYTES_TO_RECEIVE);
+                }
 
                 if (!rx_waiting_tasks.IsEmpty())
                 {
@@ -225,6 +234,7 @@ namespace MARKLIN_IO_SERVER
                         // transmit_buffer.Push(addr);
                     }
                 }
+
                 sequence_length_buffer.Push(len);
                 reply.type = REPLY_TYPE::SUCCESS;
                 send_reply = true;
@@ -234,7 +244,7 @@ namespace MARKLIN_IO_SERVER
                 break;
             }
 
-            if (canTransmit)
+            if (canTransmit && !isReceiving)
             {
                 handle_transmission();
             }
@@ -278,9 +288,22 @@ namespace MARKLIN_IO_SERVER
 
             int DELAY_TIME = 25;
 
+            if (sequence_length == 1)
+            {
+                // check if command is a sensor read -- need to make sure we dont transmit until we have the sensor data
+                int num_banks_to_read = ch - READ_ALL_SENSOR_BASE;
+                if (num_banks_to_read > 0 && num_banks_to_read <= NUM_BANKS)
+                {
+                    TOTAL_BYTES_TO_RECEIVE = num_banks_to_read * 2; // 2 bytes per bank
+                    isReceiving = true;
+                    IO_NS::PrintTerminal("MarklinIO_server::SEND_CMD: Sensor read command for %d banks\r\n", num_banks_to_read);
+                    uassert(false && "MarklinIO_server::SEND_CMD: VERIFYING READ BYTES IS CORRECT");
+                }
+            }
+
             if (count == 2 && sequence_length == 3)
             {
-                start_time = clock.Time();
+                start_time = clock.Time(); // this should not delay the server -- make a messenger for this
                 // clock.Delay(400);
                 DELAY(CLOCK_SERVER_TID, DELAY_TIME);
             }

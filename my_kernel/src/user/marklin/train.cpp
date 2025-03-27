@@ -299,6 +299,7 @@ namespace Trains_NS
                 else // this must be sensor hit
                 {
                     IO_NS::PrintTerminal("TRAIN %d::Sensor hit {%c%d}\r\n", train_num, triggered_sensor.bank, triggered_sensor.id);
+                    uassert(false && "SENSOR TRIGGERED");
                     CompleteSegment();
                     // need to free path messenger (or if window exceeded)
                     REPLY(path_messenger_tid, nullptr, 0);
@@ -428,7 +429,7 @@ namespace Trains_NS
         uassert(param_init_retval >= 0 && train_task_tid >= 0 && "SENSOR MESSENGER: Error receiving train_num from parent task");
         REPLY(train_task_tid, nullptr, 0);
 
-        int sensor_server_tid = WHOIS("SensorServer");
+        int sensor_server_tid = WHOIS("SensorManager");
         uassert(sensor_server_tid > 0 && "SENSOR MESSENGER: Error finding SensorServer");
 
         while (true)

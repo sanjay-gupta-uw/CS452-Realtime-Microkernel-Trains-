@@ -35,8 +35,11 @@ namespace MARKLIN_IO_SERVER
         Queue<int, 32> sequence_length_buffer;
         int sequence_length;
         int count;
-        bool canTransmit;
         int total_bytes_transmitted;
+        bool canTransmit;
+        bool isReceiving;
+        int TOTAL_BYTES_TO_RECEIVE;
+        int BYTES_RECEIVED;
 
         int rx_notifier_tid;
         int tx_notifier_tid;

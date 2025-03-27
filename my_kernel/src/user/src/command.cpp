@@ -15,7 +15,6 @@ namespace UI_CMD_NS
 {
     void display_track(const TrackConfig *config)
     {
-        return;
         int y = TRACK_LAYOUT_LOCATION_Y;
         int x = TRACK_LAYOUT_LOCATION_X;
 
