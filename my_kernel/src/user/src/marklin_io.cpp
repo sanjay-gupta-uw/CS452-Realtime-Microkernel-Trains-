@@ -44,6 +44,9 @@ namespace MARKLIN_IO_SERVER
         for (int i = 0; i < NUM_SWITCHES; ++i)
         {
             SWITCH_ADDRS[i] = switch_addrs[i];
+            // CREATE SWITCH NOTIFIER
+            switch_notifier_tid[i] = CREATE(PRIORITY::MARKLIN_NOTIFIER, switchNotifier);
+            RECEIVE(nullptr, nullptr, 0);
         }
 
         total_bytes_transmitted = 0;
@@ -223,21 +226,40 @@ namespace MARKLIN_IO_SERVER
                     int addr = m_req.byte2;
 
                     transmit_buffer.Push(addr);
-                    // second byte is the address
-                    int switch_index = isSwitchCommand(addr);
-                    if (switch_index >= 0)
-                    {
-                        len = 3;
-                        IO_NS::PrintTerminal("MarklinIO_server::SEND_CMD: Switch command for switch index %d\r\n", switch_index);
-                        // push solenoid off command
-                        transmit_buffer.Push(SOLENOID_OFF_CMD);
-                        // transmit_buffer.Push(addr);
-                    }
                 }
 
                 sequence_length_buffer.Push(len);
                 reply.type = REPLY_TYPE::SUCCESS;
                 send_reply = true;
+            }
+
+            case IO_REQUEST_TYPE::PUTC:
+            {
+                // ASSUME ALL PUTC COMMANDS ARE SOLENOID OFF COMMANDS, SWITCH ADDR STORED IN REQ.DATA
+                if (sequence_length > 0 && count > 0) // these will never be equal otherwise (handle trasmission sets them both to zero when count == length)
+                {
+                    uassert(sequence_length == count && "UNEXPECTED ERROR: TRASMISSION DIDNT UPDATE SEQUENCE LENGTH AND COUNT?");
+                    int bytes_to_extract = sequence_length - count;
+
+                    // two byte command at most
+                    uint8_t command_buff[2];
+
+                    for (int i = 0; i < bytes_to_extract; ++i)
+                    {
+                        transmit_buffer.Pop(&command_buff[i]);
+                    }
+
+                    PushSolenoidOffCommand();
+
+                    for (int i = 0; i < bytes_to_extract; ++i)
+                    {
+                        transmit_buffer.PushFront(command_buff[(i + 1) % bytes_to_extract]);
+                    }
+                }
+                else
+                {
+                    PushSolenoidOffCommand();
+                }
             }
 
             default:
@@ -255,6 +277,13 @@ namespace MARKLIN_IO_SERVER
                 REPLY(sender_tid, (char *)&reply, sizeof(reply));
             }
         }
+    }
+
+    void MarklinIOServer::PushSolenoidOffCommand()
+    {
+        sequence_length_buffer.PushFront(1);
+        transmit_buffer.PushFront(SOLENOID_OFF_CMD);
+        IO_NS::PrintTerminal("MarklinIO_server::PushSolenoidOffCommand: Pushed solenoid off command\r\n");
     }
 
     void MarklinIOServer::handle_transmission()
@@ -301,11 +330,14 @@ namespace MARKLIN_IO_SERVER
                 }
             }
 
-            if (count == 2 && sequence_length == 3)
+            if (count == 2)
             {
-                start_time = clock.Time(); // this should not delay the server -- make a messenger for this
-                // clock.Delay(400);
-                DELAY(CLOCK_SERVER_TID, DELAY_TIME);
+                int idx = isSwitchCommand(ch);
+                if (idx != -1)
+                {
+                    IO_NS::PrintTerminal("MarklinIOServer::handle_transmission: REQUESTING SOLENOID OFF AFTER DELAY\r\n");
+                    REPLY(switch_notifier_tid[idx], nullptr, 0);
+                }
             }
             if (count == sequence_length)
             {
@@ -357,5 +389,22 @@ namespace MARKLIN_IO_SERVER
     void startMarklinIOServer()
     {
         MARKLIN_IO_SERVER::MarklinIOServer marklin_io_server;
+    }
+
+    // this is used to send a solenoid off command to the switch
+    void switchNotifier()
+    {
+        int my_tid = MYTID();
+        int MARKLIN_IO_TID = MYPARENTTID();
+        int CLOCK_SERVER_TID = WHOIS("ClockServer");
+
+        // BYPASS PUTC LOOKUP
+        IO_REQUEST req{IO_REQUEST_TYPE::PUTC, ' ', nullptr};
+        while (true)
+        {
+            SEND(MARKLIN_IO_TID, (char *)&req, sizeof(req), nullptr, 0);
+            IO_NS::PrintTerminal("SWNOTIFIER{%d}: DELAYING\r\n", my_tid);
+            DELAY(CLOCK_SERVER_TID, 25);
+        }
     }
 }

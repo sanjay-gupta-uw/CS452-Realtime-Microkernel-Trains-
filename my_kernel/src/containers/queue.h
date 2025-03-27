@@ -27,6 +27,17 @@ public:
         return 0;
     }
 
+    int PushFront(T item)
+    {
+        if (size == Capacity)
+            return -1; // Queue is full.
+
+        tail = (tail + Capacity - 1) % Capacity;
+        buffer[tail] = item;
+        ++size;
+        return 0;
+    }
+
     // Pop an item from the queue. Returns 0 on success, -1 if the queue is empty.
     int Pop(T *item)
     {

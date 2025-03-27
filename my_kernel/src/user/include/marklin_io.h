@@ -57,6 +57,7 @@ namespace MARKLIN_IO_SERVER
         void write_to_uart();
         void handle_transmission();
         int isSwitchCommand(int addr);
+        void PushSolenoidOffCommand();
     };
 
     enum class IO_REQUEST_TYPE
@@ -106,6 +107,7 @@ namespace MARKLIN_IO_SERVER
                                                                                : "UNIMPLEMENTED")
 
     void startMarklinIOServer();
+    void switchNotifier();
 }
 
 #endif // _marklin_io_h_
