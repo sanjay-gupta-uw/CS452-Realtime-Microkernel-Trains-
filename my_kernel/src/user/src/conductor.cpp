@@ -504,6 +504,7 @@ namespace Conductor_NS
     // returns segment length, and
     int Conductor::GetSegmentLength(int train_num)
     {
+        // CHECK IF WE NEED TO REVERSE/ACCELERATE
         int train_index = get_train_index(train_num);
         if (train_index == -1)
         {

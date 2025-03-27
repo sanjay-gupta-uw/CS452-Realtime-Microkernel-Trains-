@@ -280,7 +280,7 @@ namespace Sensors_NS
                 IO_NS::PrintTerminal(COLOR_RED "SensorManager: Sending reply to %d\r\n", sender_tid);
                 REPLY(sender_tid, nullptr, 0);
             }
-            uassert(false && "SensorManager::SensorLoop: THIS MUST BE HIT");
+            // uassert(false && "SensorManager::SensorLoop: THIS MUST BE HIT");
 
             // THIS IS NOT REPLYING TO TRAIN MESSENGER
         }

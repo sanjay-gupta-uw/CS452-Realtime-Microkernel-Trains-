@@ -105,8 +105,8 @@ extern "C" int kmain()
     // uart_printf(CONSOLE, RESTORE_CURSOR "Kernel Started -- enabling interrupts\r\n" SAVE_CURSOR);
 
     uint32_t start_time, end_time = 0;
-    // uart_printf(CONSOLE, CLEAR_SCREEN RESET_FORMATTING HIDE_CURSOR COLUMN_132 SCROLL_REGION MOVE_CURSOR SAVE_CURSOR, SCROLL_ROW_START, SCROLL_ROW_END, 1, 1);
-    uart_printf(CONSOLE, CLEAR_SCREEN RESET_FORMATTING HIDE_CURSOR COLUMN_132 MOVE_CURSOR SAVE_CURSOR, 1, 1);
+    uart_printf(CONSOLE, CLEAR_SCREEN RESET_FORMATTING HIDE_CURSOR COLUMN_132 SCROLL_REGION MOVE_CURSOR SAVE_CURSOR, SCROLL_ROW_START, SCROLL_ROW_END, 1, 1);
+    // uart_printf(CONSOLE, CLEAR_SCREEN RESET_FORMATTING HIDE_CURSOR COLUMN_132 MOVE_CURSOR SAVE_CURSOR, 1, 1);
     Queue<int, 12> q;
     DequeTest(&q);
 
@@ -114,6 +114,7 @@ extern "C" int kmain()
     // scheduler pops the highest priority task into td
     while ((current_task = kernel.Scheduler()) != nullptr)
     {
+
         // uart_printf(CONSOLE, MOVE_CURSOR CLEAR_TO_END_LINE "ACTIVE TASK: tid{%d} priority{%d}\r\n", TRANSMITTED_BYTES_LOCATION + 1, 1, current_task->getTid(), current_task->getPriority());
         // kassert(false && "PANIC: Kernel loop");
         // uart_printf(CONSOLE, RESTORE_CURSOR "ACTIVE TASK: tid{%d} priority{%d}\r\n" SAVE_CURSOR, current_task->getTid(), current_task->getPriority());
@@ -148,17 +149,18 @@ extern "C" int kmain()
 
 void DequeTest(Queue<int, 12> *q)
 {
-    int nums[12] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
+    uart_printf(CONSOLE, "Starting DequeTest\r\n");
+    int nums[12] = {2, 1, 0, 3, 4, 5, 6, 7, 8, 9, 10, 11};
 
     for (int i = 3; i < 12; ++i)
     {
-        IO_NS::PrintTerminal("DequeTest: Pushing %d\r\n", nums[i]);
+        uart_printf(CONSOLE, "DequeTest: Pushing %d\r\n", nums[i]);
         kassert(q->Push(nums[i]) == 0 && "DequeTest: ERROR");
     }
 
-    for (int i = 2; i >= 0; --i)
+    for (int i = 0; i < 3; ++i)
     {
-        IO_NS::PrintTerminal("DequeTest: Pushing %d\r\n", nums[i]);
+        uart_printf(CONSOLE, "DequeTest: Pushing %d\r\n", nums[i]);
         kassert(q->PushFront(nums[i]) == 0 && "DequeTest: ERROR");
     }
 
@@ -167,8 +169,7 @@ void DequeTest(Queue<int, 12> *q)
         int val;
         q->Pop(&val);
         uart_printf(CONSOLE, "DequeTest: %d\r\n", val);
-        kassert(val == nums[i] && "DequeTest: ERROR");
+        kassert(val == i && "DequeTest: ERROR");
     }
-
     kassert(q->IsEmpty() && "DequeTest: ERROR -- queue is not empty");
 }

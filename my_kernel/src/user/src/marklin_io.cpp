@@ -77,21 +77,32 @@ namespace MARKLIN_IO_SERVER
 
     void notifier_rx()
     {
-        int MARKLIN_IO_TID = WHOIS("MarklinIOServer");
         REGISTERAS("Marklin_RXNotifier");
-        // (CONSOLE, "M-RX Notifier started\r\n");
+        int my_tid = MYTID();
+        int MARKLIN_IO_TID = WHOIS("MarklinIOServer");
+        IO_NS::PrintTerminal("RX Notifier started with TID %d\r\n", my_tid);
+
+        int count = 0;
+        RECEIVED_BYTES_STRUCT receive_buffer;
+
+        IO_REPLY reply;
         while (true)
         {
-            // (CONSOLE, "ENABLING RX INTERRUPT\r\n");
             int retval = AWAITEVENT(InterruptEvents::UART_MARKLIN_RX);
             uassert(retval >= 0 && "RX NOTIFIER AWAITEVENT returned error");
-            // (CONSOLE, "RX NOTIFIER AWOKEN\r\n");
 
-            IO_REQUEST req{IO_REQUEST_TYPE::RX_NOTIFIER, 0};
-            IO_REPLY reply;
+            unsigned char ch = uart_getc_non_blocking(MARKLIN);
+            receive_buffer.bytes[count++] = ch;
+            receive_buffer.count = count;
 
-            SEND(MARKLIN_IO_TID, (char *)&req, sizeof(req), (char *)&reply, sizeof(reply));
-            uassert(reply.type != REPLY_TYPE::UNIMPLEMENTED && "RX NOTIFIER REPLY returned error");
+            if (count == 10)
+            {
+                IO_REQUEST req(&receive_buffer);
+                SEND(MARKLIN_IO_TID, (char *)&req, sizeof(req), (char *)&reply, sizeof(reply));
+                // uassert(false && "SERVER REPLIED TO RX NOTIFIER");
+                count = 0;
+                IO_NS::PrintTerminal("WAITING FOR RX");
+            }
         }
     }
 
@@ -117,7 +128,7 @@ namespace MARKLIN_IO_SERVER
                 uassert(ret >= 0 && "TX NOTIFIER::CTS_HIGH_AWAITEVENT returned error");
             }
 
-            IO_REQUEST req{IO_REQUEST_TYPE::TX_NOTIFIER, 0};
+            IO_REQUEST req(IO_REQUEST_TYPE::TX_NOTIFIER);
             IO_REPLY reply;
 
             IO_NS::PrintTerminal("TX NOTIFIER::Available to transmit\r\n");
@@ -153,7 +164,8 @@ namespace MARKLIN_IO_SERVER
         while (true)
         {
             int retval = RECEIVE(&sender_tid, (char *)&req, sizeof(req));
-            // IO_NS::PrintTerminal("MarklinIO_server::run: Received request from tid{%d} of size{%d}\r\n", sender_tid, retval);
+            int tick = TIME(CLOCK_SERVER_TID);
+            IO_NS::PrintTerminal("MarklinIO_server::run: Received request from tid{%d} at tick %d\r\n", sender_tid, tick);
 
             IO_REPLY reply;
             reply.type = REPLY_TYPE::FAILURE;
@@ -164,18 +176,28 @@ namespace MARKLIN_IO_SERVER
             {
             case IO_REQUEST_TYPE::RX_NOTIFIER:
             {
-                unsigned char ch = (unsigned char)uart_getc_non_blocking(MARKLIN);
-                receive_buffer.Push(ch);
-                BYTES_RECEIVED++;
+                RECEIVED_BYTES_STRUCT *rec_buf = req.data.received_bytes;
+                for (int i = 0; i < rec_buf->count; ++i)
+                {
+                    unsigned char ch;
+                    ch = rec_buf->bytes[i];
+                    receive_buffer.Push(ch);
+                    BYTES_RECEIVED++;
+                    IO_NS::PrintTerminal(COLOR_CYAN "MarklinIO_server::RX_NOTIFIER: {%d} Received %d\r\n", i, ch);
+                }
+                IO_NS::PrintTerminal("MarklinIO_server::RX_NOTIFIER: Received %d bytes\r\n", BYTES_RECEIVED);
+                // uassert(false && "MarklinIO_server::RX_NOTIFIER: -- Received RX NOTIFIER");
+
+                IO_NS::PrintTerminal(COLOR_CYAN "MarklinIO_server::RX_NOTIFIER: Received %d bytes, was waiting for %d bytes\r\n", count, TOTAL_BYTES_TO_RECEIVE);
                 if (BYTES_RECEIVED == TOTAL_BYTES_TO_RECEIVE)
                 {
                     isReceiving = false;
                     BYTES_RECEIVED = 0;
                     TOTAL_BYTES_TO_RECEIVE = 0;
-                    IO_NS::PrintTerminal("MarklinIO_server::RX_NOTIFIER: Finished receiving %d bytes\r\n", TOTAL_BYTES_TO_RECEIVE);
+                    IO_NS::PrintTerminal(COLOR_RED "MarklinIO_server::RX_NOTIFIER: Finished receiving %d bytes\r\n", TOTAL_BYTES_TO_RECEIVE);
                 }
 
-                if (!rx_waiting_tasks.IsEmpty())
+                while (!rx_waiting_tasks.IsEmpty() && !receive_buffer.IsEmpty())
                 {
                     unsigned char ch;
                     receive_buffer.Pop(&ch);
@@ -216,21 +238,34 @@ namespace MARKLIN_IO_SERVER
             }
             case IO_REQUEST_TYPE::SEND_CMD:
             {
-                // IO_NS::PrintTerminal("MarklinIO_server::SEND_CMD\r\n");
-                MarklinRequest m_req = *(req.request);
-                transmit_buffer.Push(m_req.byte1);
+                IO_NS::PrintTerminal("MarklinIO_server::SEND_CMD:: Received command from tid{%d}\r\n", sender_tid);
+                MarklinRequest *m_req = req.data.request;
+                if (m_req->isSingleByteCommand)
+                {
+                    IO_NS::PrintTerminal("MarklinIO_server::SEND_CMD: Byte1: %d\r\n", m_req->byte1);
+                }
+                else
+                {
+                    IO_NS::PrintTerminal("MarklinIO_server::SEND_CMD: Byte1: %d, Byte2: %d\r\n", m_req->byte1, m_req->byte2);
+                }
+                transmit_buffer.Push(m_req->byte1);
                 int len = 1;
-                if (!m_req.isSingleByteCommand)
+                if (!m_req->isSingleByteCommand)
                 {
                     len = 2;
-                    int addr = m_req.byte2;
+                    int addr = m_req->byte2;
 
                     transmit_buffer.Push(addr);
+                }
+                else
+                {
+                    IO_NS::PrintTerminal("MarklinIO_server::SEND_CMD: Single byte command\r\n");
                 }
 
                 sequence_length_buffer.Push(len);
                 reply.type = REPLY_TYPE::SUCCESS;
                 send_reply = true;
+                break;
             }
 
             case IO_REQUEST_TYPE::PUTC:
@@ -238,7 +273,8 @@ namespace MARKLIN_IO_SERVER
                 // ASSUME ALL PUTC COMMANDS ARE SOLENOID OFF COMMANDS, SWITCH ADDR STORED IN REQ.DATA
                 if (sequence_length > 0 && count > 0) // these will never be equal otherwise (handle trasmission sets them both to zero when count == length)
                 {
-                    uassert(sequence_length == count && "UNEXPECTED ERROR: TRASMISSION DIDNT UPDATE SEQUENCE LENGTH AND COUNT?");
+                    // IO_NS::PrintTerminal("MARKLIN_IO_SERVER::PUTC: sequence_length: %d, count: %d\r\n", sequence_length, count);
+                    // uassert(sequence_length == count && "UNEXPECTED ERROR: TRASMISSION DIDNT UPDATE SEQUENCE LENGTH AND COUNT?");
                     int bytes_to_extract = sequence_length - count;
 
                     // two byte command at most
@@ -260,12 +296,14 @@ namespace MARKLIN_IO_SERVER
                 {
                     PushSolenoidOffCommand();
                 }
+                break;
             }
 
             default:
                 break;
             }
 
+            IO_NS::PrintTerminal("canTransmit: %d, isReceiving: %d\r\n", canTransmit, isReceiving);
             if (canTransmit && !isReceiving)
             {
                 handle_transmission();
@@ -319,14 +357,15 @@ namespace MARKLIN_IO_SERVER
 
             if (sequence_length == 1)
             {
+                int num_banks_to_read = int(ch) - READ_ALL_SENSOR_BASE;
                 // check if command is a sensor read -- need to make sure we dont transmit until we have the sensor data
-                int num_banks_to_read = ch - READ_ALL_SENSOR_BASE;
                 if (num_banks_to_read > 0 && num_banks_to_read <= NUM_BANKS)
                 {
+                    BYTES_RECEIVED = 0;
                     TOTAL_BYTES_TO_RECEIVE = num_banks_to_read * 2; // 2 bytes per bank
                     isReceiving = true;
-                    IO_NS::PrintTerminal("MarklinIO_server::SEND_CMD: Sensor read command for %d banks\r\n", num_banks_to_read);
-                    uassert(false && "MarklinIO_server::SEND_CMD: VERIFYING READ BYTES IS CORRECT");
+                    IO_NS::PrintTerminal(COLOR_RED "MarklinIO_server::handle_transmission: Sensor read command for %d banks\r\n", num_banks_to_read);
+                    // uassert(false && "MarklinIO_server::SEND_CMD: VERIFYING READ BYTES IS CORRECT");
                 }
             }
 
@@ -354,7 +393,7 @@ namespace MARKLIN_IO_SERVER
     {
         int IO_TID = WHOIS("MarklinIOServer");
 
-        IO_REQUEST req{IO_REQUEST_TYPE::GETC, 0, nullptr};
+        IO_REQUEST req(IO_REQUEST_TYPE::GETC);
         IO_REPLY reply;
         SEND(IO_TID, (char *)&req, sizeof(req), (char *)&reply, sizeof(reply));
         uassert(reply.type != REPLY_TYPE::UNIMPLEMENTED && "IO_SERVER::Getc: PANIC, Unimplemented");
@@ -364,21 +403,23 @@ namespace MARKLIN_IO_SERVER
 
     int Putc(int tid, unsigned char ch)
     {
-        int IO_TID = WHOIS("MarklinIOServer");
+        IO_NS::PrintTerminal("MarklinIO::Putc: THIS FUNCTION IS DEPRECATED\r\n");
+        return -1;
+        // int IO_TID = WHOIS("MarklinIOServer");
 
-        IO_REQUEST req{IO_REQUEST_TYPE::PUTC, ch, nullptr};
-        IO_REPLY reply;
-        SEND(IO_TID, (char *)&req, sizeof(req), (char *)&reply, sizeof(reply));
-        uassert(reply.type != REPLY_TYPE::UNIMPLEMENTED && "IO_SERVER::Putc: PANIC, Unimplemented");
+        // IO_REQUEST req(IO_REQUEST_TYPE::PUTC, ch);
+        // IO_REPLY reply;
+        // SEND(IO_TID, (char *)&req, sizeof(req), (char *)&reply, sizeof(reply));
+        // uassert(reply.type != REPLY_TYPE::UNIMPLEMENTED && "IO_SERVER::Putc: PANIC, Unimplemented");
 
-        return reply.type == REPLY_TYPE::SUCCESS ? 0 : -1;
+        // return reply.type == REPLY_TYPE::SUCCESS ? 0 : -1;
     }
 
     int SendCmd(int tid, MarklinRequest *request)
     {
         int IO_TID = WHOIS("MarklinIOServer");
 
-        IO_REQUEST req{IO_REQUEST_TYPE::SEND_CMD, 0, request};
+        IO_REQUEST req(request);
         IO_REPLY reply;
         SEND(IO_TID, (char *)&req, sizeof(req), (char *)&reply, sizeof(reply));
         // IO_NS::PrintTerminal("MarklinIO::SendCmd: Successfully sent request to MarklinIOServer\r\n");
@@ -399,11 +440,13 @@ namespace MARKLIN_IO_SERVER
         int CLOCK_SERVER_TID = WHOIS("ClockServer");
 
         // BYPASS PUTC LOOKUP
-        IO_REQUEST req{IO_REQUEST_TYPE::PUTC, ' ', nullptr};
+        IO_REQUEST req(IO_REQUEST_TYPE::SWITCH_NOTIFIER);
         while (true)
         {
+            IO_NS::PrintTerminal("SWNOTIFIER{%d}: Waiting for switch notifier\r\n", my_tid);
             SEND(MARKLIN_IO_TID, (char *)&req, sizeof(req), nullptr, 0);
             IO_NS::PrintTerminal("SWNOTIFIER{%d}: DELAYING\r\n", my_tid);
+            IO_NS::PrintTerminal(COLOR_YELLOW "SWITCH NOTIFIER{%d}: DELAYING\r\n", my_tid);
             DELAY(CLOCK_SERVER_TID, 25);
         }
     }

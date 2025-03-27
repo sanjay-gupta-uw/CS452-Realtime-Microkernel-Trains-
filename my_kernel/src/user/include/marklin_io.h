@@ -60,18 +60,6 @@ namespace MARKLIN_IO_SERVER
         void PushSolenoidOffCommand();
     };
 
-    enum class IO_REQUEST_TYPE
-    {
-        GETC,
-        PUTC,
-        SEND_CMD,
-        RX_NOTIFIER,
-        TX_NOTIFIER,
-        CTS_NOTIFIER_HIGH,
-        CTS_NOTIFIER_LOW,
-        SWITCH_NOTIFIER
-    };
-
     enum class REPLY_TYPE
     {
         SUCCESS,
@@ -84,12 +72,46 @@ namespace MARKLIN_IO_SERVER
         REPLY_TYPE type;
         unsigned char ch;
     };
+    enum class IO_REQUEST_TYPE
+    {
+        GETC,
+        PUTC,
+        SEND_CMD,
+        RX_NOTIFIER,
+        TX_NOTIFIER,
+        SWITCH_NOTIFIER
+    };
 
+    struct RECEIVED_BYTES_STRUCT
+    {
+        int count;
+        unsigned char bytes[10];
+    };
     struct IO_REQUEST
     {
         IO_REQUEST_TYPE type;
-        int data;
-        MarklinRequest *request;
+
+        union Data
+        {
+            MarklinRequest *request;
+            RECEIVED_BYTES_STRUCT *received_bytes;
+
+            Data() {}
+            ~Data() {}
+        } data;
+
+        IO_REQUEST(MarklinRequest *request) : type(IO_REQUEST_TYPE::SEND_CMD)
+        {
+            data.request = request;
+        }
+
+        IO_REQUEST(RECEIVED_BYTES_STRUCT *ret_buff) : type(IO_REQUEST_TYPE::RX_NOTIFIER)
+        {
+            data.received_bytes = ret_buff;
+        }
+        IO_REQUEST(IO_REQUEST_TYPE type = IO_REQUEST_TYPE::TX_NOTIFIER) : type(type)
+        {
+        }
     };
 
     int Getc(int tid);
