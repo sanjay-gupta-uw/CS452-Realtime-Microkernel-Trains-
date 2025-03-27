@@ -288,7 +288,7 @@ namespace MARKLIN_IO_SERVER
 
     void MarklinIOServer::handle_transmission()
     {
-        uassert(canTransmit && "MarklinIOServer::handle_transmission: PANIC, cannot transmit");
+        uassert(canTransmit && !isReceiving && "MarklinIOServer::handle_transmission: PANIC, cannot transmit");
         if (!transmit_buffer.IsEmpty())
         {
             // IO_NS::PrintTerminal("MarklinIOServer::handle_transmission: Transmitting\r\n");
