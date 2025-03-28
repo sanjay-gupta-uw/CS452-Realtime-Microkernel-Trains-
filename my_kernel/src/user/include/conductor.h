@@ -43,12 +43,15 @@ namespace Conductor_NS
             int actual_speed_x10;
             char recent_sensor_bank;
             int recent_sensor_num;
+            char recent_sensor_id[5];
             char next_predicted_bank;
             int next_predicted_num;
+            char next_predicted_id[5];
             char destination[5];
             int offset;
         };
 
+        Switch_NS::SWITCH_STATE switch_states[157] = {};
         train_task_mapping train_arr[NUM_TRAINS];
         Track track;
     };

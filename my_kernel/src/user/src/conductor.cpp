@@ -3,6 +3,7 @@
 #include "../include/uassert.h"
 #include "../include/name_server.h"
 #include "../include/marklin_structs.h"
+#include "../include/clock_server.h"
 #include "../marklin/sensor.h"
 #include "../marklin/train.h"
 #include "../../include/syscall.h"
@@ -62,6 +63,16 @@ namespace Conductor_NS
             train_arr[i].isWaitingForCommand = false;
         }
 
+        // initialize switch_states
+        const int switch_addrs[NUM_SWITCHES] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+            11, 12, 13, 14, 15, 16, 17, 18,
+            0x99, 0x9A, 0x9B, 0x9C};
+
+        for (int i = 0; i < NUM_SWITCHES; ++i)
+        {
+            switch_states[switch_addrs[i]] = Switch_NS::SWITCH_STATE::STRAIGHT;
+        }
+
         int sender_tid;
         unsigned char track_id = 'A';
         //int retval = RECEIVE(&sender_tid, (char *)&track_id, sizeof(track_id));
@@ -103,6 +114,10 @@ namespace Conductor_NS
             IO_NS::PrintTerminal("Conductor received SET_SWITCH request for switch index %d\r\n", req->id);
             int switch_index = req->id;
             Switch_NS::SWITCH_STATE state = (req->data == 'S') ? Switch_NS::SWITCH_STATE::STRAIGHT : Switch_NS::SWITCH_STATE::CURVED;
+
+            // Store state using switch number as index
+            switch_states[switch_index] = state;
+
             Switch_NS::SwitchRequest switch_req = {false, switch_index, state};
             int retval = SEND(SWITCH_SERVER_TID, (char *)&switch_req, sizeof(Switch_NS::SwitchRequest), nullptr, 0);
             break;
@@ -201,8 +216,10 @@ namespace Conductor_NS
                     train_arr[i].actual_speed_x10 = 0;
                     train_arr[i].recent_sensor_bank = '\0';
                     train_arr[i].recent_sensor_num = -1;
+                    memset(train_arr[i].recent_sensor_id, '-', 4);
                     train_arr[i].next_predicted_bank = sensor_bank;
                     train_arr[i].next_predicted_num = sensor_number;
+                    memcpy(train_arr[i].next_predicted_id, sensor_id, 4);
                     memset(train_arr[i].destination, '-', 4);
                     train_arr[i].destination[4] = '\0'; 
                     train_arr[i].offset = 0;
@@ -257,13 +274,52 @@ namespace Conductor_NS
             // Extract sensor ID from request
             int sensor_number = req->id;
             char sensor_bank = req->src[0];
+            char sensor_id[5] = {0};
+            sensor_id[0] = sensor_bank; 
+                // Handle 1 or 2 digit numbers
+            if (sensor_number >= 10) {
+                sensor_id[1] = '0' + (sensor_number / 10);
+                sensor_id[2] = '0' + (sensor_number % 10);
+            } else {
+                sensor_id[1] = '0' + sensor_number;
+            }
+            sensor_id[4] = '\0';
 
-            IO_NS::PrintTerminal("Jack -------- conductor: Triggered sensor: bank=%c, number=%d\r\n", sensor_bank, sensor_number);
+            /*
             for (int i = 0; i < NUM_TRAINS; i++) {
                 train_arr[i].recent_sensor_bank = sensor_bank;
                 train_arr[i].recent_sensor_num = sensor_number;
-                
+                memcpy(train_arr[i].recent_sensor_id, sensor_id, 4);
             }
+            IO_NS::PrintTerminal("Jack -------- conductor: Triggered sensor: bank=%c, number=%d, sensor_id = %s\r\n", train_arr[i].recent_sensor_bank, train_arr[i].recent_sensor_num, train_arr[i].recent_sensor_id);
+            */
+
+            for (int i = 0; i < NUM_TRAINS; ++i) {
+                if (train_arr[i].train_num == -1) continue;
+                
+                IO_NS::PrintTerminal(COLOR_GREEN "triggered: %s; next: %s\r\n", sensor_id, train_arr[i].next_predicted_id);
+        
+                if (strcmp(train_arr[i].next_predicted_id, sensor_id) == 0) {
+                    // Update recent sensor
+                    memcpy(train_arr[i].recent_sensor_id, sensor_id, 4);
+                    
+                    // Get new prediction
+                    char next_pred[5];
+                    int dist;
+                    if (track.predict_next_sensor(sensor_id, switch_states, next_pred, dist)) {
+                        strcpy(train_arr[i].next_predicted_id, next_pred);
+                        // Parse bank and number
+                        //train_arr[i].next_predicted_bank = next_pred[0];
+                        //train_arr[i].next_predicted_num = atoi(next_pred + 1);
+                    } else {
+                        memset(train_arr[i].next_predicted_id, '-', sizeof(train_arr[i].next_predicted_id));
+                        train_arr[i].next_predicted_bank = '\0';
+                        train_arr[i].next_predicted_num = -1;
+                    }
+                    //break; // First match wins
+                }
+            }
+
             UpdateTrainDisplay();
             /*track_node* sensor_node = track.find_sensor(bank, number);
 
@@ -340,21 +396,25 @@ namespace Conductor_NS
                          TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 7, train_arr[i].speed_level);
             IO_NS::Print(MOVE_CURSOR "%d.%d",
                          TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 21, train_arr[i].actual_speed_x10, train_arr[i].actual_speed_x10 % 10);
-            if(train_arr[i].recent_sensor_bank == '\0') {
+            if(train_arr[i].recent_sensor_id[0] == '-') {
                 IO_NS::Print(MOVE_CURSOR "-  ",
                          TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 36);
             }         
             else
             {
-                IO_NS::Print(MOVE_CURSOR "%c",
-                         TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 36, train_arr[i].recent_sensor_bank);
-                IO_NS::Print(MOVE_CURSOR "%d ",
-                         TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 37, train_arr[i].recent_sensor_num);
+                IO_NS::Print(MOVE_CURSOR "%s",
+                         TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 36, train_arr[i].recent_sensor_id);
+                //IO_NS::Print(MOVE_CURSOR "%c",
+                         //TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 36, train_arr[i].recent_sensor_bank);
+                //IO_NS::Print(MOVE_CURSOR "%d ",
+                         //TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 37, train_arr[i].recent_sensor_num);
             }
-            IO_NS::Print(MOVE_CURSOR "%c",
-                         TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 50, train_arr[i].next_predicted_bank);
-            IO_NS::Print(MOVE_CURSOR "%d",
-                         TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 51, train_arr[i].next_predicted_num);
+            IO_NS::Print(MOVE_CURSOR "%s",
+                TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 50, train_arr[i].next_predicted_id);
+            //IO_NS::Print(MOVE_CURSOR "%c",
+                         //TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 50, train_arr[i].next_predicted_bank);
+            //IO_NS::Print(MOVE_CURSOR "%d",
+                         //TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 51, train_arr[i].next_predicted_num);
             if(train_arr[i].destination[0] == '-') {
                 IO_NS::Print(MOVE_CURSOR "-  ",
                          TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 64);
@@ -465,8 +525,8 @@ namespace Conductor_NS
         REGISTERAS("SensorPoller");
         int conductor_tid = WHOIS("Conductor");
         uassert(conductor_tid > 0 && "SensorPoller: Conductor not found");
-        //int clock_server = WHOIS("ClockServer");
-        //uassert(clock_server > 0 && "SensorPoller: ClockServer not found");
+        int clock_server_tid = WHOIS("ClockServer");
+        uassert(clock_server_tid > 0 && "SensorPoller: ClockServer not found");
         char bank = '\0';
         int num = -1;
 
@@ -481,7 +541,7 @@ namespace Conductor_NS
             int command_received = -3;
             ConductorRequest request(COMMAND::SENSOR_TRIGGER, num, 0, sensor_bank);
             SEND(conductor_tid, (char *)&request, sizeof(ConductorRequest), (char *)command_received, sizeof(int));
-
+            DELAY(clock_server_tid, 10);
         }
     }
 

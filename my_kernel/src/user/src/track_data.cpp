@@ -2395,6 +2395,44 @@ void Track::init_trackb()
     track[139].reverse = &track[138];
 }
 
+bool Track::predict_next_sensor(const char* current_sensor, 
+                               const Switch_NS::SWITCH_STATE switch_states[],
+                               char* next_sensor, 
+                               int& distance) {
+    track_node* sensor_node = get_node_by_name(current_sensor);
+    if (!sensor_node || sensor_node->type != NODE_SENSOR) return false;
+
+    track_node* current = sensor_node->reverse; // Start moving in train's direction
+    distance = 0;
+    const int MAX_STEPS = 20; // Prevent infinite loops
+
+    for (int steps = 0; steps < MAX_STEPS; ++steps) {
+        // Check if we found the next sensor
+        if (current->type == NODE_SENSOR && current != sensor_node) {
+            strncpy(next_sensor, current->name, 4);
+            next_sensor[4] = '\0';
+            return true;
+        }
+
+        // Determine next edge
+        track_edge* edge = nullptr;
+        if (current->type == NODE_BRANCH) {
+            int switch_num = current->num;
+            edge = (switch_states[switch_num] == Switch_NS::SWITCH_STATE::STRAIGHT) ?
+                   &current->edge[DIR_STRAIGHT] : 
+                   &current->edge[DIR_CURVED];
+        } else {
+            edge = &current->edge[DIR_AHEAD];
+        }
+
+        // Traverse to next node
+        if (!edge || !edge->dest) break;
+        distance += edge->dist;
+        current = edge->dest;
+    }
+    return false;
+}
+
 void Track::initialize_loop()
 {
     // set everything to false
