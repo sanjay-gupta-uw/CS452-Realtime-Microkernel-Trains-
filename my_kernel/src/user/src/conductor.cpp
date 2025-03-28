@@ -55,7 +55,8 @@ namespace Conductor_NS
         // initialize train_arr
         for (int i = 0; i < NUM_TRAINS; i++)
         {
-            train_arr[i].messenger_id = -1;
+            train_arr[i].path_messenger_id = -1;
+            train_arr[i].cmd_messenger_id = -1;
             train_arr[i].train_num = -1;
         }
 
@@ -141,9 +142,7 @@ namespace Conductor_NS
                 IO_NS::PrintTerminal("Train %d found at index %d, sending ACCELERATE command\r\n", train_num, train_index);
             }
 
-            TrainMessage message(TRAIN_COMMAND::ACCELERATE, speed);
-
-            train_arr[train_index].train_messages.Push(message);
+            train_arr[train_index].train_commands.Push({TRAIN_COMMAND::ACCELERATE, speed});
             break;
         }
         case COMMAND::REVERSE_TRAIN:
@@ -161,9 +160,8 @@ namespace Conductor_NS
             {
                 IO_NS::PrintTerminal("Train %d found, sending REVERSE command\r\n", train_num);
             }
-            TrainMessage message(TRAIN_COMMAND::REVERSE, -1);
 
-            train_arr[train_index].train_messages.Push(message);
+            train_arr[train_index].train_commands.Push({TRAIN_COMMAND::REVERSE, -1});
             break;
         }
         case COMMAND::SPAWN_TRAIN:
@@ -199,7 +197,8 @@ namespace Conductor_NS
                     memset(train->target_sensor_name, 0, 4);
                     strncpy(train->target_sensor_name, sensor_id, 4);
                     train->train_task_tid = spawned_train_tid;
-                    train->messenger_id = -1;
+                    train->path_messenger_id = -1;
+                    train->cmd_messenger_id = -1;
                     train->calibration_stage = CALIBRATION_STAGE::NONE;
 
                     train->train_num = req->id;
@@ -332,7 +331,7 @@ namespace Conductor_NS
         int segment_length = GetSegmentLength(train->train_num);
         if (segment_length == 0)
         {
-            IO_NS::PrintTerminal("Train %d has reached destination\r\n", train->train_num);
+            IO_NS::PrintTerminal(COLOR_RED "Train %d has reached destination\r\n", train->train_num);
             UpdateCalibrationStage(train);
             CalibrateTrain(train);
             if (train->calibration_stage == CALIBRATION_STAGE::NONE)
@@ -344,13 +343,12 @@ namespace Conductor_NS
 
         IO_NS::PrintTerminal("Conductor::SendSegmentToMessenger -- Segment length: %d\r\n", segment_length);
         SensorStruct sensor = name_to_sensor_struct(train->target_sensor_name);
-        TRAIN_COMMAND cmd = TRAIN_COMMAND::ACCELERATE;
-        // need to check if we need to reverse!
 
         int speed = train->speed_level;
         TrainMessage message(sensor.bank, sensor.id, segment_length);
         IO_NS::PrintTerminal(COLOR_CYAN "Conductor::SendSegmentToMessenger -- Sending segment {with target sensor %c%d}to messenger %d\r\n", message.data.segment.sensor.bank, message.data.segment.sensor.id, messenger_tid);
         // reply to messenger task with segment data
+        train->sent_reply_to_path_messenger = true;
         REPLY(messenger_tid, (char *)&message, sizeof(message));
     }
 
@@ -442,8 +440,23 @@ namespace Conductor_NS
                     train_task_mapping *train = train_arr + i;
                     if (train->train_task_tid == req.data.spawned_train_tid)
                     {
-                        train->sentReply = false;
-                        train->messenger_id = messenger_tid;
+                        train->sent_reply_to_path_messenger = false;
+                        train->path_messenger_id = messenger_tid;
+                        break;
+                    }
+                }
+            }
+            else if (req.requestType == RequestType::GET_CMD)
+            {
+                // extract messenger TID
+                int messenger_tid = sender_tid;
+                for (int i = 0; i < NUM_TRAINS; i++)
+                {
+                    train_task_mapping *train = train_arr + i;
+                    if (train->train_task_tid == req.data.spawned_train_tid)
+                    {
+                        train->sent_reply_to_cmd_messenger = false;
+                        train->cmd_messenger_id = messenger_tid;
                         break;
                     }
                 }
@@ -465,24 +478,22 @@ namespace Conductor_NS
         {
             train_task_mapping *train = train_arr + i;
 
-            if (!train->sentReply && train->train_task_tid > 0)
+            if (train->train_task_tid > 0)
             {
-                if (!train->train_messages.IsEmpty())
-                {
-                    IO_NS::PrintTerminal("Conductor::DispatchCommand -- Sending Train Command to messenger %d\r\n", train->messenger_id);
-                    TrainMessage message;
-                    train->train_messages.Pop(&message);
-
-                    IO_NS::PrintTerminal("segment length: %d\r\n", message.data.segment.segment_length);
-                    REPLY(train->messenger_id, (char *)&message, sizeof(TrainMessage));
-                    train->sentReply = true;
-                }
-                else
+                if (!train->sent_reply_to_path_messenger)
                 {
                     IO_NS::PrintTerminal("Conductor::DispatchCommand -- Extracting segment for train %d\r\n", train->train_num);
-                    SendSegmentToMessenger(train->messenger_id, train);
+                    SendSegmentToMessenger(train->path_messenger_id, train); // this replies to the path messenger
                 }
-                break;
+                if (!train->sent_reply_to_cmd_messenger && !train->train_commands.IsEmpty())
+                {
+                    IO_NS::PrintTerminal("Conductor::DispatchCommand -- Sending Train Command to messenger %d\r\n", train->path_messenger_id);
+                    TrainCommandNotification command;
+                    train->train_commands.Pop(&command);
+                    IO_NS::PrintTerminal(COLOR_CYAN "Conductor::DispatchCommand -- Sending command %d to train %d\r\n", command.command, train->train_num);
+                    train->sent_reply_to_cmd_messenger = true;
+                    REPLY(train->cmd_messenger_id, (char *)&command, sizeof(TrainCommandNotification));
+                }
             }
         }
     }
@@ -536,17 +547,18 @@ namespace Conductor_NS
             IO_NS::PrintTerminal("Processing segment %s\r\n", cur_node.node->name);
             if (train->start)
             {
-                train->train_messages.Push(TrainMessage(TRAIN_COMMAND::ACCELERATE, LOW_SPEED));
+                train->train_commands.Push({TRAIN_COMMAND::ACCELERATE, LOW_SPEED});
                 IO_NS::PrintTerminal(COLOR_CYAN "Conductor::GetSegmentLength -- Sending ACCELERATE command to train %d\r\n", train_num);
                 train->start = false;
                 train->last_node = cur_node.node;
+                segment_length = -1;
                 break;
             }
             else
             {
                 if (cur_node.node == train->last_node->reverse)
                 {
-                    train->train_messages.Push(TrainMessage(TRAIN_COMMAND::REVERSE, LOW_SPEED));
+                    train->train_commands.Push({TRAIN_COMMAND::REVERSE, LOW_SPEED});
                     IO_NS::PrintTerminal(COLOR_CYAN "Conductor::GetSegmentLength -- Sending REVERSE command to train %d\r\n", train_num);
                 }
 

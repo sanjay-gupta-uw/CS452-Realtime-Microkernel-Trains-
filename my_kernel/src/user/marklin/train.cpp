@@ -383,6 +383,32 @@ namespace Trains_NS
         }
     }
 
+    void command_messenger()
+    {
+        int my_tid = MYTID();
+        IO_NS::PrintTerminal(COLOR_YELLOW "COMMAND MESSENGER spawned with TID %d\r\n", my_tid);
+        int train_num;
+        int train_task_tid;
+        int param_init_retval = RECEIVE(&train_task_tid, (char *)&train_num, sizeof(int));
+        uassert(param_init_retval >= 0 && train_task_tid >= 0 && "COMMAND MESSENGER: Error receiving train_num from parent task");
+        REPLY(train_task_tid, nullptr, 0);
+
+        int CONDUCTOR_TID = WHOIS("Conductor");
+
+        ConductorRequest conductor_request(train_task_tid, train_num);
+        TrainCommandNotification command_struct;
+        while (true)
+        {
+            int retval = SEND(CONDUCTOR_TID, (char *)&conductor_request, sizeof(ConductorRequest), (char *)&command_struct, sizeof(TrainCommandNotification));
+            uassert(retval >= 0 && "COMMAND MESSENGER: Error sending TrainCommandNotification to Conductor");
+
+            IO_NS::PrintTerminal(COLOR_YELLOW "COMMAND MESSENGER{%d}:: received command from Conductor for Train %d, relaying command...\r\n", my_tid, train_num);
+            TrainMessage message(command_struct.command, command_struct.speed);
+            retval = SEND(train_task_tid, (char *)&message, sizeof(TrainMessage), nullptr, 0);
+            uassert(retval >= 0 && "COMMAND MESSENGER: Error sending TrainCommandNotification to Train task");
+        }
+    }
+
     // SENSOR/CONDUCTOR MESSENGER
     void path_messenger()
     {

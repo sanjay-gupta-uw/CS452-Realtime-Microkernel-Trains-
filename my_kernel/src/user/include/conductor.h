@@ -47,9 +47,12 @@ namespace Conductor_NS
         {
             /* data */
             CALIBRATION_STAGE calibration_stage;
-            int train_num;    // train number
-            int messenger_id; // TID
-            bool sentReply;
+            int train_num;         // train number
+            int path_messenger_id; // TID
+            bool sent_reply_to_path_messenger;
+            int cmd_messenger_id; // TID
+            bool sent_reply_to_cmd_messenger;
+
             int train_task_tid;
             char target_sensor_name[4];
 
@@ -62,7 +65,7 @@ namespace Conductor_NS
             char destination[5];
             int offset;
 
-            Queue<TrainMessage, 3> train_messages;
+            Queue<TrainCommandNotification, 3> train_commands;
             Stack<PathNode, TRACK_MAX> path;
             bool start;
             track_node *last_node;

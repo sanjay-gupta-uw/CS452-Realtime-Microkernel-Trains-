@@ -83,6 +83,7 @@ namespace Trains_NS
     void spawn_train(); // individual train tasks
     void train_ticker();
 
+    void command_messenger();
     void path_messenger();
     void sensor_messenger();
 

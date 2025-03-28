@@ -132,8 +132,9 @@ struct TrainQuery
 
 enum class RequestType
 {
-    CMD,
-    GET_SEGMENT,
+    CMD,         // CONSOLE COMMANDS
+    GET_SEGMENT, // GET NEXT SEGMENT
+    GET_CMD,     // GET TRAIN COMMAND
 };
 struct ConductorRequest
 {
@@ -166,6 +167,12 @@ struct ConductorRequest
     // Constructor for TrainQuery
     ConductorRequest(int train_tid)
         : requestType(RequestType::GET_SEGMENT)
+    {
+        data.spawned_train_tid = train_tid;
+    }
+
+    ConductorRequest(int train_tid, int train_num)
+        : requestType(RequestType::GET_CMD)
     {
         data.spawned_train_tid = train_tid;
     }
