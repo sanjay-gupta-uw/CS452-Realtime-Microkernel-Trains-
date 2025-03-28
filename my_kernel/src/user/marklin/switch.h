@@ -20,7 +20,6 @@ namespace Switch_NS
 
     struct SwitchRequest
     {
-        bool isTimer;
         int switch_index;
         SWITCH_STATE switch_state;
     };

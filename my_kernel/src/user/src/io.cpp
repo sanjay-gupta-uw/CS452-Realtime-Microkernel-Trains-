@@ -134,10 +134,10 @@ namespace IO_NS
         va_start(va, fmt);
         while ((ch = *(fmt++)))
         {
-            if (ch == '\r' || ch == '\n')
-            {
-                continue;
-            }
+            // if (ch == '\r' || ch == '\n')
+            // {
+            //     continue;
+            // }
             if (ch != '%')
             {
                 fill_buffer_char(ret_buffer, ch, &len);
@@ -188,7 +188,7 @@ namespace IO_NS
         va_end(va);
 
         // Restore cursor after printing
-        fill_buffer_wrapper(ret_buffer, "\r\n", &len);
+        // fill_buffer_wrapper(ret_buffer, "\r\n", &len);
         fill_buffer_wrapper(ret_buffer, SAVE_CURSOR, &len);
 
         if (len > 0)

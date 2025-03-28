@@ -64,6 +64,8 @@ namespace Conductor_NS
 
             Queue<TrainMessage, 3> train_messages;
             Stack<PathNode, TRACK_MAX> path;
+            bool start;
+            track_node *last_node;
         };
 
         void SendSegmentToMessenger(int messenger_tid, train_task_mapping *train);

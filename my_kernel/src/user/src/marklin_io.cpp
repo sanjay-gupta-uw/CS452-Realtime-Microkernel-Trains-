@@ -101,7 +101,7 @@ namespace MARKLIN_IO_SERVER
                 SEND(MARKLIN_IO_TID, (char *)&req, sizeof(req), (char *)&reply, sizeof(reply));
                 // uassert(false && "SERVER REPLIED TO RX NOTIFIER");
                 count = 0;
-                IO_NS::PrintTerminal("WAITING FOR RX");
+                // IO_NS::PrintTerminal("WAITING FOR RX");
             }
         }
     }
@@ -116,14 +116,14 @@ namespace MARKLIN_IO_SERVER
         {
             if (TX_STATUS(MARKLIN) != 1)
             {
-                IO_NS::PrintTerminal("TX NOTIFIER::Waiting for TX\r\n");
+                // IO_NS::PrintTerminal("TX NOTIFIER::Waiting for TX\r\n");
                 ret = AWAITEVENT(InterruptEvents::UART_MARKLIN_TX);
                 uassert(ret >= 0 && "TX NOTIFIER::TX_AWAITEVENT returned error");
             }
 
             if (CTS_STATUS(MARKLIN) != 1)
             {
-                IO_NS::PrintTerminal("TX NOTIFIER::Waiting for CTS HIGH\r\n");
+                // IO_NS::PrintTerminal("TX NOTIFIER::Waiting for CTS HIGH\r\n");
                 ret = AWAITEVENT(InterruptEvents::UART_MARKLIN_CTS_HIGH);
                 uassert(ret >= 0 && "TX NOTIFIER::CTS_HIGH_AWAITEVENT returned error");
             }
@@ -131,7 +131,7 @@ namespace MARKLIN_IO_SERVER
             IO_REQUEST req(IO_REQUEST_TYPE::TX_NOTIFIER);
             IO_REPLY reply;
 
-            IO_NS::PrintTerminal("TX NOTIFIER::Available to transmit\r\n");
+            // IO_NS::PrintTerminal("TX NOTIFIER::Available to transmit\r\n");
 
             // Notify the server that we can transmit
             SEND(MARKLIN_IO_TID, (char *)&req, sizeof(req), (char *)&reply, sizeof(reply)); // Server needs to reply when it writes to the UART
@@ -165,7 +165,7 @@ namespace MARKLIN_IO_SERVER
         {
             int retval = RECEIVE(&sender_tid, (char *)&req, sizeof(req));
             int tick = TIME(CLOCK_SERVER_TID);
-            IO_NS::PrintTerminal("MarklinIO_server::run: Received request from tid{%d} at tick %d\r\n", sender_tid, tick);
+            // IO_NS::PrintTerminal("MarklinIO_server::run: Received request from tid{%d} at tick %d\r\n", sender_tid, tick);
 
             IO_REPLY reply;
             reply.type = REPLY_TYPE::FAILURE;
@@ -183,18 +183,16 @@ namespace MARKLIN_IO_SERVER
                     ch = rec_buf->bytes[i];
                     receive_buffer.Push(ch);
                     BYTES_RECEIVED++;
-                    IO_NS::PrintTerminal(COLOR_CYAN "MarklinIO_server::RX_NOTIFIER: {%d} Received %d\r\n", i, ch);
+                    // IO_NS::PrintTerminal(COLOR_CYAN "MarklinIO_server::RX_NOTIFIER: {%d} Received %d\r\n", i, ch);
                 }
-                IO_NS::PrintTerminal("MarklinIO_server::RX_NOTIFIER: Received %d bytes\r\n", BYTES_RECEIVED);
                 // uassert(false && "MarklinIO_server::RX_NOTIFIER: -- Received RX NOTIFIER");
-
-                IO_NS::PrintTerminal(COLOR_CYAN "MarklinIO_server::RX_NOTIFIER: Received %d bytes, was waiting for %d bytes\r\n", count, TOTAL_BYTES_TO_RECEIVE);
+                // IO_NS::PrintTerminal(COLOR_CYAN "MarklinIO_server::RX_NOTIFIER: Received %d bytes, was waiting for %d bytes\r\n", count, TOTAL_BYTES_TO_RECEIVE);
                 if (BYTES_RECEIVED == TOTAL_BYTES_TO_RECEIVE)
                 {
                     isReceiving = false;
                     BYTES_RECEIVED = 0;
                     TOTAL_BYTES_TO_RECEIVE = 0;
-                    IO_NS::PrintTerminal(COLOR_RED "MarklinIO_server::RX_NOTIFIER: Finished receiving %d bytes\r\n", TOTAL_BYTES_TO_RECEIVE);
+                    // IO_NS::PrintTerminal(COLOR_RED "MarklinIO_server::RX_NOTIFIER: Finished receiving %d bytes\r\n", TOTAL_BYTES_TO_RECEIVE);
                 }
 
                 while (!rx_waiting_tasks.IsEmpty() && !receive_buffer.IsEmpty())
@@ -242,11 +240,11 @@ namespace MARKLIN_IO_SERVER
                 MarklinRequest *m_req = req.data.request;
                 if (m_req->isSingleByteCommand)
                 {
-                    IO_NS::PrintTerminal("MarklinIO_server::SEND_CMD: Byte1: %d\r\n", m_req->byte1);
+                    // IO_NS::PrintTerminal("MarklinIO_server::SEND_CMD: Byte1: %d\r\n", m_req->byte1);
                 }
                 else
                 {
-                    IO_NS::PrintTerminal("MarklinIO_server::SEND_CMD: Byte1: %d, Byte2: %d\r\n", m_req->byte1, m_req->byte2);
+                    // IO_NS::PrintTerminal("MarklinIO_server::SEND_CMD: Byte1: %d, Byte2: %d\r\n", m_req->byte1, m_req->byte2);
                 }
                 transmit_buffer.Push(m_req->byte1);
                 int len = 1;
@@ -259,7 +257,7 @@ namespace MARKLIN_IO_SERVER
                 }
                 else
                 {
-                    IO_NS::PrintTerminal("MarklinIO_server::SEND_CMD: Single byte command\r\n");
+                    // IO_NS::PrintTerminal("MarklinIO_server::SEND_CMD: Single byte command\r\n");
                 }
 
                 sequence_length_buffer.Push(len);
@@ -303,7 +301,7 @@ namespace MARKLIN_IO_SERVER
                 break;
             }
 
-            IO_NS::PrintTerminal("canTransmit: %d, isReceiving: %d\r\n", canTransmit, isReceiving);
+            // IO_NS::PrintTerminal("canTransmit: %d, isReceiving: %d\r\n", canTransmit, isReceiving);
             if (canTransmit && !isReceiving)
             {
                 handle_transmission();
@@ -321,7 +319,7 @@ namespace MARKLIN_IO_SERVER
     {
         sequence_length_buffer.PushFront(1);
         transmit_buffer.PushFront(SOLENOID_OFF_CMD);
-        IO_NS::PrintTerminal("MarklinIO_server::PushSolenoidOffCommand: Pushed solenoid off command\r\n");
+        // IO_NS::PrintTerminal("MarklinIO_server::PushSolenoidOffCommand: Pushed solenoid off command\r\n");
     }
 
     void MarklinIOServer::handle_transmission()
@@ -341,7 +339,7 @@ namespace MARKLIN_IO_SERVER
             {
                 end_time = clock.Time();
                 // uassert(false && "FORCED PANIC");
-                IO_NS::PrintTerminal("MarklinIOServer::handle_transmission: sending solenoid off within: %d ms\r\n", (end_time - start_time) / 1000);
+                // IO_NS::PrintTerminal("MarklinIOServer::handle_transmission: sending solenoid off within: %d ms\r\n", (end_time - start_time) / 1000);
                 // IO_NS::PrintTerminal("MarklinIOServer::handle_transmission: Finished transmitting sequence\r\n");
             }
 
@@ -364,7 +362,7 @@ namespace MARKLIN_IO_SERVER
                     BYTES_RECEIVED = 0;
                     TOTAL_BYTES_TO_RECEIVE = num_banks_to_read * 2; // 2 bytes per bank
                     isReceiving = true;
-                    IO_NS::PrintTerminal(COLOR_RED "MarklinIO_server::handle_transmission: Sensor read command for %d banks\r\n", num_banks_to_read);
+                    // IO_NS::PrintTerminal(COLOR_RED "MarklinIO_server::handle_transmission: Sensor read command for %d banks\r\n", num_banks_to_read);
                     // uassert(false && "MarklinIO_server::SEND_CMD: VERIFYING READ BYTES IS CORRECT");
                 }
             }
@@ -374,7 +372,7 @@ namespace MARKLIN_IO_SERVER
                 int idx = isSwitchCommand(ch);
                 if (idx != -1)
                 {
-                    IO_NS::PrintTerminal("MarklinIOServer::handle_transmission: REQUESTING SOLENOID OFF AFTER DELAY\r\n");
+                    // IO_NS::PrintTerminal("MarklinIOServer::handle_transmission: REQUESTING SOLENOID OFF AFTER DELAY\r\n");
                     REPLY(switch_notifier_tid[idx], nullptr, 0);
                 }
             }
@@ -443,10 +441,10 @@ namespace MARKLIN_IO_SERVER
         IO_REQUEST req(IO_REQUEST_TYPE::SWITCH_NOTIFIER);
         while (true)
         {
-            IO_NS::PrintTerminal("SWNOTIFIER{%d}: Waiting for switch notifier\r\n", my_tid);
+            // IO_NS::PrintTerminal("SWNOTIFIER{%d}: Waiting for switch notifier\r\n", my_tid);
             SEND(MARKLIN_IO_TID, (char *)&req, sizeof(req), nullptr, 0);
-            IO_NS::PrintTerminal("SWNOTIFIER{%d}: DELAYING\r\n", my_tid);
-            IO_NS::PrintTerminal(COLOR_YELLOW "SWITCH NOTIFIER{%d}: DELAYING\r\n", my_tid);
+            // IO_NS::PrintTerminal("SWNOTIFIER{%d}: DELAYING\r\n", my_tid);
+            // IO_NS::PrintTerminal(COLOR_YELLOW "SWITCH NOTIFIER{%d}: DELAYING\r\n", my_tid);
             DELAY(CLOCK_SERVER_TID, 25);
         }
     }

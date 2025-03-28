@@ -83,8 +83,8 @@ namespace Switch_NS
         while (true)
         {
             int ret = RECEIVE(&sender_tid, (char *)&request, sizeof(SwitchRequest));
-            IO_NS::PrintTerminal("SwitchServer: Received message from tid{%d}\r\n", sender_tid);
-            IO_NS::PrintTerminal("SwitchServer: IS TIME REQUEST: %d\r\n", request.isTimer);
+            // IO_NS::PrintTerminal("SwitchServer: Received message from tid{%d}\r\n", sender_tid);
+            // IO_NS::PrintTerminal("SwitchServer: IS TIME REQUEST: %d\r\n", request.isTimer);
             uassert(ret >= 0 && "SwitchServer: RECEIVE failed");
             {
                 // ASSUME SWITCH COMMANDS ARE VALIDATED ALREADY

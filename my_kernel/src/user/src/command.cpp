@@ -305,8 +305,7 @@ namespace UI_CMD_NS
                 {
                     char *sensor_num_ptr = sensor_id + 1;
                     uint32_t sensor_num = a2ui(&sensor_num_ptr, 10);
-                    IO_NS::PrintTerminal("Parsed sensor: bank=%c, number=%d (from '%s')\r\n",
-                                         sensor_bank, sensor_num, sensor_id);
+                    // IO_NS::PrintTerminal("Parsed sensor: bank=%c, number=%d (from '%s')\r\n",  sensor_bank, sensor_num, sensor_id);
                     if (sensor_num >= 1 && sensor_num <= 16)
                     {
                         is_valid_sensor_id = true;
@@ -316,8 +315,8 @@ namespace UI_CMD_NS
                 if (!num_set || !sensor_set || !is_valid_sensor_id)
                 {
                     IO_NS::PrintTerminal("Invalid Train SPAWN command\r\n");
-                    IO_NS::PrintTerminal("Input: %s\r\n", str);
-                    IO_NS::PrintTerminal("Train Number: %d, Sensor ID: %s\r\n", train_num, sensor_id);
+                    // IO_NS::PrintTerminal("Input: %s\r\n", str);
+                    // IO_NS::PrintTerminal("Train Number: %d, Sensor ID: %s\r\n", train_num, sensor_id);
                     return;
                 }
 
@@ -439,6 +438,8 @@ namespace UI_CMD_NS
             if (BUFFER_INDEX > 0)
             {
                 // PROCESS COMMAND
+                IO_NS::PrintTerminal("Command: %s\r\n", inputBuffer);
+
                 Commandify(inputBuffer);
                 clearInputBuffer();
                 // spin_debug();

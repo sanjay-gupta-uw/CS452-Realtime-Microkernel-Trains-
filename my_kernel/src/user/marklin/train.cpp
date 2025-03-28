@@ -75,8 +75,8 @@ namespace Trains_NS
         uassert(sensor_messenger_tid > 0 && "Error creating train messenger");
         retval = SEND(sensor_messenger_tid, (char *)&train_num, sizeof(int), nullptr, 0);
 
-        train_ticker_tid = CREATE(PRIORITY::DEVICE_NOTIFIER, Trains_NS::train_ticker);
-        uassert(train_ticker_tid > 0 && "Error creating train messenger");
+        // train_ticker_tid = CREATE(PRIORITY::DEVICE_NOTIFIER, Trains_NS::train_ticker);
+        // uassert(train_ticker_tid > 0 && "Error creating train messenger");
 
         TrainLoop();
     }
@@ -263,8 +263,8 @@ namespace Trains_NS
             int retval = RECEIVE(&sender_tid, (char *)&message, sizeof(TrainMessage));
             uassert(retval >= 0 && "Error receiving TrainResponse");
             IO_NS::PrintTerminal(COLOR_MAGENTA "TrainLoop::Sender: %d, Command: %d, Speed: %d, Segment length %d, Next Sensor: %c%d \r\n", sender_tid, message.type, message.data.train_command.command, message.data.segment.segment_length, message.data.segment.sensor.bank, message.data.segment.sensor.id);
+            uassert(segment_length <= 0 && "TrainLoop::FINALLY RECEIVED SEGMENT");
             // uassert(false && "THIS MUST BE HIT --1!");
-
             switch (message.type)
             {
             case TrainMessageType::PATH_MESSENGER:
