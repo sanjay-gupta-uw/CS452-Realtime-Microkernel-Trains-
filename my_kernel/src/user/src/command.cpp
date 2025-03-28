@@ -142,34 +142,13 @@ namespace UI_CMD_NS
 
             // create marklin request
             IO_NS::PrintTerminal("Attempting to set Switch %d to %c\r\n", switch_num, switch_state);
-            ConductorRequest request(COMMAND::SET_SWITCH, switch_index, switch_state);
+            ConductorRequest request(COMMAND::SET_SWITCH, switch_num, switch_state);
 
             SEND(CONDUCTOR_TID, (char *)&request, sizeof(ConductorRequest), nullptr, 0);
             // update switch display
             // need to get status of switch
 
             const char *color = (switch_state == 'S') ? COLOR_GREEN : COLOR_RED;
-
-            // Update switches table
-            IO_NS::Print(MOVE_CURSOR "%s%c",
-                         SWITCH_LOCATION + 3 + switch_index,
-                         SWITCH_STATUS_COL,
-                         color,
-                         switch_state);
-
-            // Update track diagram
-            for (size_t i = 0; i < current_track->switches_count; ++i)
-            {
-                if (current_track->switches[i].num == switch_num)
-                {
-                    // Use current_track->switches[i].line/col
-                    IO_NS::Print(MOVE_CURSOR "%s%c",
-                                 TRACK_LAYOUT_LOCATION_Y + current_track->switches[i].line,
-                                 TRACK_LAYOUT_LOCATION_X + current_track->switches[i].col,
-                                 color,
-                                 switch_state);
-                }
-            }
         }
         else if ((first == 'T' || first == 't') &&
                  (second == 'R' || second == 'r'))

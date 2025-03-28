@@ -79,8 +79,8 @@ namespace Trains_NS
         uassert(sensor_messenger_tid > 0 && "Error creating train messenger");
         retval = SEND(sensor_messenger_tid, (char *)&train_num, sizeof(int), nullptr, 0);
 
-        // train_ticker_tid = CREATE(PRIORITY::DEVICE_NOTIFIER, Trains_NS::train_ticker);
-        // uassert(train_ticker_tid > 0 && "Error creating train messenger");
+        train_ticker_tid = CREATE(PRIORITY::DEVICE_NOTIFIER, Trains_NS::train_ticker);
+        uassert(train_ticker_tid > 0 && "Error creating train messenger");
 
         TrainLoop();
     }

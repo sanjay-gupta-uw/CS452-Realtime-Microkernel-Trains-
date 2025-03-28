@@ -43,15 +43,6 @@ namespace Conductor_NS
         REGISTERAS("Conductor");
         IO_NS::PrintTerminal("Conductor started\r\n");
 
-        // create sensor server
-        SENSOR_SERVER_TID = CREATE(PRIORITY::DEVICE, Sensors_NS::SensorServer);
-        uassert(SENSOR_SERVER_TID > 0 && "Conductor::Error creating sensor server");
-        IO_NS::PrintTerminal("Sensor server created with TID %d\r\n", SENSOR_SERVER_TID);
-        // create switch server
-        SWITCH_SERVER_TID = CREATE(PRIORITY::DEVICE, Switch_NS::SwitchServer);
-        uassert(SWITCH_SERVER_TID > 0 && "Conductor::Error creating switch server");
-        IO_NS::PrintTerminal("Switch server created with TID %d\r\n", SWITCH_SERVER_TID);
-
         // initialize train_arr
         for (int i = 0; i < NUM_TRAINS; i++)
         {
@@ -67,6 +58,16 @@ namespace Conductor_NS
         uassert(track_id == 'A' || track_id == 'B' || track_id == 'a' || track_id == 'b');
         track.init(track_id);
         REPLY(sender_tid, nullptr, 0);
+
+        // create sensor server
+        SENSOR_SERVER_TID = CREATE(PRIORITY::DEVICE, Sensors_NS::SensorServer);
+        uassert(SENSOR_SERVER_TID > 0 && "Conductor::Error creating sensor server");
+        IO_NS::PrintTerminal("Sensor server created with TID %d\r\n", SENSOR_SERVER_TID);
+        // create switch server
+        SWITCH_SERVER_TID = CREATE(PRIORITY::DEVICE, Switch_NS::StartSwitchServer);
+        uassert(SWITCH_SERVER_TID > 0 && "Conductor::Error creating switch server");
+        IO_NS::PrintTerminal("Switch server created with TID %d\r\n", SWITCH_SERVER_TID);
+        SEND(SWITCH_SERVER_TID, (char *)&track_id, sizeof(track_id), nullptr, 0); // send track id to switch server
 
         LOOP_START_SENSOR_DATA = {'B', 5};
 
@@ -118,10 +119,10 @@ namespace Conductor_NS
         {
         case COMMAND::SET_SWITCH:
         {
-            IO_NS::PrintTerminal("Conductor received SET_SWITCH request for switch index %d\r\n", req->id);
-            int switch_index = req->id;
+            IO_NS::PrintTerminal("Conductor received SET_SWITCH request for switch addr %d\r\n", req->id);
+            int switch_addr = req->id;
             Switch_NS::SWITCH_STATE state = (req->data == 'S') ? Switch_NS::SWITCH_STATE::STRAIGHT : Switch_NS::SWITCH_STATE::CURVED;
-            Switch_NS::SwitchRequest switch_req = {switch_index, state};
+            Switch_NS::SwitchRequest switch_req = {switch_addr, state};
             int retval = SEND(SWITCH_SERVER_TID, (char *)&switch_req, sizeof(Switch_NS::SwitchRequest), nullptr, 0);
             break;
         }
