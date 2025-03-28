@@ -57,8 +57,9 @@ namespace UI_CMD_NS
         IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Train Accelerate Command: TR <train_num> <speed>", CMD_INFO_LOCATION + 2, 1);
         IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Train Reverse Command: RV <train_num>", CMD_INFO_LOCATION + 3, 1);
         IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Train Spawn Command: SPAWN <train_num> <sensor_id>", CMD_INFO_LOCATION + 4, 1);
-        IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Go Command: GO <node_name>", CMD_INFO_LOCATION + 5, 1);
-        IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Quit Command: q", CMD_INFO_LOCATION + 6, 1);
+        IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Go Command: GO <train_num> <node_name> <offset>", CMD_INFO_LOCATION + 5, 1);
+        IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Stop All Command: STOPALL", CMD_INFO_LOCATION + 6, 1);
+        IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Quit Command: q", CMD_INFO_LOCATION + 7, 1);
     }
 
     CommandPrompt::CommandPrompt()
@@ -142,13 +143,34 @@ namespace UI_CMD_NS
 
             // create marklin request
             IO_NS::PrintTerminal("Attempting to set Switch %d to %c\r\n", switch_num, switch_state);
-            ConductorRequest request(COMMAND::SET_SWITCH, switch_num, switch_state);
+            ConductorRequest request(COMMAND::SET_SWITCH, switch_index, switch_state);
 
             SEND(CONDUCTOR_TID, (char *)&request, sizeof(ConductorRequest), nullptr, 0);
             // update switch display
             // need to get status of switch
 
             const char *color = (switch_state == 'S') ? COLOR_GREEN : COLOR_RED;
+
+            // Update switches table
+            IO_NS::Print(MOVE_CURSOR "%s%c",
+                         SWITCH_LOCATION + 3 + switch_index,
+                         SWITCH_STATUS_COL,
+                         color,
+                         switch_state);
+
+            // Update track diagram
+            for (size_t i = 0; i < current_track->switches_count; ++i)
+            {
+                if (current_track->switches[i].num == switch_num)
+                {
+                    // Use current_track->switches[i].line/col
+                    IO_NS::Print(MOVE_CURSOR "%s%c",
+                                 TRACK_LAYOUT_LOCATION_Y + current_track->switches[i].line,
+                                 TRACK_LAYOUT_LOCATION_X + current_track->switches[i].col,
+                                 color,
+                                 switch_state);
+                }
+            }
         }
         else if ((first == 'T' || first == 't') &&
                  (second == 'R' || second == 'r'))
@@ -284,7 +306,8 @@ namespace UI_CMD_NS
                 {
                     char *sensor_num_ptr = sensor_id + 1;
                     uint32_t sensor_num = a2ui(&sensor_num_ptr, 10);
-                    // IO_NS::PrintTerminal("Parsed sensor: bank=%c, number=%d (from '%s')\r\n",  sensor_bank, sensor_num, sensor_id);
+                    IO_NS::PrintTerminal("Parsed sensor: bank=%c, number=%d (from '%s')\r\n",
+                                         sensor_bank, sensor_num, sensor_id);
                     if (sensor_num >= 1 && sensor_num <= 16)
                     {
                         is_valid_sensor_id = true;
@@ -294,8 +317,8 @@ namespace UI_CMD_NS
                 if (!num_set || !sensor_set || !is_valid_sensor_id)
                 {
                     IO_NS::PrintTerminal("Invalid Train SPAWN command\r\n");
-                    // IO_NS::PrintTerminal("Input: %s\r\n", str);
-                    // IO_NS::PrintTerminal("Train Number: %d, Sensor ID: %s\r\n", train_num, sensor_id);
+                    IO_NS::PrintTerminal("Input: %s\r\n", str);
+                    IO_NS::PrintTerminal("Train Number: %d, Sensor ID: %s\r\n", train_num, sensor_id);
                     return;
                 }
 
@@ -311,71 +334,79 @@ namespace UI_CMD_NS
         else if ((first == 'G' || first == 'g') &&
                  (second == 'O' || second == 'o'))
         {
-            // ignore spaces
             const char *ptr = str + 2;
+            
+            // Parse train num
+            int train_num = 0;
+            while (*ptr == ' ')
+            {
+                ptr++;
+            }
+            while (*ptr >= '0' && *ptr <= '9') {
+                train_num = train_num * 10 + (*ptr - '0');
+                ptr++;
+            }
+
+            // capitalize the first letter
+            char node_name[5] = {0};
+            
             while (*ptr == ' ')
             {
                 ptr++;
             }
 
-            // extract train num
-
-            // capitalize the first letter
-            char node_name[5];
-            for (int i = 0; i < 4; i++)
+            int sidx = 0;
+            while (*ptr != '\0' && *ptr != ' ' && sidx < 4)
             {
-                node_name[i] = *ptr;
+                node_name[sidx++] = *ptr++;
+            }
+            node_name[sidx] = '\0';
+            node_name[0] = std::toupper(node_name[0]);
+
+            // Parse offset
+            int offset = 0;
+            while (*ptr == ' ')
+            {
                 ptr++;
             }
-            node_name[4] = '\0';
-            if (node_name[0] >= 'a' && node_name[0] <= 'z')
-            {
-                node_name[0] = node_name[0] - 32;
+            int sign = 1;
+            if (*ptr == '-') {
+                sign = -1;
+                ptr++;
             }
-            ConductorRequest request(COMMAND::GOTO, 0, 0, node_name, node_name);
+            while (*ptr >= '0' && *ptr <= '9') {
+                offset = offset * 10 + (*ptr - '0');
+                ptr++;
+            }
+            offset *= sign;
+
+            ConductorRequest request(COMMAND::GOTO, train_num, offset, node_name);
             // send node name to conductor
-            IO_NS::PrintTerminal("Attempting to find path to %s, sending to Conductor tid: %d\r\n", node_name, CONDUCTOR_TID);
+            IO_NS::PrintTerminal("Attempting to find path for Train %d to go to %s %d, sending to Conductor tid: %d\r\n", train_num, node_name, offset, CONDUCTOR_TID);
             SEND(CONDUCTOR_TID, (char *)&request, sizeof(request), nullptr, 0);
         }
 
-        else if ((first == 'C' || first == 'c') &&
-                 (second == 'A' || second == 'a'))
+        else if ((first == 'S' || first == 's') &&
+                 (second == 'T' || second == 't'))
         {
+            // read next two characters
             char third = str[2];
-            if (third == 'L' || third == 'l')
+            char fourth = str[3];
+            char fifth = str[4];
+            char sixth = str[5];
+            char seventh = str[6];
+
+            if ((third == 'O' || third == 'o') &&
+            (fourth == 'P' || fourth == 'p') &&
+            (fifth == 'A' || fifth == 'a') &&
+            (sixth == 'L' || sixth == 'l') &&
+            (seventh == 'L' || seventh == 'l'))
             {
-                int train_num = 0;
-                bool num_set = false;
-
-                const char *ptr = str + 3;
-                while (*ptr == ' ')
-                {
-                    ptr++;
-                }
-
-                // extract train num
-                while (*ptr >= '0' && *ptr <= '9')
-                {
-                    train_num = train_num * 10 + (*ptr - '0');
-                    ptr++;
-                    num_set = true;
-                }
-
-                if (!num_set)
-                {
-                    IO_NS::PrintTerminal("Invalid Train Calibrate Command\r\n");
-                    return;
-                }
-
-                // create conductor request
-                // IO_NS::PrintTerminal(CLEAR_SCREEN);
-                IO_NS::PrintTerminal("Attempting to calibrate Train %d\r\n", train_num);
-                ConductorRequest request(COMMAND::CALIBRATE, train_num, 0);
-                int retval = SEND(CONDUCTOR_TID, (char *)&request, sizeof(ConductorRequest), (char *)command_received, sizeof(int));
-                uassert(retval >= 0 && "Error sending calibrate request to Conductor");
+                ConductorRequest request(COMMAND::STOP_ALL, 0, 0);
+                IO_NS::PrintTerminal("JACK----------------Attempting to stop all trains");
+                SEND(CONDUCTOR_TID, (char *)&request, sizeof(request), nullptr, 0);
             }
         }
-
         else
         {
             IO_NS::PrintTerminal("Invalid Command\r\n");
@@ -417,8 +448,6 @@ namespace UI_CMD_NS
             if (BUFFER_INDEX > 0)
             {
                 // PROCESS COMMAND
-                IO_NS::PrintTerminal("Command: %s\r\n", inputBuffer);
-
                 Commandify(inputBuffer);
                 clearInputBuffer();
                 // spin_debug();
@@ -426,7 +455,6 @@ namespace UI_CMD_NS
         }
         break;
         case '\b':
-        case 127:
         {
             if (BUFFER_INDEX > 0)
             {
@@ -455,7 +483,8 @@ namespace UI_CMD_NS
         IO_NS::PrintTerminal("Please enter the Track ID: ");
         while (true)
         {
-            unsigned char track_id = (unsigned char)(IO_SERVER::Getc(commandPrompt.IO_SERVER_TID));
+            unsigned char track_id  = 'A';
+            //unsigned char track_id = (unsigned char)(IO_SERVER::Getc(commandPrompt.IO_SERVER_TID));
             IO_NS::PrintTerminal("%c\r\n", track_id);
             if (track_id == 'A' || track_id == 'a' || track_id == 'B' || track_id == 'b')
             {
@@ -471,8 +500,8 @@ namespace UI_CMD_NS
                 display_track(commandPrompt.current_track);
 
                 // create conductor
-                IO_NS::PrintTerminal("Attempting to start Conductor with track ID: %c, CONDUCTOR_TID: %d\r\n", track_id, commandPrompt.CONDUCTOR_TID);
-                SEND(commandPrompt.CONDUCTOR_TID, (char *)&track_id, sizeof(char), nullptr, 0);
+                //IO_NS::PrintTerminal("Attempting to start Conductor with track ID: %c, CONDUCTOR_TID: %d\r\n", track_id, commandPrompt.CONDUCTOR_TID);
+                //SEND(commandPrompt.CONDUCTOR_TID, (char *)&track_id, sizeof(char), nullptr, 0);
                 // send message to conductor
                 break;
             }

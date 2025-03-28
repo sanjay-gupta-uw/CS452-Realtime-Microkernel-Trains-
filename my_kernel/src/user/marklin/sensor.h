@@ -85,14 +85,11 @@ namespace Sensors_NS
         };
         Sensor sensor_data[NUM_BANKS * SENSORS_PER_BANK];
 
-        void HandleWaitingTrains();
-        void push_waiting_train(int idx, int train_tid, int train_num);
-        WaitingTrain waiting_trains[NUM_TRAINS];
-
         bool UPDATE_DISPLAY;
         char last_triggered_bank;
         uint8_t last_triggered_id;
         int MARKLIN_IO_SERVER_TID;
+        int CONDUCTOR_TID;
         int SENSOR_TICKER_TID;
         bool isTickerRunning;
 
@@ -101,7 +98,6 @@ namespace Sensors_NS
 
     void SensorServer();
     void SensorTicker();
-    void SensorMessenger();
 
     void InitializeSensorManager();
 } // namespace Sensors_NS

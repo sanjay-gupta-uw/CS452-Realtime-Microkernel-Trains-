@@ -4,7 +4,6 @@
 #include <stdbool.h>
 #include "../include/marklin_structs.h"
 #include "../marklin/sensor.h"
-#include "../../containers/stack.h"
 // #include "rpi.h"
 
 // train query to conductor
@@ -12,54 +11,17 @@
 namespace Trains_NS
 {
 #define NUM_TRAINS 5
-    // #define MAX_SPEED 14
-    // #define MIN_SPEED 0
-
-#define NUM_SUPPORTED_SPEED_LEVELS 3
-#define LOW_SPEED 7
-#define MEDIUM_SPEED 10
-#define HIGH_SPEED 12
-
-    // this will change based on the train speed
+#define MAX_SPEED 14
+#define MIN_SPEED 0
     class Train
     {
     private:
         int MARKLIN_IO_SERVER_TID;
         int CLOCK_SERVER_TID;
-        int cmd_messenger_tid;
-        int path_messenger_tid;
-        int sensor_messenger_tid;
-        int train_ticker_tid;
-
         int train_speed; // between 0 and 14
         bool isReversed;
 
-        // USE THESE TO CALCULATE DISTANCE TRAVELLED AS FOLLOWS
-        // first push is defined length (when we finish a segment we add the length of the segment)
-        // second push represents the distance travelled in the segment
-        Stack<int, 2> dist_travelled;
-        Stack<int, 2> stopping_target; // distance to destination (not stopping distance)
-        void initialize_distance_stacks();
-
-        int segment_length;
-        int prev_tick, cur_tick;
-
-        SensorStruct target_sensor;
-        bool has_read_target_sensor;
-        bool is_sensor_messenger_ready;
-        void ReleaseSensorMessenger();
-
-        int stopping_distance[NUM_SUPPORTED_SPEED_LEVELS] = {-1,
-                                                             -1,
-                                                             -1};
-        int approximate_speed[NUM_SUPPORTED_SPEED_LEVELS] = {-1, -1, -1};
-
-        void process_train_command(TrainMessage *message);
-        void update_position();
-
-        void Reverse();   // sends reverse train command to marklin
-        void TrainLoop(); // train loop task
-        void CompleteSegment();
+        void Reverse(); // sends reverse train command to marklin
 
     public:
         int train_num;
@@ -81,12 +43,8 @@ namespace Trains_NS
         int speed;
     };
 
-    void spawn_train(); // individual train tasks
-    void train_ticker();
-
-    void command_messenger();
-    void path_messenger();
-    void sensor_messenger();
+    void
+    spawn_train(); // individual train tasks
 
 };
 
