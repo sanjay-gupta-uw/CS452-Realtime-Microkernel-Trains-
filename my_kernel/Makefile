@@ -12,7 +12,7 @@ OBJDUMP:=$(XBINDIR)/$(TRIPLE)-objdump
 MMU?=1
 OPT?=1
 PERF?=0
-IRQEn?=0
+IRQEn?=1
 
 # COMPILE OPTIONS
 WARNINGS=-Wall -Wextra -Wpedantic

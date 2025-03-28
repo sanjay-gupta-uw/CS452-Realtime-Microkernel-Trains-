@@ -238,6 +238,7 @@ namespace Sensors_NS
             }
             case SENSOR_COMMAND::TRAIN_SENSOR:
             {
+
                 IO_NS::PrintTerminal(COLOR_RED "SensorManager{%d}: Waiting for train to hit: %c%d\r\n", my_tid, query.sensor.bank, query.sensor.id);
                 // train expects to hit a sensor in the near future
                 SensorStruct sensor = query.sensor;
@@ -265,7 +266,7 @@ namespace Sensors_NS
                 break;
             }
 
-            // if (IRQ_ENABLED)
+            if (IRQ_ENABLED)
             {
                 IO_NS::PrintTerminal(COLOR_RED "SensorManager: Reading all banks\r\n");
                 ReadAll(NUM_BANKS);

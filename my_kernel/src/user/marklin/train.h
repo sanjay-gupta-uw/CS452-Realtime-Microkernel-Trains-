@@ -26,6 +26,7 @@ namespace Trains_NS
     private:
         int MARKLIN_IO_SERVER_TID;
         int CLOCK_SERVER_TID;
+        int cmd_messenger_tid;
         int path_messenger_tid;
         int sensor_messenger_tid;
         int train_ticker_tid;

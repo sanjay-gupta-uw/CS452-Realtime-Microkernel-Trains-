@@ -340,6 +340,11 @@ namespace Conductor_NS
             }
             segment_length = GetSegmentLength(train->train_num);
         }
+        if (segment_length == -1)
+        {
+            IO_NS::PrintTerminal(COLOR_RED "Conductor::SendSegmentToMessenger -- NEGATIVE SEGMENT LENGTH -- PATH INIT!\r\n");
+            return;
+        }
 
         IO_NS::PrintTerminal("Conductor::SendSegmentToMessenger -- Segment length: %d\r\n", segment_length);
         SensorStruct sensor = name_to_sensor_struct(train->target_sensor_name);
@@ -354,6 +359,7 @@ namespace Conductor_NS
 
     void Conductor::CalibrateTrain(train_task_mapping *train)
     {
+        train->speed_level = MEDIUM_SPEED;
         switch (train->calibration_stage)
         {
         case CALIBRATE_NAV_TO_LOOP:
@@ -480,17 +486,16 @@ namespace Conductor_NS
 
             if (train->train_task_tid > 0)
             {
-                if (!train->sent_reply_to_path_messenger)
+                if (train->path_messenger_id > 0 && !train->sent_reply_to_path_messenger)
                 {
-                    IO_NS::PrintTerminal("Conductor::DispatchCommand -- Extracting segment for train %d\r\n", train->train_num);
-                    SendSegmentToMessenger(train->path_messenger_id, train); // this replies to the path messenger
+                    IO_NS::PrintTerminal(COLOR_CYAN "Conductor::DispatchCommand -- Extracting segment for train %d\r\n", train->train_num);
+                    SendSegmentToMessenger(train->path_messenger_id, train); // this replies to the path messenger if successful
                 }
-                if (!train->sent_reply_to_cmd_messenger && !train->train_commands.IsEmpty())
+                if (train->cmd_messenger_id > 0 && !train->sent_reply_to_cmd_messenger && !train->train_commands.IsEmpty())
                 {
-                    IO_NS::PrintTerminal("Conductor::DispatchCommand -- Sending Train Command to messenger %d\r\n", train->path_messenger_id);
+                    IO_NS::PrintTerminal(COLOR_CYAN "Conductor::DispatchCommand -- Sending Train Command to messenger %d (train %d)\r\n", train->cmd_messenger_id, train->train_num);
                     TrainCommandNotification command;
                     train->train_commands.Pop(&command);
-                    IO_NS::PrintTerminal(COLOR_CYAN "Conductor::DispatchCommand -- Sending command %d to train %d\r\n", command.command, train->train_num);
                     train->sent_reply_to_cmd_messenger = true;
                     REPLY(train->cmd_messenger_id, (char *)&command, sizeof(TrainCommandNotification));
                 }
@@ -552,6 +557,7 @@ namespace Conductor_NS
                 train->start = false;
                 train->last_node = cur_node.node;
                 segment_length = -1;
+                path->Pop(&cur_node);
                 break;
             }
             else
