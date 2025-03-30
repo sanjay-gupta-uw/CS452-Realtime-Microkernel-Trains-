@@ -2623,30 +2623,13 @@ void Track::find_path(const char *start, const char *dest, Stack<PathNode, TRACK
         uassert(index >= 0 && "Track::find_path: index is negative");
 
         track_node *curnode = &track[index];
+        IO_NS::PrintTerminal("Track::find_path: Exploring next node: {%d} ", index);
 
-        // if (curnode->name[0] == 'B' && curnode->name[1] == 'R' && curnode->name[2] == '1' && curnode->name[3] == '3')
-        // {
-        //     IO_NS::PrintTerminal("Track::find_path: Found BR13\r\n");
-        //     IO_NS::PrintTerminal("COnnected to: ");
-        //     for (int i = 0; i < 2; i++)
-        //     {
-        //         const char *name = curnode->edge[i].dest->name;
-        //         track_node *node = curnode->edge[i].dest;
-        //         IO_NS::PrintTerminal("%s ", name);
-        //     }
-        //     IO_NS::PrintTerminal("------------------\r\n");
-        // }
-
-        // IO_NS::PrintTerminal("{ %s  ", curnode->name);
+        IO_NS::PrintTerminal("{ %s  ", curnode->name);
 
         // check if we have reached the destination
         if (strcmp(curnode->name, dest) == 0)
         {
-            if (!start_iter)
-            {
-                // IO_NS::PrintTerminal("FOUND DESTINATION: %s\r\n", dest);
-                // uassert(false && "Track::find_path: Found destination, breaking out");
-            }
             if (!start_iter || check_start_dest)
             {
                 // IO_NS::PrintTerminal("Track::find_path: BREAKING OUT:Found path to %s\r\n", dest);
@@ -2676,6 +2659,7 @@ void Track::find_path(const char *start, const char *dest, Stack<PathNode, TRACK
         default:
             break;
         }
+        IO_NS::PrintTerminal(" - %d ", num_edges);
         // IO_NS::PrintTerminal(" NEd: %d ", num_edges);
 
         for (int i = 0; i < num_edges; i++)
@@ -2705,7 +2689,9 @@ void Track::find_path(const char *start, const char *dest, Stack<PathNode, TRACK
             // }
         }
         start_iter = false;
+        IO_NS::PrintTerminal("}\r\n");
     }
+    IO_NS::PrintTerminal("DONE!\r\n");
 
     if (!path_found)
     {

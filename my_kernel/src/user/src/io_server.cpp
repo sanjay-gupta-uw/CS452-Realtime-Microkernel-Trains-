@@ -183,7 +183,6 @@ namespace IO_SERVER
     {
         if (!IRQ_ENABLED)
         {
-            // IO_NS::PrintTerminal("GETC -- IRQ DISABLED\r\n");
             unsigned char ch = uart_getc(CONSOLE);
             return ch;
         }

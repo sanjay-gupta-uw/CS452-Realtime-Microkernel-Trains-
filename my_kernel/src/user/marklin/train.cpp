@@ -312,8 +312,8 @@ namespace Trains_NS
                 }
                 else // this must be sensor hit
                 {
-                    IO_NS::PrintTerminal("TRAIN %d{%d}::Sensor hit {%c%d}\r\n", train_num, my_tid, triggered_sensor.bank, triggered_sensor.id);
-                    // uassert(false && "SENSOR TRIGGERED");
+                    IO_NS::PrintTerminal(COLOR_GREEN "TRAIN %d{%d}::Sensor hit {%c%d}\r\n", train_num, my_tid, triggered_sensor.bank, triggered_sensor.id);
+                    uassert(false && "TRAIN TRIGGERED EXPECTED SENSOR");
                     CompleteSegment();
                     // need to free path messenger (or if window exceeded)
                     REPLY(path_messenger_tid, nullptr, 0);
@@ -443,8 +443,8 @@ namespace Trains_NS
         ConductorRequest conductor_request(train_task_tid);
         while (true)
         {
-            IO_NS::PrintTerminal(COLOR_RED "ENTER KEY TO CONTINUE");
-            char c = uart_getc(CONSOLE);
+            // IO_NS::PrintTerminal(COLOR_RED "ENTER KEY TO CONTINUE");
+            // char c = uart_getc(CONSOLE);
             // SEND SEGMENT REQUEST TO CONDUCTOR
             IO_NS::PrintTerminal(COLOR_YELLOW "PATH MESSENGER{%d}:: requesting segment from Conductor for Train %d\r\n", my_tid, train_num);
             int retval = SEND(conductor_tid, (char *)&conductor_request, sizeof(ConductorRequest), (char *)&conductor_response, sizeof(TrainMessage));

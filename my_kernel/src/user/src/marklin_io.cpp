@@ -11,6 +11,7 @@
 #include "../marklin/train.h"
 #include "../include/uassert.h"
 extern Clock clock;
+
 namespace MARKLIN_IO_SERVER
 {
     // returns -1 if not a switch command, otherwise, returns the index of the switch
@@ -24,6 +25,29 @@ namespace MARKLIN_IO_SERVER
             }
         }
         return -1;
+    }
+
+    static void processSensorData(char bank, uint8_t byte1, uint8_t byte2, Sensor *sensor_data)
+    {
+        if (byte1 == 0 && byte2 == 0)
+        {
+            return;
+        }
+        // uassert(false && "PROCESSING SENSOR DATA -- THIS IS GETTING HIT");
+        IO_NS::PrintTerminal(COLOR_YELLOW "SensorManager::processSensorData: byte1: %d, byte2: %d\r\n", byte1, byte2);
+        for (int sensor = 1; sensor <= SENSORS_PER_BANK; ++sensor)
+        {
+            int idx = ((int)(bank - 'A') * SENSORS_PER_BANK) + (sensor - 1);
+            int new_state = (sensor < 9) ? SENSOR_TRIGGERED(byte1, sensor) : SENSOR_TRIGGERED(byte2, sensor);
+
+            int old_state = sensor_data[idx].isTriggered;
+            if (sensor_data->isTriggered != new_state)
+            {
+                // UPDATE_DISPLAY = true;
+                IO_NS::PrintTerminal(COLOR_YELLOW "MARKLIN_IO_SERVER::processSensorData: Sensor %c%d changed from %d to %d\r\n", bank, sensor, old_state, new_state);
+            }
+            sensor_data[idx].isTriggered = new_state;
+        }
     }
 
     static void GETC_SUCCESS_REPLY(int tid, char ch)
@@ -56,6 +80,9 @@ namespace MARKLIN_IO_SERVER
         sequence_length = 0;
         count = 0;
 
+        IO_NS::PrintTerminal("MarklinIOServer started with TID %d, initializing with reset on!\r\n", MYTID());
+        transmit_buffer.Push(RESET_MODE_ON);
+
         run();
     }
 
@@ -84,6 +111,14 @@ namespace MARKLIN_IO_SERVER
 
         int count = 0;
         RECEIVED_BYTES_STRUCT receive_buffer;
+        Sensor sensor_data[NUM_BANKS * SENSORS_PER_BANK];
+
+        for (int i = 0; i < NUM_BANKS * SENSORS_PER_BANK; ++i)
+        {
+            sensor_data[i].isTriggered = false;
+            sensor_data[i].bank = 'A' + (i / SENSORS_PER_BANK);
+            sensor_data[i].id = (i % SENSORS_PER_BANK) + 1;
+        }
 
         IO_REPLY reply;
         while (true)
@@ -97,9 +132,14 @@ namespace MARKLIN_IO_SERVER
 
             if (count == 10)
             {
+                for (int i = 0; i < 5; ++i)
+                {
+                    processSensorData(char('A' + i), receive_buffer.bytes[i * 2], receive_buffer.bytes[i * 2 + 1], sensor_data);
+                }
+
                 IO_REQUEST req(&receive_buffer);
                 SEND(MARKLIN_IO_TID, (char *)&req, sizeof(req), (char *)&reply, sizeof(reply));
-                // uassert(false && "SERVER REPLIED TO RX NOTIFIER");
+                // // uassert(false && "SERVER REPLIED TO RX NOTIFIER");
                 count = 0;
                 // IO_NS::PrintTerminal("WAITING FOR RX");
             }
@@ -176,41 +216,10 @@ namespace MARKLIN_IO_SERVER
             {
             case IO_REQUEST_TYPE::RX_NOTIFIER:
             {
-                RECEIVED_BYTES_STRUCT *rec_buf = req.data.received_bytes;
-                for (int i = 0; i < rec_buf->count; ++i)
-                {
-                    unsigned char ch;
-                    ch = rec_buf->bytes[i];
-                    receive_buffer.Push(ch);
-                    BYTES_RECEIVED++;
-                    // IO_NS::PrintTerminal(COLOR_CYAN "MarklinIO_server::RX_NOTIFIER: {%d} Received %d\r\n", i, ch);
-                }
-                // uassert(false && "MarklinIO_server::RX_NOTIFIER: -- Received RX NOTIFIER");
-                // IO_NS::PrintTerminal(COLOR_CYAN "MarklinIO_server::RX_NOTIFIER: Received %d bytes, was waiting for %d bytes\r\n", count, TOTAL_BYTES_TO_RECEIVE);
-                if (BYTES_RECEIVED == TOTAL_BYTES_TO_RECEIVE)
-                {
-                    isReceiving = false;
-                    BYTES_RECEIVED = 0;
-                    TOTAL_BYTES_TO_RECEIVE = 0;
-                    // IO_NS::PrintTerminal(COLOR_RED "MarklinIO_server::RX_NOTIFIER: Finished receiving %d bytes\r\n", TOTAL_BYTES_TO_RECEIVE);
-                }
-
-                while (!rx_waiting_tasks.IsEmpty() && !receive_buffer.IsEmpty())
-                {
-                    unsigned char ch;
-                    receive_buffer.Pop(&ch);
-                    int waiting_tid;
-                    rx_waiting_tasks.Pop(&waiting_tid);
-
-                    // uassert(false && "MarklinIO_server::RX_NOTIFIER: -- Sending reply to waiting task");
-
-                    GETC_SUCCESS_REPLY(waiting_tid, ch);
-                }
-                reply.type = REPLY_TYPE::SUCCESS;
+                isReceiving = false;
                 send_reply = true;
-                // REPLY(sender_tid, (char *)&reply, sizeof(reply));
-                break;
             }
+
             case IO_REQUEST_TYPE::TX_NOTIFIER:
             {
                 reply.type = REPLY_TYPE::SUCCESS;
@@ -324,67 +333,48 @@ namespace MARKLIN_IO_SERVER
 
     void MarklinIOServer::handle_transmission()
     {
-        uassert(canTransmit && !isReceiving && "MarklinIOServer::handle_transmission: PANIC, cannot transmit");
-        if (!transmit_buffer.IsEmpty())
+        if (transmit_buffer.IsEmpty())
         {
-            // IO_NS::PrintTerminal("MarklinIOServer::handle_transmission: Transmitting\r\n");
-            IO_REPLY reply = {REPLY_TYPE::SUCCESS, UNDEFINED_CHAR};
-            REPLY(tx_notifier_tid, (char *)&reply, sizeof(reply));
-
-            if (count == 0)
-            {
-                sequence_length_buffer.Pop(&sequence_length);
-            }
-            else if (count == 2 && sequence_length == 3)
-            {
-                end_time = clock.Time();
-                // uassert(false && "FORCED PANIC");
-                // IO_NS::PrintTerminal("MarklinIOServer::handle_transmission: sending solenoid off within: %d ms\r\n", (end_time - start_time) / 1000);
-                // IO_NS::PrintTerminal("MarklinIOServer::handle_transmission: Finished transmitting sequence\r\n");
-            }
-
-            unsigned char ch;
-            transmit_buffer.Pop(&ch);
-            uart_putc_non_blocking(MARKLIN, ch);
-
-            canTransmit = false;
-            total_bytes_transmitted++;
-            count++;
-
-            int DELAY_TIME = 25;
-
-            if (sequence_length == 1)
-            {
-                int num_banks_to_read = int(ch) - READ_ALL_SENSOR_BASE;
-                // check if command is a sensor read -- need to make sure we dont transmit until we have the sensor data
-                if (num_banks_to_read > 0 && num_banks_to_read <= NUM_BANKS)
-                {
-                    BYTES_RECEIVED = 0;
-                    TOTAL_BYTES_TO_RECEIVE = num_banks_to_read * 2; // 2 bytes per bank
-                    isReceiving = true;
-                    // IO_NS::PrintTerminal(COLOR_RED "MarklinIO_server::handle_transmission: Sensor read command for %d banks\r\n", num_banks_to_read);
-                    // uassert(false && "MarklinIO_server::SEND_CMD: VERIFYING READ BYTES IS CORRECT");
-                }
-            }
-
-            if (count == 2)
-            {
-                int idx = isSwitchCommand(ch);
-                if (idx != -1)
-                {
-                    // IO_NS::PrintTerminal("MarklinIOServer::handle_transmission: REQUESTING SOLENOID OFF AFTER DELAY\r\n");
-                    REPLY(switch_notifier_tid[idx], nullptr, 0);
-                }
-            }
-            if (count == sequence_length)
-            {
-                count = 0;
-                // IO_NS::PrintTerminal("MarklinIOServer::handle_transmission: Finished transmitting sequence\r\n");
-            }
-
-            IO_NS::Print(MOVE_CURSOR COLOR_GREEN "%d", TRANSMITTED_BYTES_LOCATION, TRANSMITTED_BYTES_COL, total_bytes_transmitted);
-            // uassert(false && "FORCED PANIC -- FINISHED TRANSMITTING BYTE");
+            IO_NS::PrintTerminal(COLOR_RED "MarklinIOServer::handle_transmission: transmit buffer is empty -- Polling Sensors\r\n");
+            sequence_length_buffer.Push(1);
+            transmit_buffer.Push(READ_ALL_SENSOR_BASE + NUM_BANKS);
+            BYTES_RECEIVED = 0;
+            TOTAL_BYTES_TO_RECEIVE = NUM_BANKS * 2; // 2 bytes per bank
+            isReceiving = true;
         }
+
+        // IO_NS::PrintTerminal("MarklinIOServer::handle_transmission: Transmitting\r\n");
+        IO_REPLY reply = {REPLY_TYPE::SUCCESS, UNDEFINED_CHAR};
+        REPLY(tx_notifier_tid, (char *)&reply, sizeof(reply));
+
+        if (count == 0)
+        {
+            sequence_length_buffer.Pop(&sequence_length);
+        }
+
+        unsigned char ch;
+        transmit_buffer.Pop(&ch);
+        uart_putc_non_blocking(MARKLIN, ch);
+
+        canTransmit = false;
+        total_bytes_transmitted++;
+        count++;
+
+        if (count == 2)
+        {
+            int idx = isSwitchCommand(ch);
+            if (idx != -1)
+            {
+                // IO_NS::PrintTerminal("MarklinIOServer::handle_transmission: REQUESTING SOLENOID OFF AFTER DELAY\r\n");
+                REPLY(switch_notifier_tid[idx], nullptr, 0);
+            }
+        }
+        if (count == sequence_length)
+        {
+            count = 0;
+        }
+
+        IO_NS::Print(MOVE_CURSOR COLOR_GREEN "%d", TRANSMITTED_BYTES_LOCATION, TRANSMITTED_BYTES_COL, total_bytes_transmitted);
     }
 
     int Getc(int tid)

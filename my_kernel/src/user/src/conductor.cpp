@@ -4,7 +4,6 @@
 #include "../include/clock_server.h"
 #include "../include/name_server.h"
 #include "../include/marklin_structs.h"
-#include "../marklin/sensor.h"
 #include "../marklin/train.h"
 #include "../../include/syscall.h"
 #include "../../shared_constants.h"
@@ -59,10 +58,6 @@ namespace Conductor_NS
         track.init(track_id);
         REPLY(sender_tid, nullptr, 0);
 
-        // create sensor server
-        SENSOR_SERVER_TID = CREATE(PRIORITY::DEVICE, Sensors_NS::SensorServer);
-        uassert(SENSOR_SERVER_TID > 0 && "Conductor::Error creating sensor server");
-        IO_NS::PrintTerminal("Sensor server created with TID %d\r\n", SENSOR_SERVER_TID);
         // create switch server
         SWITCH_SERVER_TID = CREATE(PRIORITY::DEVICE, Switch_NS::StartSwitchServer);
         uassert(SWITCH_SERVER_TID > 0 && "Conductor::Error creating switch server");
@@ -360,7 +355,7 @@ namespace Conductor_NS
 
     void Conductor::CalibrateTrain(train_task_mapping *train)
     {
-        train->speed_level = MEDIUM_SPEED;
+        train->speed_level = HIGH_SPEED;
         switch (train->calibration_stage)
         {
         case CALIBRATE_NAV_TO_LOOP:
@@ -371,6 +366,7 @@ namespace Conductor_NS
             IO_NS::PrintTerminal("Conductor::CalibrateTrain -- Finding path from %s to %s\r\n", start_node_name, LOOP_START_NODE);
             track.find_path(start_node_name, LOOP_START_NODE, &train->path);
             train->start = true;
+            IO_NS::PrintTerminal("Conductor::CalibrateTrain -- Found path from %s to %s\r\n", start_node_name, LOOP_START_NODE);
 
             uassert(!train->path.IsEmpty() && "CalibrateTrain: Path is empty");
             Queue<PathNode, NUM_SWITCHES> switch_nodes;
@@ -553,7 +549,7 @@ namespace Conductor_NS
             IO_NS::PrintTerminal("Processing segment %s\r\n", cur_node.node->name);
             if (train->start)
             {
-                train->train_commands.Push({TRAIN_COMMAND::ACCELERATE, LOW_SPEED});
+                train->train_commands.Push({TRAIN_COMMAND::ACCELERATE, HIGH_SPEED});
                 IO_NS::PrintTerminal(COLOR_CYAN "Conductor::GetSegmentLength -- Sending ACCELERATE command to train %d\r\n", train_num);
                 train->start = false;
                 train->last_node = cur_node.node;
@@ -565,7 +561,7 @@ namespace Conductor_NS
             {
                 if (cur_node.node == train->last_node->reverse)
                 {
-                    train->train_commands.Push({TRAIN_COMMAND::REVERSE, LOW_SPEED});
+                    train->train_commands.Push({TRAIN_COMMAND::REVERSE, HIGH_SPEED});
                     IO_NS::PrintTerminal(COLOR_CYAN "Conductor::GetSegmentLength -- Sending REVERSE command to train %d\r\n", train_num);
                 }
 
