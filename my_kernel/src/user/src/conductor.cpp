@@ -223,9 +223,53 @@ namespace Conductor_NS
 
             break;
         }
-            // {
-            // find_path(start, dest)
-            // }
+        case COMMAND::GOTO:
+        {
+            IO_NS::PrintTerminal("Conductor received SPAWN_TRAIN request for train %d\r\n", req->id);
+
+            // Extract destination from request
+            int train_num = req->id;
+            char *dest = req->src;
+            int offset = req->data;
+
+
+            int train_index = get_train_index(train_num);
+            if (train_index == -1)
+            {
+                IO_NS::PrintTerminal("Train %d not found or initialized.\r\n", train_num);
+                return;
+            }
+            else
+            {
+                IO_NS::PrintTerminal("Train %d found, sending it to %s %d\r\n",
+                    train_num, dest, offset);
+            }
+
+            memcpy(train_arr[train_index].destination, dest, 4);
+            train_arr[train_index].destination[4] = '\0'; 
+            train_arr[train_index].offset = offset;
+
+            //Conductor::UpdateTrainDisplay();
+                                 
+            // track.find_path((char *)req->data);
+            break;
+        }
+        case COMMAND::STOP_ALL:
+        {
+            IO_NS::PrintTerminal("JACK2----------------------Conductor received STOP_ALL request");
+            for (int i = 0; i < NUM_TRAINS; i++)
+            {
+                if (train_arr[i].train_num != -1)
+                {
+                    IO_NS::PrintTerminal("Sending STOP command to Train %d\r\n", train_arr[i].train_num);
+                    train_arr[i].speed_level = 0;
+                    train_arr[i].actual_speed_x10 = 0;;
+                    train_arr[i].train_commands.Push({TRAIN_COMMAND::ACCELERATE, 0});
+                }
+                Conductor::UpdateTrainDisplay();
+            }
+            break;
+        }
         default:
             IO_NS::PrintTerminal("Conductor received INVALID request\r\n");
             break;
