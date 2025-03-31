@@ -45,6 +45,7 @@ namespace Trains_NS
         int prev_tick, cur_tick;
 
         SensorStruct target_sensor;
+        int targer_sensor_idx; // index of the target sensor in the sensor data array
         bool has_read_target_sensor;
         bool is_sensor_messenger_ready;
         void ReleaseSensorMessenger();
@@ -60,6 +61,7 @@ namespace Trains_NS
         void Reverse();   // sends reverse train command to marklin
         void TrainLoop(); // train loop task
         void CompleteSegment();
+        void CheckSensorTrigger();
 
     public:
         int train_num;

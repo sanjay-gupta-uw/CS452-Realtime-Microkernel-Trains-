@@ -14,6 +14,10 @@ extern Clock clock;
 
 namespace MARKLIN_IO_SERVER
 {
+    Sensor sensor_data[NUM_BANKS * SENSORS_PER_BANK];
+    Queue<int, 20> sensor_change_buffer;
+    uint32_t cur_tick;
+
     // returns -1 if not a switch command, otherwise, returns the index of the switch
     int MarklinIOServer::isSwitchCommand(int addr)
     {
@@ -27,26 +31,31 @@ namespace MARKLIN_IO_SERVER
         return -1;
     }
 
-    static void processSensorData(char bank, uint8_t byte1, uint8_t byte2, Sensor *sensor_data)
+    static void processSensorData(char bank, uint8_t byte1, uint8_t byte2)
     {
         if (byte1 == 0 && byte2 == 0)
         {
             return;
         }
         // uassert(false && "PROCESSING SENSOR DATA -- THIS IS GETTING HIT");
-        IO_NS::PrintTerminal(COLOR_YELLOW "SensorManager::processSensorData: byte1: %d, byte2: %d\r\n", byte1, byte2);
+        // IO_NS::PrintTerminal(COLOR_YELLOW "SensorManager::processSensorData: byte1: %d, byte2: %d\r\n", byte1, byte2);
         for (int sensor = 1; sensor <= SENSORS_PER_BANK; ++sensor)
         {
             int idx = ((int)(bank - 'A') * SENSORS_PER_BANK) + (sensor - 1);
             int new_state = (sensor < 9) ? SENSOR_TRIGGERED(byte1, sensor) : SENSOR_TRIGGERED(byte2, sensor);
 
             int old_state = sensor_data[idx].isTriggered;
-            if (sensor_data->isTriggered != new_state)
+            if (old_state != new_state)
             {
-                // UPDATE_DISPLAY = true;
-                IO_NS::PrintTerminal(COLOR_YELLOW "MARKLIN_IO_SERVER::processSensorData: Sensor %c%d changed from %d to %d\r\n", bank, sensor, old_state, new_state);
+                sensor_change_buffer.Push(idx);
+                sensor_data[idx].isTriggered = new_state;
+
+                // update tick that sensor was triggered
+                if (new_state == SEN_ON)
+                {
+                    sensor_data[idx].trigger_tick = cur_tick;
+                }
             }
-            sensor_data[idx].isTriggered = new_state;
         }
     }
 
@@ -81,6 +90,7 @@ namespace MARKLIN_IO_SERVER
         count = 0;
 
         IO_NS::PrintTerminal("MarklinIOServer started with TID %d, initializing with reset on!\r\n", MYTID());
+        sequence_length_buffer.Push(1);
         transmit_buffer.Push(RESET_MODE_ON);
 
         run();
@@ -111,13 +121,13 @@ namespace MARKLIN_IO_SERVER
 
         int count = 0;
         RECEIVED_BYTES_STRUCT receive_buffer;
-        Sensor sensor_data[NUM_BANKS * SENSORS_PER_BANK];
 
         for (int i = 0; i < NUM_BANKS * SENSORS_PER_BANK; ++i)
         {
             sensor_data[i].isTriggered = false;
             sensor_data[i].bank = 'A' + (i / SENSORS_PER_BANK);
             sensor_data[i].id = (i % SENSORS_PER_BANK) + 1;
+            sensor_data[i].trigger_tick = 0;
         }
 
         IO_REPLY reply;
@@ -134,7 +144,7 @@ namespace MARKLIN_IO_SERVER
             {
                 for (int i = 0; i < 5; ++i)
                 {
-                    processSensorData(char('A' + i), receive_buffer.bytes[i * 2], receive_buffer.bytes[i * 2 + 1], sensor_data);
+                    processSensorData(char('A' + i), receive_buffer.bytes[i * 2], receive_buffer.bytes[i * 2 + 1]);
                 }
 
                 IO_REQUEST req(&receive_buffer);
@@ -204,7 +214,7 @@ namespace MARKLIN_IO_SERVER
         while (true)
         {
             int retval = RECEIVE(&sender_tid, (char *)&req, sizeof(req));
-            int tick = TIME(CLOCK_SERVER_TID);
+            cur_tick = TIME(CLOCK_SERVER_TID);
             // IO_NS::PrintTerminal("MarklinIO_server::run: Received request from tid{%d} at tick %d\r\n", sender_tid, tick);
 
             IO_REPLY reply;
@@ -247,26 +257,17 @@ namespace MARKLIN_IO_SERVER
             {
                 IO_NS::PrintTerminal("MarklinIO_server::SEND_CMD:: Received command from tid{%d}\r\n", sender_tid);
                 MarklinRequest *m_req = req.data.request;
-                if (m_req->isSingleByteCommand)
-                {
-                    // IO_NS::PrintTerminal("MarklinIO_server::SEND_CMD: Byte1: %d\r\n", m_req->byte1);
-                }
-                else
-                {
-                    // IO_NS::PrintTerminal("MarklinIO_server::SEND_CMD: Byte1: %d, Byte2: %d\r\n", m_req->byte1, m_req->byte2);
-                }
                 transmit_buffer.Push(m_req->byte1);
-                int len = 1;
+                int len = 2;
                 if (!m_req->isSingleByteCommand)
                 {
-                    len = 2;
                     int addr = m_req->byte2;
 
                     transmit_buffer.Push(addr);
                 }
                 else
                 {
-                    // IO_NS::PrintTerminal("MarklinIO_server::SEND_CMD: Single byte command\r\n");
+                    uassert(false && "MarklinIO_server::SEND_CMD: -- Single byte command not implemented");
                 }
 
                 sequence_length_buffer.Push(len);
@@ -316,6 +317,47 @@ namespace MARKLIN_IO_SERVER
                 handle_transmission();
             }
 
+            while (!sensor_change_buffer.IsEmpty())
+            {
+                int idx;
+                sensor_change_buffer.Pop(&idx);
+                Sensor *sensor = &sensor_data[idx];
+                int column = 0;
+                switch (sensor->bank)
+                {
+                case 'A':
+                    column = BANK_A_COL;
+                    break;
+                case 'B':
+
+                    column = BANK_B_COL;
+                    break;
+                case 'C':
+                    column = BANK_C_COL;
+                    break;
+                case 'D':
+                    column = BANK_D_COL;
+                    break;
+                case 'E':
+                    column = BANK_E_COL;
+                    break;
+                default:
+                    IO_NS::PrintTerminal("Invalid bank: %c\r\n", sensor->bank);
+                    return;
+                }
+
+                if (sensor->isTriggered == SEN_ON)
+                {
+                    // IO_NS::PrintTerminal(COLOR_GREEN "Sensor %c%d triggered\r\n", sensor->bank, sensor->id);
+                    IO_NS::Print(COLOR_YELLOW MOVE_CURSOR "%d", SENSOR_START_ROW + sensor->id - 1, column, sensor->isTriggered);
+                }
+                else
+                {
+                    // IO_NS::PrintTerminal(COLOR_RED "Sensor %c%d untriggered\r\n", sensor->bank, sensor->id);
+                    IO_NS::Print(COLOR_RED MOVE_CURSOR "%d", SENSOR_START_ROW + sensor->id - 1, column, sensor->isTriggered);
+                }
+            }
+
             if (send_reply)
             {
                 // IO_NS::PrintTerminal("MarklinIO_server::run: Sending reply to tid{%d}\r\n", sender_tid);
@@ -335,7 +377,7 @@ namespace MARKLIN_IO_SERVER
     {
         if (transmit_buffer.IsEmpty())
         {
-            IO_NS::PrintTerminal(COLOR_RED "MarklinIOServer::handle_transmission: transmit buffer is empty -- Polling Sensors\r\n");
+            // IO_NS::PrintTerminal(COLOR_RED "MarklinIOServer::handle_transmission: transmit buffer is empty -- Polling Sensors\r\n");
             sequence_length_buffer.Push(1);
             transmit_buffer.Push(READ_ALL_SENSOR_BASE + NUM_BANKS);
             BYTES_RECEIVED = 0;

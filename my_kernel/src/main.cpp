@@ -149,18 +149,18 @@ extern "C" int kmain()
 
 void DequeTest(Queue<int, 12> *q)
 {
-    uart_printf(CONSOLE, "Starting DequeTest\r\n");
+    // uart_printf(CONSOLE, "Starting DequeTest\r\n");
     int nums[12] = {2, 1, 0, 3, 4, 5, 6, 7, 8, 9, 10, 11};
 
     for (int i = 3; i < 12; ++i)
     {
-        uart_printf(CONSOLE, "DequeTest: Pushing %d\r\n", nums[i]);
+        // uart_printf(CONSOLE, "DequeTest: Pushing %d\r\n", nums[i]);
         kassert(q->Push(nums[i]) == 0 && "DequeTest: ERROR");
     }
 
     for (int i = 0; i < 3; ++i)
     {
-        uart_printf(CONSOLE, "DequeTest: Pushing %d\r\n", nums[i]);
+        // uart_printf(CONSOLE, "DequeTest: Pushing %d\r\n", nums[i]);
         kassert(q->PushFront(nums[i]) == 0 && "DequeTest: ERROR");
     }
 
@@ -168,7 +168,7 @@ void DequeTest(Queue<int, 12> *q)
     {
         int val;
         q->Pop(&val);
-        uart_printf(CONSOLE, "DequeTest: %d\r\n", val);
+        // uart_printf(CONSOLE, "DequeTest: %d\r\n", val);
         kassert(val == i && "DequeTest: ERROR");
     }
     kassert(q->IsEmpty() && "DequeTest: ERROR -- queue is not empty");

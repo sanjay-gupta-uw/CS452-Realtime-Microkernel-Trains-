@@ -8,23 +8,27 @@
 
 namespace MARKLIN_IO_SERVER
 {
+#define NUM_BANKS 5
+#define SENSORS_PER_BANK 16
+
+    struct Sensor
+    {
+        char bank;
+        uint8_t id;
+        bool isTriggered;
+        uint32_t trigger_tick;
+    };
+    extern Sensor sensor_data[NUM_BANKS * SENSORS_PER_BANK]; // Declaration
+
     struct MarklinRequest
     {
         bool isSingleByteCommand;
         uint8_t byte1;
         uint8_t byte2;
     };
-    struct Sensor
-    {
-        char bank;
-        uint8_t id;
-        bool isTriggered;
-    };
 
 #define UNDEFINED_CHAR '-'
 #define NUM_SWITCHES 22
-#define NUM_BANKS 5
-#define SENSORS_PER_BANK 16
 #define MAX_RECENT_SENSORS 10
     // REDEFINED QUEUE SIZE TO 32 -> change queue to accept size as a parameter?
     // #define RECEIVE_SIZE 32 // 32 chars/bytes

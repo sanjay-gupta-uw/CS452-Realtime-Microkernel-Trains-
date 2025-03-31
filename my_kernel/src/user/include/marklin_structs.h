@@ -96,7 +96,7 @@ struct TrainMessage
     TrainMessage(TrainMessageType type = TrainMessageType::TRAIN_TICKER)
         : type(type)
     {
-        IO_NS::PrintTerminal("TrainMessage::TrainMessage CONSTRUCTOR -- %d\r\n", type);
+        // IO_NS::PrintTerminal("TrainMessage::TrainMessage CONSTRUCTOR -- %d\r\n", type);
     }
 
     // Constructor for SegmentNotification

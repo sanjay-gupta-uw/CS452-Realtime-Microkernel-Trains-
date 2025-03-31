@@ -34,16 +34,23 @@ namespace UI_NS
 
     static void init_sensor_display()
     {
-        IO_NS::Print(COLOR_WHITE MOVE_CURSOR "-----------------------+\r\n", SENSOR_LOCATION + 0, 1 + BOX_WIDTH);
-        IO_NS::Print(COLOR_WHITE MOVE_CURSOR "   Table of Sensors:   |\r\n", SENSOR_LOCATION + 1, 1 + BOX_WIDTH);
-        IO_NS::Print(COLOR_WHITE MOVE_CURSOR "-----------------------+\r\n", SENSOR_LOCATION + 2, 1 + BOX_WIDTH);
-        for (int i = 0; i < SWITCH_COUNT; ++i)
+        IO_NS::Print(COLOR_WHITE MOVE_CURSOR "---------------------------------------------------------------------+\r\n", SENSOR_LOCATION + 0, 1 + BOX_WIDTH);
+        IO_NS::Print(COLOR_WHITE MOVE_CURSOR "   Bank A:   |   Bank B:   |   Bank C:   |   Bank D:   |   Bank E:   |\r\n", SENSOR_LOCATION + 1, 1 + BOX_WIDTH);
+        IO_NS::Print(COLOR_WHITE MOVE_CURSOR "---------------------------------------------------------------------+\r\n", SENSOR_LOCATION + 2, 1 + BOX_WIDTH);
+        for (int i = 0; i < 16; ++i)
         {
             // print borders and switch address so display only needs to update the status
             int location_y = SENSOR_LOCATION + 3 + i;
-            IO_NS::Print(COLOR_WHITE MOVE_CURSOR "|", location_y, 2 * BOX_WIDTH - 1);
+            IO_NS::Print(COLOR_WHITE MOVE_CURSOR "A%d:" CHANGE_COLUMN "|  B%d:" CHANGE_COLUMN "|  C%d:" CHANGE_COLUMN "|  D%d:" CHANGE_COLUMN "|  E%d:" CHANGE_COLUMN "|", location_y, BOX_WIDTH + 3, i + 1, BOX_WIDTH + 14, i + 1, BOX_WIDTH * 2 + 3, i + 1, BOX_WIDTH * 2 + 17, i + 1, BOX_WIDTH * 3 + 6, i + 1, BOX_WIDTH * 3 + 20);
+            IO_NS::Print(COLOR_WHITE MOVE_CURSOR "%d", SENSOR_START_ROW + i, BANK_A_COL, 0);
+            IO_NS::Print(COLOR_WHITE MOVE_CURSOR "%d", SENSOR_START_ROW + i, BANK_B_COL, 0);
+            IO_NS::Print(COLOR_WHITE MOVE_CURSOR "%d", SENSOR_START_ROW + i, BANK_C_COL, 0);
+            IO_NS::Print(COLOR_WHITE MOVE_CURSOR "%d", SENSOR_START_ROW + i, BANK_D_COL, 0);
+            IO_NS::Print(COLOR_WHITE MOVE_CURSOR "%d", SENSOR_START_ROW + i, BANK_E_COL, 0);
+            // uassert(false && "FORCED PANIC -- UI3 -- REMOVE THIS LINE");
         }
-        IO_NS::Print(COLOR_WHITE MOVE_CURSOR "-----------------------+\r\n", SENSOR_LOCATION + 3 + SWITCH_COUNT, 1 + BOX_WIDTH);
+
+        IO_NS::Print(COLOR_WHITE MOVE_CURSOR "---------------------------------------------------------------------+\r\n", SENSOR_LOCATION + 3 + 16, 1 + BOX_WIDTH);
     }
 
     void start_ui()
