@@ -11,12 +11,17 @@
 #define TRACK_MAX 144
 #define REVERSE_COST 300
 
+enum TrackID
+{
+    A = 0,
+    B = 1,
+};
 class Track
 {
 private:
+    TrackID track_id;
     int CONTROLLER_TID;
     track_node track[TRACK_MAX];
-    char track_id;
     void init_tracka();
     void init_trackb();
     void initialize_loop(); // sets noid

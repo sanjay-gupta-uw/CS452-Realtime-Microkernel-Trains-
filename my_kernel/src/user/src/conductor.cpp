@@ -289,11 +289,20 @@ namespace Conductor_NS
                 int retval = SEND(SWITCH_SERVER_TID, (char *)&switch_req, sizeof(switch_req), nullptr, 0);
                 uassert(retval >= 0 && "Error sending switch request");
 
-                IO_NS::PrintTerminal("CONDUCTOR::Switch %s set to %c\r\n", node.node->name, node.switch_state == Switch_NS::SWITCH_STATE::STRAIGHT ? 'S' : 'C');
+                // IO_NS::PrintTerminal("CONDUCTOR::Switch %s set to %c\r\n", node.node->name, node.switch_state == Switch_NS::SWITCH_STATE::STRAIGHT ? 'S' : 'C');
                 // break;
             }
         }
         // uassert(false && "FORCED ERROR");
+    }
+
+    static void clear_path(Stack<PathNode, TRACK_MAX> *path)
+    {
+        while (!path->IsEmpty())
+        {
+            PathNode node;
+            path->Pop(&node);
+        }
     }
 
     void Conductor::ConductorTest()
@@ -311,16 +320,23 @@ namespace Conductor_NS
         // IO_NS::PrintTerminal("Conductor finished testing loop switches\r\n");
 
         // test path finding
-        IO_NS::PrintTerminal("Conductor testing path finding\r\n");
+        IO_NS::PrintTerminal(CLEAR_SCREEN "Conductor testing path finding\r\n");
         Stack<PathNode, TRACK_MAX> path;
         track.find_path("E1", "E14", &path);
+        clear_path(&path);
         track.find_path("E9", "D8", &path);
+        clear_path(&path);
         track.find_path("A1", "A2", &path);
+        clear_path(&path);
         track.find_path("A1", "E7", &path);
+        clear_path(&path);
         track.find_path("A2", "E7", &path);
+        clear_path(&path);
         track.find_path(LOOP_START_NODE, LOOP_START_NODE, &path, false);
+        clear_path(&path);
         // track.find_path(LOOP_START_NODE, "C11", &path);
         IO_NS::PrintTerminal("Conductor finished testing path finding\r\n");
+        uassert(false && "Conductor::ConductorLoop: Test finsihed -- forced error");
     }
 
     void Conductor::SendSegmentToMessenger(int messenger_tid, train_task_mapping *train)
@@ -373,7 +389,6 @@ namespace Conductor_NS
 
             uassert(!train->path.IsEmpty() && "CalibrateTrain: Path is empty");
             Queue<PathNode, NUM_SWITCHES> switch_nodes;
-            IO_NS::PrintTerminal("Conductor::CalibrateTrain -- Found path from %s to %s\r\n", start_node_name, LOOP_START_NODE);
             IO_NS::PrintTerminal("Conductor::CalibrateTrain -- Setting switches\r\n");
             get_switch_queue(&train->path, &switch_nodes);
             SetSwitches(&switch_nodes);
@@ -430,7 +445,8 @@ namespace Conductor_NS
             // receive request from terminal
             retval = RECEIVE(&sender_tid, (char *)&req, sizeof(ConductorRequest));
             uassert(retval >= 0 && "Error receiving request from terminal");
-            IO_NS::PrintTerminal("Conductor received %s from %d\r\n", req.requestType == RequestType::CMD ? "CMD" : "GET_SEGMENT", sender_tid);
+            IO_NS::PrintTerminal("Conductor received %s from %d\r\n", req.requestType == RequestType::CMD ? "CMD" : (req.requestType == RequestType::GET_SEGMENT ? "GET_SEGMENT" : "GET_CMD"), sender_tid);
+
             bool sendReply = false;
             if (req.requestType == RequestType::CMD)
             {

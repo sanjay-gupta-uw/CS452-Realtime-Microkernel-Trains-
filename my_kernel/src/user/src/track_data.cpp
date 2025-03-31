@@ -37,12 +37,18 @@ Track::~Track()
 
 void Track::init(char track_id)
 {
+
     uassert((track_id == 'A' || track_id == 'B' || track_id == 'a' || track_id == 'b') && "Invalid track ID");
-    this->track_id = track_id;
     if (track_id == 'A' || track_id == 'a')
+    {
+        this->track_id = TrackID::A;
         init_tracka();
+    }
     else
+    {
+        this->track_id = TrackID::B;
         init_trackb();
+    }
 
     initialize_loop();
 }
@@ -2519,7 +2525,29 @@ track_node *Track::get_node_by_name(const char *name)
     return NULL;
 }
 
-static int get_node_index(track_node *node)
+static int get_track_b_node_index(int node_num)
+{
+    int ret_val = node_num;
+    if (node_num > 5)
+    {
+        // IO_NS::PrintTerminal("Track::get_track_b_node_index: node_num %d\r\n", node_num);
+        int real_index_node_nums[3] = {6, 7, 8};
+        int possible_nums[3] = {7, 9, 10};
+        for (int i = 0; i < 3; i++)
+        {
+            if (possible_nums[i] == node_num)
+            {
+                ret_val = real_index_node_nums[i];
+                // IO_NS::PrintTerminal("Track::get_track_b_node_index: Found node_num %d, real index %d\r\n", node_num, ret_val);
+                break;
+            }
+        }
+        // 6,7,8
+        // 7,9,10
+    }
+    return ret_val;
+}
+static int get_node_index(track_node *node, TrackID track_id)
 {
     int index = -1;
     switch (node->type)
@@ -2549,6 +2577,12 @@ static int get_node_index(track_node *node)
             node_num = node_num * 10 + (*name_ptr - '0');
             name_ptr++;
         }
+
+        if (track_id == TrackID::B)
+        {
+            node_num = get_track_b_node_index(node_num);
+        }
+
         index = 124 + (node_num - 1) * 2;
         break;
     }
@@ -2562,6 +2596,12 @@ static int get_node_index(track_node *node)
             node_num = node_num * 10 + (*name_ptr - '0');
             name_ptr++;
         }
+
+        if (track_id == TrackID::B)
+        {
+            node_num = get_track_b_node_index(node_num);
+        }
+
         index = 125 + (node_num - 1) * 2;
         break;
     }
@@ -2576,8 +2616,9 @@ static int get_node_index(track_node *node)
 */
 void Track::find_path(const char *start, const char *dest, Stack<PathNode, TRACK_MAX> *path, bool check_start_dest)
 {
-    IO_NS::PrintTerminal("Track::find_path: Finding path from %s to %s, checking start and dest: %d\r\n", start, dest, check_start_dest);
+    // IO_NS::PrintTerminal(CLEAR_SCREEN "Track::find_path: Finding path from %s to %s, checking start and dest: %d\r\n", start, dest, check_start_dest);
     const int MAX_DIST = (1 << 31) - 1; // since we are using signed integers
+    int count = 0;
 
     int dist[TRACK_MAX];
     int prev_node[TRACK_MAX];
@@ -2586,6 +2627,7 @@ void Track::find_path(const char *start, const char *dest, Stack<PathNode, TRACK
         dist[i] = MAX_DIST;
         prev_node[i] = -1;
     }
+
     // PQ for nodes to explore
     track_node *start_node = get_node_by_name(start);
     if (start_node == NULL || start_node->type != NODE_SENSOR)
@@ -2593,7 +2635,9 @@ void Track::find_path(const char *start, const char *dest, Stack<PathNode, TRACK
         IO_NS::PrintTerminal("Track::find_path: Start node not found, please ensure only sensor nodes are requested!\r\n");
         return;
     }
-    int index = get_node_index(start_node);
+    int index = get_node_index(start_node, track_id);
+    int start_index = index;
+
     uassert(index >= 0 && "Track::find_path: index is negative! UNEXPECTED ERROR");
     dist[index] = 0;
 
@@ -2608,7 +2652,7 @@ void Track::find_path(const char *start, const char *dest, Stack<PathNode, TRACK
     // push reverse node incase reversing provides a shorter path
     track_node *reverse_node = start_node->reverse;
     uassert(reverse_node != NULL && "Track::find_path: sensor reverse node is NULL");
-    int reverse_index = get_node_index(reverse_node);
+    int reverse_index = get_node_index(reverse_node, track_id);
     if (dist[reverse_index] > dist[index] + REVERSE_COST)
     {
         dist[reverse_index] = dist[index] + REVERSE_COST;
@@ -2618,14 +2662,12 @@ void Track::find_path(const char *start, const char *dest, Stack<PathNode, TRACK
 
     while (!pq.isEmpty())
     {
-        int index;
         uassert(pq.Pop(&index) >= 0 && "Track::find_path: error popping from PQ");
         uassert(index >= 0 && "Track::find_path: index is negative");
 
         track_node *curnode = &track[index];
-        IO_NS::PrintTerminal("Track::find_path: Exploring next node: {%d} ", index);
 
-        IO_NS::PrintTerminal("{ %s  ", curnode->name);
+        // IO_NS::PrintTerminal("Track::find_path: Exploring next node: %s{%d} ", curnode->name, index);
 
         // check if we have reached the destination
         if (strcmp(curnode->name, dest) == 0)
@@ -2641,6 +2683,7 @@ void Track::find_path(const char *start, const char *dest, Stack<PathNode, TRACK
         // push all outgoing edges
         // if node is branch, then two edges
         // otherwise, just one edge
+
         int num_edges = 0;
         switch (curnode->type)
         {
@@ -2659,39 +2702,35 @@ void Track::find_path(const char *start, const char *dest, Stack<PathNode, TRACK
         default:
             break;
         }
-        IO_NS::PrintTerminal(" - %d ", num_edges);
+
+        // IO_NS::PrintTerminal(" - {%d} edges\r\n", num_edges);
         // IO_NS::PrintTerminal(" NEd: %d ", num_edges);
 
         for (int i = 0; i < num_edges; i++)
         {
             track_edge *edge = &curnode->edge[i];
-            int dest_index = get_node_index(edge->dest);
-            // IO_NS::PrintTerminal(" %s ", edge->dest->name);
+            // IO_NS::PrintTerminal(":%s-> %s\r\n", edge->src->name, edge->dest->name);
+            int dest_index = get_node_index(edge->dest, track_id);
             // IO_NS::PrintTerminal(" dist[index]:%d edge[dist]:%d dest_index:%d cur_dist:%d ", dist[index], edge->dist, dest_index, dist[dest_index]);
 
             if ((dist[dest_index] > dist[index] + edge->dist) ||
-                (strcmp(start_node->name, dest) == 0 &&
-
+                (strcmp(start_node->name, dest) == 0 && // make var for this
                  strcmp(start_node->name, edge->dest->name) == 0))
             {
-                // IO_NS::PrintTerminal(" ADDING TO PQ ");
+
                 dist[dest_index] = dist[index] + edge->dist;
                 prev_node[dest_index] = index;
                 pq.Push(dest_index, dist[dest_index]);
+                if (dest_index > 139 && track_id == TrackID::B)
+                {
+                    IO_NS::PrintTerminal("Track::find_path: Node %s{%d} has edge to %s, but dest_index is %d, using edge %d\r\n", curnode->name, start_node->num, edge->dest->name, dest_index, i);
+                    uassert(false && "Track::find_path: dest_index is greater than 139 in Track B");
+                }
             }
-            // if (strcmp(start_node->name, edge->dest->name) == 0)
-            // {
-            //     IO_NS::PrintTerminal("HERE Track::find_path: Found path to %s\r\n", start_node->name);
-            //     IO_NS::PrintTerminal("DIST: %d\r\n", dist[dest_index]);
-            //     // uassert(false);
-            //     path_found = true;
-            //     break;
-            // }
         }
         start_iter = false;
-        IO_NS::PrintTerminal("}\r\n");
     }
-    IO_NS::PrintTerminal("DONE!\r\n");
+    // IO_NS::PrintTerminal("DONE!\r\n");
 
     if (!path_found)
     {
@@ -2701,17 +2740,27 @@ void Track::find_path(const char *start, const char *dest, Stack<PathNode, TRACK
     else // print path
     {
         // uassert(false && "FOUND PATH");
-        int dest_index = get_node_index(get_node_by_name(dest));
+        int dest_index = get_node_index(get_node_by_name(dest), track_id);
         int cur_index = dest_index;
         IO_NS::PrintTerminal("Track::find_path: Path: ");
         int prior_index = -1;
 
         int count = 0;
-        while (cur_index != -1)
+        while (cur_index >= 0)
         {
             IO_NS::PrintTerminal("%s ", track[cur_index].name);
             track_node *node = &track[cur_index];
-            if (node->type == track_node_type::NODE_BRANCH && prior_index >= 0)
+            count++;
+
+            // completed loop
+            if (start_index == cur_index && !path->IsEmpty())
+            {
+                // IO_NS::PrintTerminal("PATH IS NOT EMPTY, BREAKING OUT\r\n");
+                path->Push({node, Switch_NS::SWITCH_STATE::UNINITIALIZED});
+                break;
+            }
+
+            else if (node->type == track_node_type::NODE_BRANCH && prior_index >= 0)
             {
                 track_node *branch_result = &track[prior_index];
 
@@ -2720,7 +2769,7 @@ void Track::find_path(const char *start, const char *dest, Stack<PathNode, TRACK
                     path->Push({node, Switch_NS::SWITCH_STATE::STRAIGHT});
                     // IO_NS::PrintTerminal("STRAIGHT ");
                 }
-                else if (node->edge[DIR_CURVED].dest == branch_result)
+                else
                 {
                     path->Push({node, Switch_NS::SWITCH_STATE::CURVED});
                     // IO_NS::PrintTerminal("CURVED ");
@@ -2730,22 +2779,15 @@ void Track::find_path(const char *start, const char *dest, Stack<PathNode, TRACK
             {
                 path->Push({node, Switch_NS::SWITCH_STATE::UNINITIALIZED});
             }
-            count++;
 
             // IO_NS::PrintTerminal("%s ", node->name);
 
             prior_index = cur_index;
             cur_index = prev_node[cur_index];
-            // check if we have reached the start node
-            if (cur_index == index)
-            {
-                break;
-            }
         }
         // push the start node
         path->Push({start_node, Switch_NS::SWITCH_STATE::UNINITIALIZED});
 
-        IO_NS::PrintTerminal(" %s\r\n", track[cur_index].name);
         IO_NS::PrintTerminal("; Total distance: %d, Count: %d\r\n", dist[dest_index], count);
     }
 }

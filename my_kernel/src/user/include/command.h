@@ -17,17 +17,19 @@ namespace UI_CMD_NS
         int BUFFER_INDEX;
         char inputBuffer[INPUT_BUFFER_SIZE];
 
-        void clearInputBuffer();
         void Commandify(const char *str);
         void InitDisplay();
 
     public:
+        bool isTrackIDKnown;
+
         CommandPrompt();
         void getInput();
+        void clearInputBuffer();
 
         int IO_SERVER_TID;
         int CONDUCTOR_TID;
-        const TrackConfig* current_track;
+        const TrackConfig *current_track;
     };
 
     void start_command_prompt();

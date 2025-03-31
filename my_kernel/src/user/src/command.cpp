@@ -68,6 +68,7 @@ namespace UI_CMD_NS
         IO_SERVER_TID = WHOIS("IOServer");
         CONDUCTOR_TID = WHOIS("Conductor");
         BUFFER_INDEX = 0;
+        isTrackIDKnown = false;
         clearInputBuffer();
         InitDisplay();
         PrintCommandHelp();
@@ -396,7 +397,15 @@ namespace UI_CMD_NS
 
     void CommandPrompt::InitDisplay()
     {
-        IO_NS::Print(MOVE_CURSOR CLEAR_TO_END_LINE COLOR_GREEN "cmd> ", CMD_LOCATION, 1);
+        if (!isTrackIDKnown)
+        {
+            IO_NS::Print(MOVE_CURSOR CLEAR_TO_END_LINE COLOR_GREEN "cmd> Please enter the Track ID: ", CMD_LOCATION, 1);
+            return;
+        }
+        else
+        {
+            IO_NS::Print(MOVE_CURSOR CLEAR_TO_END_LINE COLOR_GREEN "cmd> ", CMD_LOCATION, 1);
+        }
     }
 
     void CommandPrompt::getInput()
@@ -457,6 +466,7 @@ namespace UI_CMD_NS
         {
             unsigned char track_id = (unsigned char)(IO_SERVER::Getc(commandPrompt.IO_SERVER_TID));
             IO_NS::PrintTerminal("%c\r\n", track_id);
+            uart_printf(CONSOLE, "Received Track ID: %c\r\n", track_id);
             if (track_id == 'A' || track_id == 'a' || track_id == 'B' || track_id == 'b')
             {
                 // display the track graph
@@ -473,6 +483,9 @@ namespace UI_CMD_NS
                 // create conductor
                 IO_NS::PrintTerminal("Attempting to start Conductor with track ID: %c, CONDUCTOR_TID: %d\r\n", track_id, commandPrompt.CONDUCTOR_TID);
                 SEND(commandPrompt.CONDUCTOR_TID, (char *)&track_id, sizeof(char), nullptr, 0);
+                commandPrompt.isTrackIDKnown = true;
+                commandPrompt.clearInputBuffer();
+
                 // send message to conductor
                 break;
             }
