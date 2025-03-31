@@ -49,6 +49,19 @@ public:
     {
         return size == Capacity;
     }
+
+    void Clear()
+    {
+        size = 0;
+        head = 0;
+
+        // Clear the stack by popping all items.
+        while (!IsEmpty())
+        {
+            T item;
+            Pop(&item);
+        }
+    }
 };
 
 #endif // _STACK_H

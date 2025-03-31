@@ -70,6 +70,18 @@ public:
     {
         return size == Capacity;
     }
+
+    void Clear()
+    {
+        size = 0;
+        head = 0;
+        tail = 0;
+        while (!IsEmpty())
+        {
+            T item;
+            Pop(&item);
+        }
+    }
 };
 
 #endif // _QUEUE_H_

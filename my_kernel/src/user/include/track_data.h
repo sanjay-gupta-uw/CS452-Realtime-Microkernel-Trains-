@@ -16,19 +16,36 @@ enum TrackID
     A = 0,
     B = 1,
 };
+
+typedef enum
+{
+    SWITCH_STRAIGHT,
+    SWITCH_CURVED
+} SwitchDirection;
+
+typedef struct
+{
+    int switch_num;
+    SwitchDirection dir;
+} SwitchSetting;
+
 class Track
 {
 private:
     TrackID track_id;
     int CONTROLLER_TID;
     track_node track[TRACK_MAX];
+    SwitchSetting switch_settings[NUM_SWITCHES];
+
     void init_tracka();
     void init_trackb();
-    void initialize_loop(); // sets noid
+    void initialize_loop(); // sets switches that belong to the main loop to true
 
 public:
     Track();
     ~Track();
+
+    void set_switch_state(int switch_num, char state);
 
     void getLoop(Queue<PathNode, NUM_SWITCHES> *switch_config, int *distance);
     void init(char track_id); // initialized either track a or b

@@ -30,6 +30,37 @@ Track::Track()
 {
     CONTROLLER_TID = -1;
     memset(track, 0, TRACK_MAX * sizeof(track_node));
+
+    // initialize all switch settings to straight
+    int switch_nums[NUM_SWITCHES] = {
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        0x99,
+        0x9A,
+        0x9B,
+        0X9C,
+    };
+    for (int i = 0; i < NUM_SWITCHES; i++)
+    {
+        switch_settings[i].switch_num = switch_nums[i];
+        switch_settings[i].dir = SWITCH_STRAIGHT;
+    }
 }
 Track::~Track()
 {
@@ -2399,6 +2430,19 @@ void Track::init_trackb()
     track[139].name = "EX10";
     track[139].type = NODE_EXIT;
     track[139].reverse = &track[138];
+}
+
+void Track::set_switch_state(int switch_num, char state)
+{
+    for (int i = 0; i < SWITCH_COUNT; ++i)
+    {
+        if (switch_settings[i].switch_num == switch_num)
+        {
+            switch_settings[i].switch_num = switch_num;
+            switch_settings[i].dir = (state == 'S') ? SwitchDirection::SWITCH_STRAIGHT : SwitchDirection::SWITCH_CURVED;
+            break;
+        }
+    }
 }
 
 void Track::initialize_loop()

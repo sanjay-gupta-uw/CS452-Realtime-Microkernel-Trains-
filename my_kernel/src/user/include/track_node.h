@@ -37,18 +37,6 @@ struct track_node
     bool is_node_in_loop;
 };
 
-typedef enum
-{
-    SWITCH_STRAIGHT,
-    SWITCH_CURVED
-} SwitchDirection;
-
-typedef struct
-{
-    int switch_num;
-    SwitchDirection dir;
-} SwitchSetting;
-
 typedef struct
 {
     int segment_length;
