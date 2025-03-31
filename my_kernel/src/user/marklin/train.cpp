@@ -71,9 +71,9 @@ namespace Trains_NS
         uassert(cmd_messenger_tid > 0 && "Error creating train messenger");
         int retval = SEND(cmd_messenger_tid, (char *)&train_num, sizeof(int), nullptr, 0);
 
-        path_messenger_tid = CREATE(PRIORITY::DEVICE_NOTIFIER, Trains_NS::path_messenger);
-        uassert(path_messenger_tid > 0 && "Error creating train messenger");
-        retval = SEND(path_messenger_tid, (char *)&train_num, sizeof(int), nullptr, 0);
+        // path_messenger_tid = CREATE(PRIORITY::DEVICE_NOTIFIER, Trains_NS::path_messenger);
+        // uassert(path_messenger_tid > 0 && "Error creating train messenger");
+        // retval = SEND(path_messenger_tid, (char *)&train_num, sizeof(int), nullptr, 0);
 
         // sensor_messenger_tid = CREATE(PRIORITY::DEVICE_NOTIFIER, Trains_NS::sensor_messenger);
         // uassert(sensor_messenger_tid > 0 && "Error creating train messenger");

@@ -214,12 +214,13 @@ namespace Conductor_NS
 
             Conductor::UpdateTrainDisplay();
 
-            IO_NS::PrintTerminal("Train %d spawned successfully, beginning calibration!\r\n", req->id);
+            IO_NS::PrintTerminal("Train %d spawned successfully!\r\n", req->id);
+            // IO_NS::PrintTerminal("Train %d spawned successfully, beginning calibration!\r\n", req->id);
 
-            train->calibration_stage = CALIBRATION_STAGE::CALIBRATE_NAV_TO_LOOP;
-            IO_NS::PrintTerminal("Train %d, TID: %d calibrating -- start: %s", train->train_num, train->train_task_tid, train->target_sensor_name);
+            // train->calibration_stage = CALIBRATION_STAGE::CALIBRATE_NAV_TO_LOOP;
+            // IO_NS::PrintTerminal("Train %d, TID: %d calibrating -- start: %s", train->train_num, train->train_task_tid, train->target_sensor_name);
 
-            CalibrateTrain(train);
+            // CalibrateTrain(train);
 
             break;
         }
