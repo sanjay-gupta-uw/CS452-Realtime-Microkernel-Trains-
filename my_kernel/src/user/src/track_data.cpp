@@ -2432,6 +2432,49 @@ void Track::init_trackb()
     track[139].reverse = &track[138];
 }
 
+static int get_switch_index(int switch_num)
+{
+    if (switch_num < 19)
+    {
+        return switch_num - 1;
+    }
+
+    return switch_num - 0x99;
+}
+// based off of Jack's from sensor_ignore branch
+track_node *Track::predict_next_sensor(track_node *last_hit_sensor)
+{
+    uassert(last_hit_sensor != nullptr && last_hit_sensor->type == track_node_type::NODE_SENSOR && "last_hit_sensor is null");
+
+    track_node *current_node = last_hit_sensor->edge[DIR_AHEAD].dest;
+    while (current_node->type != NODE_SENSOR)
+    {
+        int DIR = -1;
+        switch (current_node->type)
+        {
+        case NODE_ENTER:
+        case NODE_MERGE:
+        {
+            DIR = 0;
+            break;
+        }
+        case NODE_BRANCH:
+        {
+            int branch_idx = get_switch_index(current_node->num);
+            DIR = switch_settings[branch_idx].dir;
+        }
+        default:
+            break;
+        }
+        if (DIR == -1)
+        {
+            break;
+        }
+        current_node = current_node->edge[DIR].dest;
+    }
+    return current_node;
+}
+
 void Track::set_switch_state(int switch_num, char state)
 {
     for (int i = 0; i < SWITCH_COUNT; ++i)
@@ -2658,8 +2701,9 @@ static int get_node_index(track_node *node, TrackID track_id)
 /*
   Find a path from the destination into the loop
 */
-void Track::find_path(const char *start, const char *dest, Stack<PathNode, TRACK_MAX> *path, bool check_start_dest)
+void Track::find_path(const char *start, const char *dest, Stack<PathNode, TRACK_MAX> *path, bool check_start_dest, int offset)
 {
+    path->Clear();
     // IO_NS::PrintTerminal(CLEAR_SCREEN "Track::find_path: Finding path from %s to %s, checking start and dest: %d\r\n", start, dest, check_start_dest);
     const int MAX_DIST = (1 << 31) - 1; // since we are using signed integers
     int count = 0;
@@ -2790,6 +2834,7 @@ void Track::find_path(const char *start, const char *dest, Stack<PathNode, TRACK
         int prior_index = -1;
 
         int count = 0;
+        int segment_length = 0;
         while (cur_index >= 0)
         {
             IO_NS::PrintTerminal("%s ", track[cur_index].name);
@@ -2811,20 +2856,28 @@ void Track::find_path(const char *start, const char *dest, Stack<PathNode, TRACK
                 if (node->edge[DIR_STRAIGHT].dest == branch_result)
                 {
                     path->Push({node, Switch_NS::SWITCH_STATE::STRAIGHT});
+                    segment_length += node->edge[DIR_STRAIGHT].dist;
                     // IO_NS::PrintTerminal("STRAIGHT ");
                 }
                 else
                 {
                     path->Push({node, Switch_NS::SWITCH_STATE::CURVED});
+                    segment_length += node->edge[DIR_CURVED].dist;
                     // IO_NS::PrintTerminal("CURVED ");
                 }
             }
             else
             {
                 path->Push({node, Switch_NS::SWITCH_STATE::UNINITIALIZED});
+                segment_length += node->edge[DIR_AHEAD].dist;
             }
 
-            // IO_NS::PrintTerminal("%s ", node->name);
+            IO_NS::PrintTerminal(COLOR_YELLOW " - %d - ", segment_length);
+
+            if (node->type == NODE_SENSOR)
+            {
+                segment_length = 0;
+            }
 
             prior_index = cur_index;
             cur_index = prev_node[cur_index];
@@ -2833,5 +2886,16 @@ void Track::find_path(const char *start, const char *dest, Stack<PathNode, TRACK
         path->Push({start_node, Switch_NS::SWITCH_STATE::UNINITIALIZED});
 
         IO_NS::PrintTerminal("; Total distance: %d, Count: %d\r\n", dist[dest_index], count);
+
+        IO_NS::PrintTerminal("Track::find_path: OFFSET: %d\r\n", offset);
+        if (offset < 0)
+        {
+            IO_NS::PrintTerminal("NEED TO STOP THE TRAIN PRECISELY %d mm BEFORE THE DESTINATION\r\n", dist[dest_index] - offset);
+        }
+        if (offset > 0)
+        {
+            IO_NS::PrintTerminal("NEED TO STOP THE TRAIN PRECISELY %d mm AFTER THE DESTINATION\r\n", dist[dest_index] + offset);
+        }
+        // if offset is negative, pop off nodes (need to access other side of STACK!)
     }
 }

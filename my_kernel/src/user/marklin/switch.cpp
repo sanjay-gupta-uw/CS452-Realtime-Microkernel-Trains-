@@ -43,7 +43,7 @@ namespace Switch_NS
         for (int i = 0; i < NUM_SWITCHES; ++i)
         {
             int index = getSwitchIndex(source_switches[i].num);
-            IO_NS::PrintTerminal("SwitchServer: Switch %d at index %d\r\n", source_switches[i].num, index);
+            // IO_NS::PrintTerminal("SwitchServer: Switch %d at index %d\r\n", source_switches[i].num, index);
 
             switches_locations[index].col = source_switches[i].col;
             switches_locations[index].line = source_switches[i].line;
@@ -96,7 +96,7 @@ namespace Switch_NS
         // Update switches table
         IO_NS::Print(MOVE_CURSOR "%s%c", SWITCH_LOCATION + 3 + index, SWITCH_STATUS_COL, color, switch_state);
         // update track diagram
-        IO_NS::PrintTerminal("Switch.cpp: %d line %d col %d\r\n", addr, switches_locations[index].line, switches_locations[index].col);
+        // IO_NS::PrintTerminal("Switch.cpp: %d line %d col %d\r\n", addr, switches_locations[index].line, switches_locations[index].col);
         if (switches_locations[index].num == addr)
         {
             // Use current_track->switches[i].line/col
@@ -107,7 +107,7 @@ namespace Switch_NS
                          switch_state);
         }
 
-        IO_NS::PrintTerminal("Switch.cpp: %d set to %c GRAPH UPATED", addr, switch_state);
+        // IO_NS::PrintTerminal("Switch.cpp: %d set to %c GRAPH UPATED", addr, switch_state);
 
         switches.switches[index].alignment = ALIGNMENT;
 

@@ -45,12 +45,12 @@ public:
     Track();
     ~Track();
 
+    track_node *predict_next_sensor(track_node *cur_sensor);
     void set_switch_state(int switch_num, char state);
-
     void getLoop(Queue<PathNode, NUM_SWITCHES> *switch_config, int *distance);
     void init(char track_id); // initialized either track a or b
     track_node *get_node_by_name(const char *name);
-    void find_path(const char *start, const char *dest, Stack<PathNode, TRACK_MAX> *path, bool check_start_dest = true);
+    void find_path(const char *start, const char *dest, Stack<PathNode, TRACK_MAX> *path, bool check_start_dest = true, int offset = 0);
     // int get_node_num_by_name_b(const char *name);
 };
 

@@ -417,7 +417,7 @@ namespace Trains_NS
 
         int CONDUCTOR_TID = WHOIS("Conductor");
 
-        ConductorRequest conductor_request(train_task_tid, train_num);
+        ConductorRequest conductor_request(train_num);
         TrainCommandNotification command_struct;
         while (true)
         {
