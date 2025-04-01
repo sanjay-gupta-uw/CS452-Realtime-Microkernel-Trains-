@@ -54,6 +54,12 @@ static void CreateCoreServers()
     uassert(clockServerTid > 0 && "Error starting Clock Server");
     IO_NS::PrintTerminal("Clock Server started with TID %d\r\n", clockServerTid);
 
+    // create conductor for communicating between trains/sensors/switches
+    // int ConductorTid = CREATE(PRIORITY::ORCHESTRATOR, Conductor_NS::start_conductor);
+    int ConductorTid = CREATE(PRIORITY::DEVICE_NOTIFIER, Conductor_NS::start_conductor);
+    uassert(ConductorTid > 0 && "Error starting Conductor");
+    IO_NS::PrintTerminal("Conductor started with TID %d\r\n", ConductorTid);
+
     int marklinIoServerTid = CREATE(PRIORITY::MARKLIN_SERVER, MARKLIN_IO_SERVER::startMarklinIOServer); // Start the Marklin IO Server
     uassert(marklinIoServerTid > 0 && "Error starting Marklin IO Server");
     IO_NS::PrintTerminal("Marklin IO Server started with TID %d\r\n", marklinIoServerTid);
@@ -74,12 +80,6 @@ void FirstUserTask()
     int uiTaskTid = CREATE(PRIORITY::CORE, UI_NS::start_ui); // Start the UI Task
     uassert(uiTaskTid > 0 && "Error starting UI Task");
     IO_NS::PrintTerminal("UI Task started with TID %d\r\n", uiTaskTid);
-
-    // create conductor for communicating between trains/sensors/switches
-    // int ConductorTid = CREATE(PRIORITY::ORCHESTRATOR, Conductor_NS::start_conductor);
-    int ConductorTid = CREATE(PRIORITY::DEVICE_NOTIFIER, Conductor_NS::start_conductor);
-    uassert(ConductorTid > 0 && "Error starting Conductor");
-    IO_NS::PrintTerminal("Conductor started with TID %d\r\n", ConductorTid);
 
     // create command prompt
     int cmdTid = CREATE(PRIORITY::LOWEST, UI_CMD_NS::start_command_prompt); // Start the Command Task

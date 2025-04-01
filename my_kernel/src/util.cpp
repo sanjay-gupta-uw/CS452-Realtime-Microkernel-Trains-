@@ -66,3 +66,12 @@ void i2a(int num, char *buf)
     }
     ui2a(num, 10, buf);
 }
+
+int get_index_from_name(const char *name)
+{
+    int index = 0;
+    char *ptr = (const_cast<char *>(name));
+    char bank = *ptr++;
+    int id = a2ui(&ptr, 10);
+    return ((bank - 'A') * 16) + (id - 1);
+}

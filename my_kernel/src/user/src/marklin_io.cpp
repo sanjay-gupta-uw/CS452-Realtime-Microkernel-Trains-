@@ -261,8 +261,9 @@ namespace MARKLIN_IO_SERVER
                         if (sensor->isTriggered == SEN_ON)
                         {
                             // send reply to the messenger
-                            IO_NS::PrintTerminal("MarklinIO_server::run: Sending reply to sensor messenger %d\r\n", messenger->messenger_id);
-                            REPLY(messenger->messenger_id, (char *)&reply, sizeof(reply));
+                            SensorTriggerResponse trigger_reply = {sensor_data[messenger->sensor_idx].isTriggered, cur_tick, messenger->sensor_idx, messenger->train_num};
+                            IO_NS::PrintTerminal(COLOR_RED "MarklinIO_server::run: Sending reply to sensor messenger %d\r\n", messenger->messenger_id);
+                            REPLY(messenger->messenger_id, (char *)&trigger_reply, sizeof(trigger_reply));
                             messenger->sent_reply = true;
                         }
                     }
@@ -288,8 +289,10 @@ namespace MARKLIN_IO_SERVER
                     messenger->messenger_id = CREATE(PRIORITY::MARKLIN_NOTIFIER, start_sensor_messenger);
                     SEND(messenger->messenger_id, (char *)&train_num, sizeof(int), nullptr, 0);
                 }
+                messenger->sensor_idx = get_index_from_name((const char *)sensor_listener->sensor_name);
+                messenger->train_num = train_num;
 
-                IO_NS::PrintTerminal("MarklinIO_server::run: Received sensor listener request from tid{%d} for train %d, sensor %s\r\n", sender_tid, train_num, sensor_listener->sensor_name);
+                IO_NS::PrintTerminal(COLOR_RED "MarklinIO_server::run: Received sensor listener request from tid{%d} for train %d, sensor %s {%d}\r\n", sender_tid, train_num, sensor_listener->sensor_name, messenger->sensor_idx);
                 send_reply = true;
                 break;
             }
@@ -301,12 +304,21 @@ namespace MARKLIN_IO_SERVER
                 {
                     MessengerUnit *messenger = &sensor_messenger[i];
 
-                    if (messenger->messenger_id == sender_tid)
-                    {
-                        IO_NS::PrintTerminal(COLOR_RED "MarklinIO_server::run: -- Sensor messenger found\r\n");
-                        messenger->sent_reply = false;
-                        break;
-                    }
+                    // REMOVE THIS
+                    // if (messenger->messenger_id == sender_tid)
+                    // {
+                    //     IO_NS::PrintTerminal(COLOR_RED "MarklinIO_server::run: -- Sensor messenger found\r\n");
+                    //     messenger->sent_reply = false;
+                    //     // IRQ = 0
+                    //     if (messenger->sensor_idx > -1)
+                    //     {
+                    //         SensorTriggerResponse trigger_reply = {sensor_data[messenger->sensor_idx].isTriggered, cur_tick, messenger->sensor_idx, messenger->train_num};
+                    //         IO_NS::PrintTerminal("MarklinIO_server::run: Sending reply to sensor messenger %d, for idx: %d, train: %d\r\n", messenger->messenger_id, messenger->sensor_idx, messenger->train_num);
+                    //         REPLY(messenger->messenger_id, (char *)&trigger_reply, sizeof(trigger_reply));
+                    //         messenger->sent_reply = true;
+                    //     }
+                    //     break;
+                    // }
                 }
                 break;
             }
@@ -585,10 +597,14 @@ namespace MARKLIN_IO_SERVER
             int retval = SEND(marklin_io_tid, (char *)&req, sizeof(req), (char *)&sensor_triggered_struct, sizeof(SensorTriggerResponse));
             uassert(retval >= 0 && "PATH MESSENGER: Error sending SegmentRequest to Conductor");
 
-            IO_NS::PrintTerminal("SENSOR MESSENGER{%d/%d}:: sensor triggered: %d, at tick %d\r\n", my_tid, train_num, sensor_triggered_struct.is_triggered, sensor_triggered_struct.trigger_tick);
+            int triggered_idx = sensor_triggered_struct.sensor_idx;
+            int trigger_tick = sensor_triggered_struct.trigger_tick;
+            int response_train_num = sensor_triggered_struct.train_num;
+
+            IO_NS::PrintTerminal("SENSOR MESSENGER{%d/%d}:: sensor triggered: %d, at tick %d for train %d\r\n", my_tid, train_num, triggered_idx, trigger_tick, response_train_num);
             // SEND TO CONDUCTOR
             ConductorRequest conductor_request(&sensor_triggered_struct);
-            IO_NS::PrintTerminal(COLOR_YELLOW "SENSOR MESSENGER{%d/%d}:: notifying Conductor\r\n", my_tid, train_num);
+            IO_NS::PrintTerminal(COLOR_YELLOW "SENSOR MESSENGER{%d/%d}:: notifying Conductor {%d}\r\n", my_tid, train_num, conductor_tid);
             retval = SEND(conductor_tid, (char *)&conductor_request, sizeof(ConductorRequest), nullptr, 0);
             uassert(retval >= 0 && "SENSOR MESSENGER: Error sending SensorTriggerResponse to Conductor");
             IO_NS::PrintTerminal(COLOR_YELLOW "SENSOR MESSENGER{%d/%d}:: notified Conductor\r\n", my_tid, train_num);

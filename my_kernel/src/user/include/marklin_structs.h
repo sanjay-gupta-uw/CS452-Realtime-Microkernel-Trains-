@@ -3,7 +3,7 @@
 
 #include "uassert.h"
 #include <cstdint>
-
+#include "../../util.h"
 #define STRAIGHT_CMD 0x21
 #define CURVED_CMD 0x22
 #define SOLENOID_OFF_CMD 0x20
@@ -142,8 +142,9 @@ enum class RequestType
 struct SensorTriggerResponse
 {
     bool is_triggered;
-    int trigger_tick;
+    uint32_t trigger_tick;
     int sensor_idx;
+    int train_num;
 };
 struct ConductorRequest
 {

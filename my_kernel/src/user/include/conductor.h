@@ -77,6 +77,7 @@ namespace Conductor_NS
         void CalibrateTrain(train_task_mapping *train);
         void UpdateCalibrationStage(train_task_mapping *train);
         void setSwitch(int addr, Switch_NS::SWITCH_STATE state);
+        void PopSegment(Stack<PathNode, TRACK_MAX> *path);
 
         train_task_mapping train_arr[NUM_TRAINS];
         Track track;

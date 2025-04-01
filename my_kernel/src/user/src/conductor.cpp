@@ -20,6 +20,18 @@ typedef struct IO_REQUEST
 namespace Conductor_NS
 {
 
+    static void VerifyPath(Stack<PathNode, TRACK_MAX> *path)
+    {
+        // IO_NS::PrintTerminal(CLEAR_SCREEN MOVE_CURSOR "Conductor::VerifyPath -- Verifying path\r\n", 1, 1);
+        PathNode node;
+        while (!path->IsEmpty())
+        {
+            path->Pop(&node);
+            IO_NS::PrintTerminal("Conductor::VerifyPath -- %s\r\n", node.node->name);
+        }
+        uassert(false && "Conductor::VerifyPath -- Test finished -- forced error");
+    }
+
     static void InitializeTrainDisplay()
     {
         // Header
@@ -38,7 +50,7 @@ namespace Conductor_NS
 
     Conductor::Conductor()
     {
-        IO_NS::PrintTerminal("Starting Conductor\r\n");
+        IO_NS::PrintTerminal(CLEAR_SCREEN "Starting Conductor\r\n");
         // Track track;
         REGISTERAS("Conductor");
         IO_NS::PrintTerminal("Conductor started\r\n");
@@ -83,12 +95,12 @@ namespace Conductor_NS
     void Conductor::SwitchNextSegment(Stack<PathNode, TRACK_MAX> *path)
     {
         // IO_NS::PrintTerminal(CLEAR_SCREEN MOVE_CURSOR "Conductor::SwitchNextSegment -- Processing next segment\r\n", 1, 1);
-        Stack<PathNode, 10> temp_queue;
-        temp_queue.Clear();
+        Stack<PathNode, 10> temp_stack;
+        temp_stack.Clear();
         PathNode node;
         path->Pop(&node);
         // IO_NS::PrintTerminal("Conductor::SwitchNextSegment -- cur_node: %s\r\n", node.node->name);
-        temp_queue.Push(node);
+        temp_stack.Push(node);
         PathNode cur_node;
         path->Pop(&cur_node);
         // IO_NS::PrintTerminal("Conductor::SwitchNextSegment -- NODE AFTER: %s\r\n", cur_node.node->name);
@@ -103,23 +115,16 @@ namespace Conductor_NS
 
                 // uassert(false && "NEED TO CREATE SWITCH REQUEST");
             }
-            temp_queue.Push(cur_node);
+            temp_stack.Push(cur_node);
             path->Pop(&cur_node);
         }
 
-        temp_queue.Push(cur_node);
-        while (!temp_queue.IsEmpty())
+        temp_stack.Push(cur_node);
+        while (!temp_stack.IsEmpty())
         {
-            temp_queue.Pop(&cur_node);
+            temp_stack.Pop(&cur_node);
             path->Push(cur_node);
         }
-
-        // IO_NS::PrintTerminal("VERIFY WE DIDNT MODIFY THE PATH\r\n");
-        // while (!path->IsEmpty())
-        // {
-        //     path->Pop(&cur_node);
-        //     IO_NS::PrintTerminal("Conductor::SwitchNextSegment -- %s\r\n", cur_node.node->name);
-        // }
     }
 
     void Conductor::setSwitch(int addr, Switch_NS::SWITCH_STATE state)
@@ -308,10 +313,8 @@ namespace Conductor_NS
             // uassert(false && "Conductor::ProcessRequest: Test finished -- forced error");
 
             SwitchNextSegment(&train->path);
-
             Conductor::UpdateTrainDisplay();
 
-            // track.find_path((char *)req->data);
             break;
         }
 
@@ -424,12 +427,13 @@ namespace Conductor_NS
         int retval;
         int sender_tid;
         ConductorRequest req;
+        int sensor_trigger_count = 0;
         while (true)
         {
             // receive request from terminal
             retval = RECEIVE(&sender_tid, (char *)&req, sizeof(ConductorRequest));
             uassert(retval >= 0 && "Error receiving request from terminal");
-            IO_NS::PrintTerminal("Conductor received %s from %d\r\n", req.requestType == RequestType::CMD ? "CMD" : (req.requestType == RequestType::GET_SEGMENT ? "GET_SEGMENT" : "GET_CMD"), sender_tid);
+            IO_NS::PrintTerminal("Conductor received %s from %d\r\n", req.requestType == RequestType::CMD ? "CMD" : (req.requestType == RequestType::GET_SEGMENT ? "GET_SEGMENT" : (req.requestType == RequestType::GET_CMD ? "GET_CMD" : (req.requestType == RequestType::GET_SENSOR ? "GET_SENSOR" : "SENSOR_TRIGGER"))), sender_tid);
 
             bool sendReply = false;
             if (req.requestType == RequestType::CMD)
@@ -464,12 +468,51 @@ namespace Conductor_NS
             {
                 int train_num = req.data.train_num;
                 IO_NS::PrintTerminal("Conductor::ConductorLoop -- Received GET_SENSOR request from %d, for train %d\r\n", sender_tid, train_num);
+
+                int train_index = get_train_index(train_num);
+                uassert(train_index >= 0 && "Conductor::ConductorLoop -- Error getting train index");
+
+                train_task_mapping *train = train_arr + train_index;
+                MessengerUnit *messenger = &train->sensor_messenger;
+
+                messenger->sent_reply = false;
+                messenger->messenger_id = sender_tid;
                 sendReply = false;
             }
             else if (req.requestType == RequestType::SENSOR_TRIGGER)
             {
-                // SENSOR WAS TRIGGERED HERE
-                IO_NS::PrintTerminal("Conductor::ConductorLoop -- Received SENSOR_TRIGGER request from %d, triggered idx: %d, isTriggered: %d, occured at %d\r\n", sender_tid, req.data.sensor_trigger_response.sensor_idx, req.data.sensor_trigger_response.is_triggered, req.data.sensor_trigger_response.trigger_tick);
+                // IO_NS::PrintTerminal("Conductor::ConductorLoop -- Received SENSOR_TRIGGER request from %d\r\n", sender_tid);
+                int triggered_idx = req.data.sensor_trigger_response.sensor_idx;
+                int triggered_tick = req.data.sensor_trigger_response.trigger_tick;
+                int train_num = req.data.sensor_trigger_response.train_num;
+                // IO_NS::PrintTerminal(COLOR_GREEN "Conductor::ConductorLoop -- Sensor %d was triggered at tick %d for train %d\r\n", triggered_idx, triggered_tick, train_num);
+
+                int train_idx = get_train_index(req.data.sensor_trigger_response.train_num);
+                uassert(train_idx >= 0 && "Conductor::ConductorLoop -- Error getting train index");
+                train_task_mapping *train = train_arr + train_idx;
+
+                int expected_idx = get_index_from_name((const char *)train->next_predicted_sensor->name);
+                IO_NS::PrintTerminal("EXPECTED NAME: %s, expected index: %d, triggered index: %d\r\n", train->next_predicted_sensor->name, expected_idx, triggered_idx);
+                if (expected_idx == triggered_idx)
+                {
+                    IO_NS::PrintTerminal(COLOR_GREEN "Conductor::ConductorLoop -- Sensor %s was triggered \r\n", train->next_predicted_sensor->name);
+                    // UPDATE STACK SO NEXT SENSOR IS THE TOP
+                    PopSegment(&train->path);
+                    if (train->path.IsEmpty())
+                    {
+                        IO_NS::PrintTerminal(COLOR_RED "Conductor::ConductorLoop -- PATH IS EMPTY\r\n");
+                        // uassert(false && "Conductor::ConductorLoop -- PATH IS EMPTY");
+                        break;
+                    }
+                    train->next_predicted_sensor = track.predict_next_sensor(train->last_sensor);
+                    SwitchNextSegment(&train->path);
+                }
+                else
+                {
+                    IO_NS::PrintTerminal(COLOR_RED "Conductor::ConductorLoop -- Expected sensor index: %d, received sensor index: %d\r\n", expected_idx, triggered_idx);
+                }
+                sendReply = true;
+                // while
             }
             DispatchCommand();
 
@@ -485,6 +528,10 @@ namespace Conductor_NS
     {
         for (int i = 0; i < NUM_TRAINS; ++i)
         {
+            if (train_arr[i].train_num == -1)
+            {
+                continue;
+            }
             train_task_mapping *train = train_arr + i;
             MessengerUnit *command_messenger = &train->command_messenger;
             MessengerUnit *sensor_messenger = &train->sensor_messenger;
@@ -505,18 +552,40 @@ namespace Conductor_NS
                 train->path.Push(node);
                 IO_NS::PrintTerminal(COLOR_CYAN "Conductor::DispatchCommand -- Sending Sensor to messenger %d (train %d)\r\n", sensor_messenger->messenger_id, train->train_num);
 
-                if ((train->last_sensor != nullptr && node.node == train->last_sensor) || node.node->type != NODE_SENSOR)
+                if (train->last_sensor != nullptr && node.node == train->last_sensor)
                 {
                     IO_NS::PrintTerminal(COLOR_CYAN "Conductor::DispatchCommand -- Sensor %s is the same\r\n", node.node->name);
                     continue;
                 }
 
-                // IO_NS::PrintTerminal("Conductor::DispatchCommand -- Sensor %s is not the same\r\n", node.node->name);
+                IO_NS::PrintTerminal("Conductor::DispatchCommand -- REPLYING sensor %s\r\n", node.node->name);
                 // send sensor to messenger
                 // uassert(false && "Conductor::DispatchCommand -- this is not implemented yet");
                 train->last_sensor = node.node;
                 REPLY(sensor_messenger->messenger_id, (char *)&node.node, sizeof(SensorStruct));
                 sensor_messenger->sent_reply = true;
+            }
+            else
+            {
+                IO_NS::PrintTerminal(COLOR_CYAN "Conductor::DispatchCommand -- Sensor messenger %d: %s\r\n", sensor_messenger->messenger_id, sensor_messenger->sent_reply ? "sent" : "not sent");
+            }
+        }
+    }
+    void Conductor::PopSegment(Stack<PathNode, TRACK_MAX> *path)
+    {
+        PathNode node;
+        path->Pop(&node);
+        uassert(node.node->type == NODE_SENSOR && "Conductor::PopSegment -- popped node is not a sensor");
+
+        PathNode curnode;
+        while (!path->IsEmpty())
+        {
+            path->Pop(&curnode);
+            if (curnode.node->type == NODE_SENSOR)
+            {
+                // IO_NS::PrintTerminal("Conductor::PopSegment -- popped node is a sensor\r\n");
+                path->Push(curnode);
+                break;
             }
         }
     }
@@ -556,7 +625,7 @@ namespace Conductor_NS
             MARKLIN_IO_SERVER::IO_REQUEST io_request(&listener);
             IO_NS::PrintTerminal("SENSOR MESSENGER:: Sending request to IO server: %d\r\n", marklin_io_tid);
             SEND(marklin_io_tid, (char *)&io_request, sizeof(MARKLIN_IO_SERVER::IO_REQUEST), nullptr, 0);
-            IO_NS::PrintTerminal(COLOR_RED "RECEIVED REPLY FROM IO SERVER\r\n");
+            IO_NS::PrintTerminal(COLOR_RED "SENSOR MESSENGER:: RECEIVED REPLY FROM IO SERVER\r\n");
         }
     }
 
