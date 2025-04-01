@@ -14,6 +14,11 @@ extern Clock clock;
 
 namespace MARKLIN_IO_SERVER
 {
+#if IRQEn == 1
+#define IRQ_ENABLED 1
+#else
+#define IRQ_ENABLED 0
+#endif
     Sensor sensor_data[NUM_BANKS * SENSORS_PER_BANK];
     Queue<int, 20> sensor_change_buffer;
     uint32_t cur_tick;
@@ -249,6 +254,11 @@ namespace MARKLIN_IO_SERVER
                 send_reply = true;
 
                 // check the global receive buffer to see if any messenger should be notified
+                if (!IRQ_ENABLED)
+                {
+                    break;
+                }
+
                 for (int i = 0; i < NUM_TRAINS; ++i)
                 {
                     MessengerUnit *messenger = &sensor_messenger[i];
@@ -268,6 +278,7 @@ namespace MARKLIN_IO_SERVER
                         }
                     }
                 }
+                break;
             }
 
             case IO_REQUEST_TYPE::SENSOR_LISTENER:
@@ -294,6 +305,7 @@ namespace MARKLIN_IO_SERVER
 
                 IO_NS::PrintTerminal(COLOR_RED "MarklinIO_server::run: Received sensor listener request from tid{%d} for train %d, sensor %s {%d}\r\n", sender_tid, train_num, sensor_listener->sensor_name, messenger->sensor_idx);
                 send_reply = true;
+
                 break;
             }
             case IO_REQUEST_TYPE::SENSOR_MESSENGER:
@@ -304,21 +316,20 @@ namespace MARKLIN_IO_SERVER
                 {
                     MessengerUnit *messenger = &sensor_messenger[i];
 
-                    // REMOVE THIS
-                    // if (messenger->messenger_id == sender_tid)
-                    // {
-                    //     IO_NS::PrintTerminal(COLOR_RED "MarklinIO_server::run: -- Sensor messenger found\r\n");
-                    //     messenger->sent_reply = false;
-                    //     // IRQ = 0
-                    //     if (messenger->sensor_idx > -1)
-                    //     {
-                    //         SensorTriggerResponse trigger_reply = {sensor_data[messenger->sensor_idx].isTriggered, cur_tick, messenger->sensor_idx, messenger->train_num};
-                    //         IO_NS::PrintTerminal("MarklinIO_server::run: Sending reply to sensor messenger %d, for idx: %d, train: %d\r\n", messenger->messenger_id, messenger->sensor_idx, messenger->train_num);
-                    //         REPLY(messenger->messenger_id, (char *)&trigger_reply, sizeof(trigger_reply));
-                    //         messenger->sent_reply = true;
-                    //     }
-                    //     break;
-                    // }
+                    if (!IRQ_ENABLED && messenger->messenger_id == sender_tid)
+                    {
+                        IO_NS::PrintTerminal(COLOR_RED "MarklinIO_server::run: -- Sensor messenger found\r\n");
+                        messenger->sent_reply = false;
+                        // IRQ = 0
+                        if (messenger->sensor_idx > -1)
+                        {
+                            SensorTriggerResponse trigger_reply = {sensor_data[messenger->sensor_idx].isTriggered, cur_tick, messenger->sensor_idx, messenger->train_num};
+                            IO_NS::PrintTerminal("MarklinIO_server::run: Sending reply to sensor messenger %d, for idx: %d, train: %d\r\n", messenger->messenger_id, messenger->sensor_idx, messenger->train_num);
+                            REPLY(messenger->messenger_id, (char *)&trigger_reply, sizeof(trigger_reply));
+                            messenger->sent_reply = true;
+                        }
+                        break;
+                    }
                 }
                 break;
             }
