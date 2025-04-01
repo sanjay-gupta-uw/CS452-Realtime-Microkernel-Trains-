@@ -3,13 +3,13 @@
 #include "../include/name_server.h"
 #include "../include/io_server.h"
 #include "../include/marklin_io.h"
-#include "../../shared_constants.h"
 // #include "../../rpi.h"
 #include "../include/ui.h"
 #include "../include/clock_server.h"
 #include "../include/io.h"
 #include "../include/command.h"
 #include "../include/uassert.h"
+#include "../../shared_constants.h"
 #include "../include/conductor.h"
 #include "../../register.h"
 #include "../marklin/sensor.h"
@@ -71,7 +71,6 @@ void FirstUserTask()
 
     IO_NS::PrintTerminal("Name Server started with TID %d\r\n", nameServerTid);
 
-    // create the UI task
     int uiTaskTid = CREATE(PRIORITY::CORE, UI_NS::start_ui); // Start the UI Task
     uassert(uiTaskTid > 0 && "Error starting UI Task");
     IO_NS::PrintTerminal("UI Task started with TID %d\r\n", uiTaskTid);
@@ -93,15 +92,6 @@ void FirstUserTask()
 // this is deprecated -- see sensor.cpp for server implementation
 void SensorTask()
 {
-    REGISTERAS("SensorTask");
-    // uassert(4 == 5);
-    Sensors_NS::SensorManager sensors;
-    while (true)
-    {
-        sensors.ReadAll(NUM_BANKS); // this will put it to sleep until data is ready
-        sensors.Display();
-    }
-    EXIT();
 }
 
 void ComputeIdleTask()

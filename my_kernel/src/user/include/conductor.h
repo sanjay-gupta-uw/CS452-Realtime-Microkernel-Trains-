@@ -55,6 +55,7 @@ namespace Conductor_NS
 
             MessengerUnit command_messenger;
             MessengerUnit path_messenger;
+            MessengerUnit sensor_messenger;
 
             track_node *last_sensor;
             track_node *next_predicted_sensor;
@@ -66,16 +67,22 @@ namespace Conductor_NS
 
             Queue<TrainCommandNotification, 3> train_commands;
             Stack<PathNode, TRACK_MAX> path;
+
+            track_node *last_sent_sensor;
         };
+
+        void SwitchNextSegment(Stack<PathNode, TRACK_MAX> *path);
 
         void SendSegmentToMessenger(int messenger_tid, train_task_mapping *train);
         void CalibrateTrain(train_task_mapping *train);
         void UpdateCalibrationStage(train_task_mapping *train);
+        void setSwitch(int addr, Switch_NS::SWITCH_STATE state);
 
         train_task_mapping train_arr[NUM_TRAINS];
         Track track;
     };
 
+    void start_sensor_messenger();
     void start_conductor();
 }
 

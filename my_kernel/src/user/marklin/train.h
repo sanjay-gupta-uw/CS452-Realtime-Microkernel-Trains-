@@ -11,7 +11,6 @@
 
 namespace Trains_NS
 {
-#define NUM_TRAINS 5
     // #define MAX_SPEED 14
     // #define MIN_SPEED 0
 
@@ -88,7 +87,7 @@ namespace Trains_NS
 
     void command_messenger();
     void path_messenger();
-    void sensor_messenger();
+    // void sensor_messenger();
 
 };
 

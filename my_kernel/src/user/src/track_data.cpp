@@ -2882,8 +2882,6 @@ void Track::find_path(const char *start, const char *dest, Stack<PathNode, TRACK
             prior_index = cur_index;
             cur_index = prev_node[cur_index];
         }
-        // push the start node
-        path->Push({start_node, Switch_NS::SWITCH_STATE::UNINITIALIZED});
 
         IO_NS::PrintTerminal("; Total distance: %d, Count: %d\r\n", dist[dest_index], count);
 

@@ -4,7 +4,10 @@
 #include "../../containers/queue.h"
 #include "marklin_structs.h"
 #include "state_machine.h"
-#include "../marklin/sensor.h"
+#include <cstring>
+#include <cstdlib>
+
+// #include "../marklin/sensor.h"
 
 namespace MARKLIN_IO_SERVER
 {
@@ -19,13 +22,6 @@ namespace MARKLIN_IO_SERVER
         uint32_t trigger_tick;
     };
     extern Sensor sensor_data[NUM_BANKS * SENSORS_PER_BANK]; // Declaration
-
-    struct MarklinRequest
-    {
-        bool isSingleByteCommand;
-        uint8_t byte1;
-        uint8_t byte2;
-    };
 
 #define UNDEFINED_CHAR '-'
 #define NUM_SWITCHES 22
@@ -60,6 +56,14 @@ namespace MARKLIN_IO_SERVER
         int cts_notifier_high_tid;
         int cts_notifier_low_tid;
         int switch_notifier_tid[NUM_SWITCHES];
+        struct MessengerUnit
+        {
+            int messenger_id;
+            int train_num;
+            int sensor_idx;
+            bool sent_reply;
+        };
+        MessengerUnit sensor_messenger[NUM_TRAINS];
 
         Queue<unsigned char, 100> receive_buffer;
         Queue<uint8_t, 100> transmit_buffer; // this should be the bytes for commands
@@ -86,6 +90,13 @@ namespace MARKLIN_IO_SERVER
         REPLY_TYPE type;
         unsigned char ch;
     };
+
+    struct MarklinRequest
+    {
+        bool isSingleByteCommand;
+        uint8_t byte1;
+        uint8_t byte2;
+    };
     enum class IO_REQUEST_TYPE
     {
         GETC,
@@ -93,13 +104,20 @@ namespace MARKLIN_IO_SERVER
         SEND_CMD,
         RX_NOTIFIER,
         TX_NOTIFIER,
-        SWITCH_NOTIFIER
+        SWITCH_NOTIFIER,
+        SENSOR_LISTENER,
+        SENSOR_MESSENGER,
     };
 
     struct RECEIVED_BYTES_STRUCT
     {
         int count;
         unsigned char bytes[10];
+    };
+    struct SensorListener
+    {
+        int train_num;
+        unsigned char sensor_name[4]; // 3 chars + null terminator
     };
     struct IO_REQUEST
     {
@@ -109,8 +127,11 @@ namespace MARKLIN_IO_SERVER
         {
             MarklinRequest *request;
             RECEIVED_BYTES_STRUCT *received_bytes;
+            SensorListener *sensor_listener;
 
-            Data() {}
+            Data()
+            {
+            }
             ~Data() {}
         } data;
 
@@ -125,6 +146,12 @@ namespace MARKLIN_IO_SERVER
         }
         IO_REQUEST(IO_REQUEST_TYPE type = IO_REQUEST_TYPE::TX_NOTIFIER) : type(type)
         {
+        }
+        IO_REQUEST(SensorListener *listener) : type(IO_REQUEST_TYPE::SENSOR_LISTENER)
+        {
+            // IO_NS::PrintTerminal("MarklinIO_server::SENSOR_LISTENER: Received request for sensor %s\r\n", listener->sensor_name);
+            data.sensor_listener = listener;
+            // IO_NS::PrintTerminal("MarklinIO_server::SENSOR_LISTENER: Received request for sensor %s\r\n", listener->sensor_name);
         }
     };
 
@@ -144,6 +171,7 @@ namespace MARKLIN_IO_SERVER
 
     void startMarklinIOServer();
     void switchNotifier();
+    void start_sensor_messenger();
 }
 
 #endif // _marklin_io_h_

@@ -187,6 +187,7 @@ namespace Trains_NS
         int stopping_target_dist;
         stopping_target.Pop(&stopping_target_dist);
         stopping_target.Push(stopping_target_dist - dist);
+        // make function to increase timer frequency (variable delay)
 
         // check if we need to stop
         stopping_target.Pop(&stopping_target_dist);
@@ -434,37 +435,37 @@ namespace Trains_NS
     // SENSOR/CONDUCTOR MESSENGER
     void path_messenger()
     {
-        int my_tid = MYTID();
-        // Train task should spawn its own messenger
-        int train_num;
-        int train_task_tid;
-        int param_init_retval = RECEIVE(&train_task_tid, (char *)&train_num, sizeof(int));
-        uassert(param_init_retval >= 0 && train_task_tid >= 0 && "PATH MESSENGER: Error receiving train_num from parent task");
-        REPLY(train_task_tid, nullptr, 0);
+        // int my_tid = MYTID();
+        // // Train task should spawn its own messenger
+        // int train_num;
+        // int train_task_tid;
+        // int param_init_retval = RECEIVE(&train_task_tid, (char *)&train_num, sizeof(int));
+        // uassert(param_init_retval >= 0 && train_task_tid >= 0 && "PATH MESSENGER: Error receiving train_num from parent task");
+        // REPLY(train_task_tid, nullptr, 0);
 
-        IO_NS::PrintTerminal(COLOR_YELLOW "PATH %d messenger spawned with TID %d\r\n", train_num, my_tid);
+        // IO_NS::PrintTerminal(COLOR_YELLOW "PATH %d messenger spawned with TID %d\r\n", train_num, my_tid);
 
-        int conductor_tid = WHOIS("Conductor");
-        uassert(conductor_tid > 0 && "PATH MESSENGER: Error finding Conductor");
+        // int conductor_tid = WHOIS("Conductor");
+        // uassert(conductor_tid > 0 && "PATH MESSENGER: Error finding Conductor");
 
-        TrainMessage conductor_response;
-        ConductorRequest conductor_request(train_task_tid);
-        while (true)
-        {
-            // IO_NS::PrintTerminal(COLOR_RED "ENTER KEY TO CONTINUE");
-            // char c = uart_getc(CONSOLE);
-            // SEND SEGMENT REQUEST TO CONDUCTOR
-            IO_NS::PrintTerminal(COLOR_YELLOW "PATH MESSENGER{%d}:: requesting segment from Conductor for Train %d\r\n", my_tid, train_num);
-            int retval = SEND(conductor_tid, (char *)&conductor_request, sizeof(ConductorRequest), (char *)&conductor_response, sizeof(TrainMessage));
-            uassert(retval >= 0 && "PATH MESSENGER: Error sending SegmentRequest to Conductor");
+        // TrainMessage conductor_response;
+        // ConductorRequest conductor_request(train_task_tid);
+        // while (true)
+        // {
+        //     // IO_NS::PrintTerminal(COLOR_RED "ENTER KEY TO CONTINUE");
+        //     // char c = uart_getc(CONSOLE);
+        //     // SEND SEGMENT REQUEST TO CONDUCTOR
+        //     IO_NS::PrintTerminal(COLOR_YELLOW "PATH MESSENGER{%d}:: requesting segment from Conductor for Train %d\r\n", my_tid, train_num);
+        //     int retval = SEND(conductor_tid, (char *)&conductor_request, sizeof(ConductorRequest), (char *)&conductor_response, sizeof(TrainMessage));
+        //     uassert(retval >= 0 && "PATH MESSENGER: Error sending SegmentRequest to Conductor");
 
-            IO_NS::PrintTerminal(COLOR_YELLOW "PATH MESSENGER{%d}:: received segment from Conductor for Train %d\r\n", my_tid, train_num);
+        //     IO_NS::PrintTerminal(COLOR_YELLOW "PATH MESSENGER{%d}:: received segment from Conductor for Train %d\r\n", my_tid, train_num);
 
-            IO_NS::PrintTerminal(COLOR_YELLOW "PATH MESSENGER{%d}:: Sending data to Train task for Train %d, NEXT SENSOR: %c%d\r\n", my_tid, train_num, conductor_response.data.segment.sensor.bank, conductor_response.data.segment.sensor.id);
-            retval = SEND(train_task_tid, (char *)&conductor_response, sizeof(TrainMessage), nullptr, 0);
-            uassert(retval >= 0 && "PATH MESSENGER: Error sending SegmentReply to Train task");
-            // uassert(false && "THIS MUST BE HIT!");
-        }
+        //     IO_NS::PrintTerminal(COLOR_YELLOW "PATH MESSENGER{%d}:: Sending data to Train task for Train %d, NEXT SENSOR: %c%d\r\n", my_tid, train_num, conductor_response.data.segment.sensor.bank, conductor_response.data.segment.sensor.id);
+        //     retval = SEND(train_task_tid, (char *)&conductor_response, sizeof(TrainMessage), nullptr, 0);
+        //     uassert(retval >= 0 && "PATH MESSENGER: Error sending SegmentReply to Train task");
+        //     // uassert(false && "THIS MUST BE HIT!");
+        // }
     }
 
 } // namespace Trains_NS

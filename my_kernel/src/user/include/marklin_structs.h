@@ -8,6 +8,7 @@
 #define CURVED_CMD 0x22
 #define SOLENOID_OFF_CMD 0x20
 #define REVERSE_CMD 0xF
+#define NUM_TRAINS 5
 
 enum class COMMAND
 {
@@ -112,7 +113,7 @@ struct TrainMessage
         : type(TrainMessageType::TRAIN_COMMAND)
     {
         data.train_command = {command, speed};
-        IO_NS::PrintTerminal("TrainMessage::TrainCommandNotification CONSTRUCTOR -- %d, %d\r\n", command, speed);
+        // IO_NS::PrintTerminal("TrainMessage::TrainCommandNotification CONSTRUCTOR -- %d, %d\r\n", command, speed);
     }
 
     // Constructor for SensorPingNotification
@@ -120,7 +121,7 @@ struct TrainMessage
         : type(TrainMessageType::SENSOR_MESSENGER)
     {
         data.sensor_ping = {SensorStruct{bank, id}, trigger_tick};
-        IO_NS::PrintTerminal("TrainMessage::SensorPingNotification CONSTRUCTOR -- %d, %c%d\r\n", trigger_tick, bank, id);
+        // IO_NS::PrintTerminal("TrainMessage::SensorPingNotification CONSTRUCTOR -- %d, %c%d\r\n", trigger_tick, bank, id);
     }
 };
 
@@ -132,9 +133,17 @@ struct TrainQuery
 
 enum class RequestType
 {
-    CMD,         // CONSOLE COMMANDS
-    GET_SEGMENT, // GET NEXT SEGMENT
-    GET_CMD,     // GET TRAIN COMMAND
+    CMD,            // CONSOLE COMMANDS
+    GET_SEGMENT,    // GET NEXT SEGMENT
+    GET_CMD,        // GET TRAIN COMMAND
+    GET_SENSOR,     // GET SENSOR (sensor messenger to marklin)
+    SENSOR_TRIGGER, // NOTICE OF SENSOR TRIGGER
+};
+struct SensorTriggerResponse
+{
+    bool is_triggered;
+    int trigger_tick;
+    int sensor_idx;
 };
 struct ConductorRequest
 {
@@ -143,7 +152,8 @@ struct ConductorRequest
     union Data
     {
         CMDRequest cmdRequest;
-        int spawned_train_tid;
+        int train_num;
+        SensorTriggerResponse sensor_trigger_response;
 
         // Add a constructor to avoid potential undefined behavior
         Data() {}  // Default constructor
@@ -164,17 +174,23 @@ struct ConductorRequest
             data.cmdRequest = {command, id, requestData, src, dest};
     }
 
-    // Constructor for TrainQuery
-    ConductorRequest(int train_tid)
-        : requestType(RequestType::GET_SEGMENT)
-    {
-        data.spawned_train_tid = train_tid;
-    }
-
-    ConductorRequest(int train_tid, int train_num)
+    ConductorRequest(int train_num)
         : requestType(RequestType::GET_CMD)
     {
-        data.spawned_train_tid = train_tid;
+        data.train_num = train_num;
+    }
+
+    ConductorRequest(int train_num, RequestType requestType)
+        : requestType(requestType)
+    {
+        data.train_num = train_num;
+        // IO_NS::PrintTerminal("ConductorRequest::ConductorRequest CONSTRUCTOR -- %d\r\n", requestType);
+    }
+    ConductorRequest(SensorTriggerResponse *sensor_trigger_response)
+        : requestType(RequestType::SENSOR_TRIGGER)
+    {
+        data.sensor_trigger_response = *sensor_trigger_response;
+        // IO_NS::PrintTerminal("ConductorRequest::ConductorRequest CONSTRUCTOR -- %d\r\n", requestType);
     }
 };
 

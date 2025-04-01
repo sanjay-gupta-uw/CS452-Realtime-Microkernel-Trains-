@@ -93,6 +93,13 @@ namespace MARKLIN_IO_SERVER
         sequence_length_buffer.Push(1);
         transmit_buffer.Push(RESET_MODE_ON);
 
+        for (int i = 0; i < NUM_TRAINS; ++i)
+        {
+            sensor_messenger[i].messenger_id = -1;
+            sensor_messenger[i].train_num = -1;
+            sensor_messenger[i].sensor_idx = -1;
+            sensor_messenger[i].sent_reply = false;
+        }
         run();
     }
 
@@ -205,6 +212,18 @@ namespace MARKLIN_IO_SERVER
         }
     }
 
+    int get_messenger_index(int train_num)
+    {
+        const int train_nums[NUM_TRAINS] = {1, 54, 55, 58, 77};
+        for (int i = 0; i < NUM_TRAINS; ++i)
+        {
+            if (train_nums[i] == train_num)
+            {
+                return i;
+            }
+        }
+    }
+
     void MarklinIOServer::run()
     {
         int sender_tid;
@@ -215,7 +234,7 @@ namespace MARKLIN_IO_SERVER
         {
             int retval = RECEIVE(&sender_tid, (char *)&req, sizeof(req));
             cur_tick = TIME(CLOCK_SERVER_TID);
-            // IO_NS::PrintTerminal("MarklinIO_server::run: Received request from tid{%d} at tick %d\r\n", sender_tid, tick);
+            IO_NS::PrintTerminal(COLOR_CYAN "MarklinIO_server::run: Received request from tid{%d} at tick %d\r\n", sender_tid, cur_tick);
 
             IO_REPLY reply;
             reply.type = REPLY_TYPE::FAILURE;
@@ -228,8 +247,69 @@ namespace MARKLIN_IO_SERVER
             {
                 isReceiving = false;
                 send_reply = true;
+
+                // check the global receive buffer to see if any messenger should be notified
+                for (int i = 0; i < NUM_TRAINS; ++i)
+                {
+                    MessengerUnit *messenger = &sensor_messenger[i];
+                    if (messenger->messenger_id > 0 && messenger->sent_reply == false)
+                    {
+                        IO_NS::PrintTerminal("CHECKING IF SENSOR IDX %d is TRIGGERED\r\n", messenger->sensor_idx);
+
+                        // check if the sensor is triggered
+                        Sensor *sensor = &sensor_data[messenger->sensor_idx];
+                        if (sensor->isTriggered == SEN_ON)
+                        {
+                            // send reply to the messenger
+                            IO_NS::PrintTerminal("MarklinIO_server::run: Sending reply to sensor messenger %d\r\n", messenger->messenger_id);
+                            REPLY(messenger->messenger_id, (char *)&reply, sizeof(reply));
+                            messenger->sent_reply = true;
+                        }
+                    }
+                }
             }
 
+            case IO_REQUEST_TYPE::SENSOR_LISTENER:
+            {
+
+                // ADD TO SENSOR LISTENER QUEUE
+                // message must have train_num and sensor name
+                // int idx = get_messenger_index(req.data.sensor_listener
+                SensorListener *sensor_listener = req.data.sensor_listener;
+                int train_num = sensor_listener->train_num;
+                int messenger_idx = get_messenger_index(train_num);
+                uassert(messenger_idx >= 0 && "MarklinIO_server::run: -- Invalid train number");
+
+                // IO_NS::PrintTerminal("Getting sensor data from idx %d\r\n", train_index);
+                // set sensor_messenger
+                MessengerUnit *messenger = &sensor_messenger[messenger_idx];
+                if (messenger->messenger_id < 0)
+                {
+                    messenger->messenger_id = CREATE(PRIORITY::MARKLIN_NOTIFIER, start_sensor_messenger);
+                    SEND(messenger->messenger_id, (char *)&train_num, sizeof(int), nullptr, 0);
+                }
+
+                IO_NS::PrintTerminal("MarklinIO_server::run: Received sensor listener request from tid{%d} for train %d, sensor %s\r\n", sender_tid, train_num, sensor_listener->sensor_name);
+                send_reply = true;
+                break;
+            }
+            case IO_REQUEST_TYPE::SENSOR_MESSENGER:
+            {
+
+                IO_NS::PrintTerminal(COLOR_RED "MarklinIO_server::run: Received sensor messenger request from tid{%d} \r\n", sender_tid);
+                for (int i = 0; i < NUM_TRAINS; ++i)
+                {
+                    MessengerUnit *messenger = &sensor_messenger[i];
+
+                    if (messenger->messenger_id == sender_tid)
+                    {
+                        IO_NS::PrintTerminal(COLOR_RED "MarklinIO_server::run: -- Sensor messenger found\r\n");
+                        messenger->sent_reply = false;
+                        break;
+                    }
+                }
+                break;
+            }
             case IO_REQUEST_TYPE::TX_NOTIFIER:
             {
                 reply.type = REPLY_TYPE::SUCCESS;
@@ -255,7 +335,7 @@ namespace MARKLIN_IO_SERVER
             }
             case IO_REQUEST_TYPE::SEND_CMD:
             {
-                IO_NS::PrintTerminal("MarklinIO_server::SEND_CMD:: Received command from tid{%d}\r\n", sender_tid);
+                // IO_NS::PrintTerminal("MarklinIO_server::SEND_CMD:: Received command from tid{%d}\r\n", sender_tid);
                 MarklinRequest *m_req = req.data.request;
                 transmit_buffer.Push(m_req->byte1);
                 int len = 2;
@@ -478,6 +558,40 @@ namespace MARKLIN_IO_SERVER
             // IO_NS::PrintTerminal("SWNOTIFIER{%d}: DELAYING\r\n", my_tid);
             // IO_NS::PrintTerminal(COLOR_YELLOW "SWITCH NOTIFIER{%d}: DELAYING\r\n", my_tid);
             DELAY(CLOCK_SERVER_TID, 25);
+        }
+    }
+
+    // SENSOR/CONDUCTOR MESSENGER
+    void start_sensor_messenger()
+    {
+        int my_tid = MYTID();
+        int marklin_io_tid;
+        int train_num;
+
+        int param_init_retval = RECEIVE(&marklin_io_tid, (char *)&train_num, sizeof(int));
+        uassert(param_init_retval >= 0 && marklin_io_tid > 0 && train_num > 0 && "PATH MESSENGER: Error receiving train_num from parent task");
+        REPLY(marklin_io_tid, nullptr, 0);
+
+        int conductor_tid = WHOIS("Conductor");
+        uassert(conductor_tid > 0 && "SENSOR MESSENGER: Error finding Conductor");
+
+        IO_NS::PrintTerminal(COLOR_YELLOW "MARKLIN_IO::SENSOR_MESSENGER{%d/%d} spawned with TID %d\r\n", my_tid, train_num, my_tid);
+
+        IO_REQUEST req(IO_REQUEST_TYPE::SENSOR_MESSENGER);
+        SensorTriggerResponse sensor_triggered_struct;
+        while (true)
+        {
+            IO_NS::PrintTerminal(COLOR_YELLOW "MARKLIN_IO::SENSOR_MESSENGER{%d/%d}:: waiting to be released by marklin server\r\n", my_tid, train_num);
+            int retval = SEND(marklin_io_tid, (char *)&req, sizeof(req), (char *)&sensor_triggered_struct, sizeof(SensorTriggerResponse));
+            uassert(retval >= 0 && "PATH MESSENGER: Error sending SegmentRequest to Conductor");
+
+            IO_NS::PrintTerminal("SENSOR MESSENGER{%d/%d}:: sensor triggered: %d, at tick %d\r\n", my_tid, train_num, sensor_triggered_struct.is_triggered, sensor_triggered_struct.trigger_tick);
+            // SEND TO CONDUCTOR
+            ConductorRequest conductor_request(&sensor_triggered_struct);
+            IO_NS::PrintTerminal(COLOR_YELLOW "SENSOR MESSENGER{%d/%d}:: notifying Conductor\r\n", my_tid, train_num);
+            retval = SEND(conductor_tid, (char *)&conductor_request, sizeof(ConductorRequest), nullptr, 0);
+            uassert(retval >= 0 && "SENSOR MESSENGER: Error sending SensorTriggerResponse to Conductor");
+            IO_NS::PrintTerminal(COLOR_YELLOW "SENSOR MESSENGER{%d/%d}:: notified Conductor\r\n", my_tid, train_num);
         }
     }
 }
