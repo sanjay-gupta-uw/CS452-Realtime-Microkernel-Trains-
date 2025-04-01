@@ -50,7 +50,7 @@ namespace Conductor_NS
 
     Conductor::Conductor()
     {
-        IO_NS::PrintTerminal(CLEAR_SCREEN "Starting Conductor\r\n");
+        IO_NS::PrintTerminal("Starting Conductor\r\n");
         // Track track;
         REGISTERAS("Conductor");
         IO_NS::PrintTerminal("Conductor started\r\n");
@@ -302,7 +302,7 @@ namespace Conductor_NS
                 return;
             }
             train_task_mapping *train = &train_arr[train_index];
-            IO_NS::PrintTerminal(CLEAR_SCREEN MOVE_CURSOR "CONDUCTOR::GO_COMMAND:Train %d found, sending it from %s to %s +{%d}\r\n", 1, 1,
+            IO_NS::PrintTerminal(MOVE_CURSOR "CONDUCTOR::GO_COMMAND:Train %d found, sending it from %s to %s +{%d}\r\n", 1, 1,
                                  train_num, train->next_predicted_sensor->name, dest, offset);
 
             memcpy(train->destination, dest, 4);
