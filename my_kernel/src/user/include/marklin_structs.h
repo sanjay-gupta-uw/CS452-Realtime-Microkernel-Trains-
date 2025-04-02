@@ -138,6 +138,7 @@ enum class RequestType
     GET_CMD,        // GET TRAIN COMMAND
     GET_SENSOR,     // GET SENSOR (sensor messenger to marklin)
     SENSOR_TRIGGER, // NOTICE OF SENSOR TRIGGER
+    TICK,
 };
 struct SensorTriggerResponse
 {
@@ -162,7 +163,15 @@ struct ConductorRequest
     } data;        // Named union member
 
     // default constructor
-    ConductorRequest() {}
+    ConductorRequest()
+    {
+    }
+
+    ConductorRequest(RequestType requestType)
+        : requestType(requestType)
+    {
+        // IO_NS::PrintTerminal("ConductorRequest::ConductorRequest CONSTRUCTOR -- %d\r\n", requestType);
+    }
 
     // Constructor for CMDRequest
     ConductorRequest(COMMAND command, int id, int requestData, char *src = nullptr, char *dest = nullptr)

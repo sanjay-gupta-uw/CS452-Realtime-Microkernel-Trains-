@@ -30,6 +30,7 @@ namespace Conductor_NS
         SensorStruct LOOP_START_SENSOR_DATA;
         int SWITCH_SERVER_TID;
         int SENSOR_SERVER_TID;
+        int CLOCK_SERVER_TID;
         // Switch_NS::Switches switches;
 
         int get_train_index(int train_num);
@@ -48,6 +49,7 @@ namespace Conductor_NS
             int messenger_id;
             bool sent_reply;
         };
+
         struct train_task_mapping
         {
             /* data */
@@ -69,11 +71,12 @@ namespace Conductor_NS
             Stack<PathNode, TRACK_MAX> path;
 
             int current_segment_length = 0;
-            int total_distance_travelled = 0;
+            Stack<int, 2> total_dist_travelled;
 
             track_node *last_sent_sensor;
             uint32_t last_sensor_trigger_tick = 0;
         };
+        void update_position(train_task_mapping *train);
 
         void SwitchNextSegment(Stack<PathNode, TRACK_MAX> *path);
 
@@ -88,6 +91,7 @@ namespace Conductor_NS
     };
 
     void start_sensor_messenger();
+    void ticker();
     void start_conductor();
 }
 

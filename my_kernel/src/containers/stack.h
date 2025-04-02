@@ -6,9 +6,10 @@
 template <typename T, std::size_t Capacity>
 class Stack
 {
+public:
+    std::size_t size; // Current number of elements.
 private:
     T buffer[Capacity]; // Use the template parameter as the array size.
-    std::size_t size;   // Current number of elements.
     std::size_t head;   // Index for next write.
 
 public:
@@ -32,7 +33,8 @@ public:
         if (size == 0)
             return -1; // stack is empty.
 
-        head = (head - 1) % Capacity;
+        head = (head + Capacity - 1) % Capacity;
+
         *item = buffer[head];
         --size;
         return 0;
@@ -52,9 +54,6 @@ public:
 
     void Clear()
     {
-        size = 0;
-        head = 0;
-
         // Clear the stack by popping all items.
         while (!IsEmpty())
         {

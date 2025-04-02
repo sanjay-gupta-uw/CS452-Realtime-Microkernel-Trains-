@@ -20,6 +20,24 @@ typedef struct IO_REQUEST
 namespace Conductor_NS
 {
 
+    static void StackTest()
+    {
+        IO_NS::PrintTerminal(CLEAR_SCREEN "StackTest -- testing stack\r\n");
+        Stack<int, 10> test_stack;
+        for (int i = 0; i < 10; i++)
+        {
+            test_stack.Push(i);
+            IO_NS::PrintTerminal("StackTest -- pushed %d -- size: %d\r\n", i, test_stack.size);
+        }
+        for (int i = 0; i < 10; i++)
+        {
+            int popped;
+            test_stack.Pop(&popped);
+            IO_NS::PrintTerminal("StackTest -- popped %d -- size: %d\r\n", popped, test_stack.size);
+        }
+        uassert(false && "Conductor::PopSegment -- end of test");
+    }
+
     static void VerifyPath(Stack<PathNode, TRACK_MAX> *path)
     {
         // IO_NS::PrintTerminal(CLEAR_SCREEN MOVE_CURSOR "Conductor::VerifyPath -- Verifying path\r\n", 1, 1);
@@ -38,7 +56,7 @@ namespace Conductor_NS
         IO_NS::Print(COLOR_WHITE MOVE_CURSOR "+-----------------------------------------------------------------------------------------------+\r\n", TRAIN_TABLE_Y + 0, TRAIN_TABLE_X);
         IO_NS::Print(COLOR_WHITE MOVE_CURSOR "|                                Active Trains:                                                 |\r\n", TRAIN_TABLE_Y + 1, TRAIN_TABLE_X);
         IO_NS::Print(COLOR_WHITE MOVE_CURSOR "-------------------------------------------------------------------------------------------------\r\n", TRAIN_TABLE_Y + 2, TRAIN_TABLE_X);
-        IO_NS::Print(COLOR_WHITE MOVE_CURSOR "| ID | Speed Level | Actual Speed | Last Sensor | Next Sensor | Dest | Offset |   Dist to Stop  |\r\n", TRAIN_TABLE_Y + 3, TRAIN_TABLE_X);
+        IO_NS::Print(COLOR_WHITE MOVE_CURSOR "| ID | Speed Level | Actual Speed | Last Sensor | Next Sensor | Dest | Offset |  Dist Travelled |\r\n", TRAIN_TABLE_Y + 3, TRAIN_TABLE_X);
         IO_NS::Print(COLOR_WHITE MOVE_CURSOR "-------------------------------------------------------------------------------------------------\r\n", TRAIN_TABLE_Y + 4, TRAIN_TABLE_X);
         for (int i = 0; i < NUM_TRAINS; ++i)
         {
@@ -55,6 +73,9 @@ namespace Conductor_NS
         REGISTERAS("Conductor");
         IO_NS::PrintTerminal("Conductor started\r\n");
 
+        CLOCK_SERVER_TID = WHOIS("ClockServer");
+        uassert(CLOCK_SERVER_TID > 0 && "Conductor::Error finding ClockServer");
+
         // initialize train_arr
         for (int i = 0; i < NUM_TRAINS; i++)
         {
@@ -65,6 +86,9 @@ namespace Conductor_NS
             train->path_messenger = {-1, false};
             train->sensor_messenger = {-1, false};
             train->last_sent_sensor = nullptr;
+
+            train->total_dist_travelled.Push(0);
+            train->total_dist_travelled.Push(0);
         }
 
         int sender_tid;
@@ -80,6 +104,10 @@ namespace Conductor_NS
         uassert(SWITCH_SERVER_TID > 0 && "Conductor::Error creating switch server");
         IO_NS::PrintTerminal("Switch server created with TID %d\r\n", SWITCH_SERVER_TID);
         SEND(SWITCH_SERVER_TID, (char *)&track_id, sizeof(track_id), nullptr, 0); // send track id to switch server
+
+        int ticker_tid = CREATE(PRIORITY::DEVICE, ticker);
+        uassert(ticker_tid > 0 && "Conductor::Error creating ticker");
+        IO_NS::PrintTerminal("Conductor ticker created with TID %d\r\n", ticker_tid);
 
         LOOP_START_SENSOR_DATA = {'B', 5};
 
@@ -356,7 +384,13 @@ namespace Conductor_NS
             IO_NS::Print(MOVE_CURSOR "%d   ",
                          TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 71, train_arr[i].offset);
 
-            IO_NS::Print(MOVE_CURSOR "%d", TRAIN_TABLE_Y + 5 + 0, TRAIN_TABLE_X + 80, train_arr[i].total_distance_travelled);
+            int approx_dist_travelled_in_segment = 0;
+            int known_dist_travelled = 0;
+            train_arr[i].total_dist_travelled.Pop(&approx_dist_travelled_in_segment);
+            train_arr[i].total_dist_travelled.Pop(&known_dist_travelled);
+            IO_NS::PrintTerminal("Conductor::UpdateTrainDisplay -- Train %d: approx_dist_travelled_in_segment: %d, known_dist_travelled: %d\r\n", train_arr[i].train_num, approx_dist_travelled_in_segment, known_dist_travelled);
+
+            IO_NS::Print(MOVE_CURSOR "%d", TRAIN_TABLE_Y + 5 + 0, TRAIN_TABLE_X + 80, known_dist_travelled + approx_dist_travelled_in_segment);
 
             display_row++;
         }
@@ -433,7 +467,7 @@ namespace Conductor_NS
             // receive request from terminal
             retval = RECEIVE(&sender_tid, (char *)&req, sizeof(ConductorRequest));
             uassert(retval >= 0 && "Error receiving request from terminal");
-            IO_NS::PrintTerminal("Conductor received %s from %d\r\n", req.requestType == RequestType::CMD ? "CMD" : (req.requestType == RequestType::GET_SEGMENT ? "GET_SEGMENT" : (req.requestType == RequestType::GET_CMD ? "GET_CMD" : (req.requestType == RequestType::GET_SENSOR ? "GET_SENSOR" : "SENSOR_TRIGGER"))), sender_tid);
+            // IO_NS::PrintTerminal("Conductor received %s from %d\r\n", req.requestType == RequestType::CMD ? "CMD" : (req.requestType == RequestType::GET_SEGMENT ? "GET_SEGMENT" : (req.requestType == RequestType::GET_CMD ? "GET_CMD" : (req.requestType == RequestType::GET_SENSOR ? "GET_SENSOR" : (req.requestType == RequestType::SENSOR_TRIGGER ? "SENSOR_TRIGGER" : "TICK")))), sender_tid);
 
             bool sendReply = false;
             if (req.requestType == RequestType::CMD)
@@ -475,7 +509,7 @@ namespace Conductor_NS
                 int triggered_idx = req.data.sensor_trigger_response.sensor_idx;
                 int triggered_tick = req.data.sensor_trigger_response.trigger_tick;
                 int train_num = req.data.sensor_trigger_response.train_num;
-                IO_NS::PrintTerminal(COLOR_GREEN "Conductor::ConductorLoop -- Sensor %d was triggered at tick %d for train %d\r\n", triggered_idx, triggered_tick, train_num);
+                // IO_NS::PrintTerminal(COLOR_GREEN "Conductor::ConductorLoop -- Sensor %d was triggered at tick %d for train %d\r\n", triggered_idx, triggered_tick, train_num);
                 // uassert(triggered_idx != 54 && "Conductor::ConductorLoop -- Error: triggered sensor 54 (D7)");
 
                 int train_idx = get_train_index(req.data.sensor_trigger_response.train_num);
@@ -503,19 +537,28 @@ namespace Conductor_NS
                     }
                     // UPDATE STACK SO NEXT SENSOR IS THE TOP
                     train->last_sensor = train->next_predicted_sensor;
-                    train->total_distance_travelled += train->current_segment_length;
+
+                    int total_distance;
+                    train->total_dist_travelled.Pop(nullptr);                                         // approximate
+                    train->total_dist_travelled.Pop(&total_distance);                                 // known
+                    train->total_dist_travelled.Push(total_distance + train->current_segment_length); // known
+                    train->total_dist_travelled.Push(0);                                              // approximate
+                    // IO_NS::PrintTerminal("HERE1\r\n");
 
                     PopSegment(train);
 
+                    // IO_NS::PrintTerminal("HERE2\r\n");
                     train->last_sensor_trigger_tick = triggered_tick;
-                    if (train->path.IsEmpty())
-                    {
-                        IO_NS::PrintTerminal(COLOR_RED "Conductor::ConductorLoop -- PATH IS EMPTY\r\n");
-                        // uassert(false && "Conductor::ConductorLoop -- PATH IS EMPTY");
-                        break;
-                    }
+                    // if (train->path.IsEmpty())
+                    // {
+                    //     IO_NS::PrintTerminal(COLOR_RED "Conductor::ConductorLoop -- PATH IS EMPTY\r\n");
+                    //     train->train_commands.Push({TRAIN_COMMAND::STOP, 0});
+                    //     // uassert(false && "Conductor::ConductorLoop -- PATH IS EMPTY");
+                    //     break;
+                    // }
                     train->next_predicted_sensor = track.predict_next_sensor(train->last_sensor);
                     SwitchNextSegment(&train->path);
+                    // IO_NS::PrintTerminal("HERE3\r\n");
                 }
                 else
                 {
@@ -525,6 +568,20 @@ namespace Conductor_NS
                 sendReply = true;
                 // while
             }
+            else if (req.requestType == RequestType::TICK)
+            {
+                // IO_NS::PrintTerminal(COLOR_YELLOW "Conductor::ConductorLoop -- Received TICK request from %d\r\n", sender_tid);
+                for (int i = 0; i < NUM_TRAINS; ++i)
+                {
+                    if (train_arr[i].train_num == -1)
+                    {
+                        continue;
+                    }
+                    update_position(train_arr + i);
+                }
+                sendReply = true;
+            }
+
             DispatchCommand();
             Conductor::UpdateTrainDisplay();
 
@@ -534,6 +591,18 @@ namespace Conductor_NS
             }
         }
         EXIT();
+    }
+
+    void Conductor::update_position(train_task_mapping *train)
+    {
+        IO_NS::PrintTerminal(COLOR_YELLOW "Conductor::ConductorLoop -- Updating position for train %d\r\n", train->train_num);
+        int cur_tick = TIME(CLOCK_SERVER_TID);
+
+        int delta_ticks = cur_tick - train->last_sensor_trigger_tick;
+
+        int approximate_distance = (train->actual_speed_x10 * delta_ticks) / 10000;
+        train->total_dist_travelled.Pop(nullptr);
+        train->total_dist_travelled.Push(approximate_distance);
     }
 
     void Conductor::DispatchCommand()
@@ -583,19 +652,35 @@ namespace Conductor_NS
     }
     void Conductor::PopSegment(train_task_mapping *train)
     {
+        // StackTest();
+
+        IO_NS::PrintTerminal("PATH NODES LEFT: %d\r\n", train->path.size);
+        // uassert(train->path.size != 12 && "HERE");
         Stack<PathNode, TRACK_MAX> *path = &train->path;
         train->current_segment_length = 0;
 
         PathNode curnode;
         path->Pop(&curnode);
+
+        IO_NS::PrintTerminal("FIRT NODE POPPED: %s -- path empty? %s -- size: %d\r\n", curnode.node->name, path->IsEmpty() ? "true" : "false", path->size);
         uassert(curnode.node->type == NODE_SENSOR && "Conductor::PopSegment -- popped node is not a sensor");
 
         int DIR = 0;
+
+        if (strncmp(curnode.node->name, train->destination, 4) == 0)
+        {
+            IO_NS::PrintTerminal(COLOR_MAGENTA "Conductor::PopSegment -- popped destination node: %s\r\n", curnode.node->name);
+            train->current_segment_length = 0;
+            train->train_commands.Push({TRAIN_COMMAND::STOP, 0});
+            return;
+        }
+
         while (!path->IsEmpty())
         {
             train->current_segment_length += curnode.node->edge[DIR].dist;
 
             path->Pop(&curnode);
+            IO_NS::PrintTerminal("Conductor::PopSegment -- popped node: %s\r\n", curnode.node->name);
             bool isSensor = false;
             switch (curnode.node->type)
             {
@@ -656,6 +741,26 @@ namespace Conductor_NS
             IO_NS::PrintTerminal("CONDUCTOR_SENSOR MESSENGER:: Sending request to IO server: %d\r\n", marklin_io_tid);
             SEND(marklin_io_tid, (char *)&io_request, sizeof(MARKLIN_IO_SERVER::IO_REQUEST), nullptr, 0);
             IO_NS::PrintTerminal(COLOR_RED "CONDUCTOR_SENSOR MESSENGER:: RECEIVED REPLY FROM IO SERVER\r\n");
+        }
+    }
+
+    void ticker()
+    {
+        int my_tid = MYTID();
+        int conductor_tid = MYPARENTTID();
+        uassert(conductor_tid > 0 && "CONDUCTOR TICKER:Error finding parent task");
+
+        int CLOCK_SERVER_TID = WHOIS("ClockServer");
+        uassert(CLOCK_SERVER_TID > 0 && "TRAIN TICKER:Error finding ClockServer");
+
+        ConductorRequest tick_message(RequestType::TICK);
+        uassert(tick_message.requestType == RequestType::TICK && "Conductor::ticker -- Error creating tick message");
+        // IO_NS::PrintTerminal(COLOR_YELLOW "TRAIN TICKER{%d}:: Sending TICK to Train task -- type: %d\r\n", my_tid, tick_message.requestType);
+        while (true)
+        {
+            // IO_NS::PrintTerminal(COLOR_YELLOW "TRAIN TICKER{%d}:: Sending TICK to Train task\r\n", my_tid);
+            int retval = SEND(conductor_tid, (char *)&tick_message, sizeof(tick_message), nullptr, 0);
+            DELAY(CLOCK_SERVER_TID, 20);
         }
     }
 
