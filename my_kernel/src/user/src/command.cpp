@@ -417,12 +417,32 @@ namespace UI_CMD_NS
                 uassert(retval >= 0 && "Error sending calibrate request to Conductor");
             }
         }
+        else if ((first == 'S' || first == 's') &&
+                 (second == 'T' || second == 't'))
+        {
+            // read next two characters
+            char third = str[2];
+            char fourth = str[3];
+            char fifth = str[4];
+            char sixth = str[5];
+            char seventh = str[6];
 
+            if ((third == 'O' || third == 'o') &&
+            (fourth == 'P' || fourth == 'p') &&
+            (fifth == 'A' || fifth == 'a') &&
+            (sixth == 'L' || sixth == 'l') &&
+            (seventh == 'L' || seventh == 'l'))
+            {
+                IO_NS::PrintTerminal("Attempting to stop all trains");
+                ConductorRequest request(COMMAND::STOP_ALL, 0, 0);
+                int retval = SEND(CONDUCTOR_TID, (char *)&request, sizeof(request), nullptr, 0);
+                uassert(retval >= 0 && "Error sending stopall to Conductor");
+            }
+        }
         else
         {
             IO_NS::PrintTerminal("Invalid Command\r\n");
             // invalid command
-            // UNIMPLEMENTED
         }
     }
 

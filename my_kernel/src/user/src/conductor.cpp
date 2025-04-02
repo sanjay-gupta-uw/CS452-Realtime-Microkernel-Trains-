@@ -387,7 +387,22 @@ namespace Conductor_NS
 
             break;
         }
-
+        case COMMAND::STOP_ALL:
+        {
+            IO_NS::PrintTerminal("Conductor received STOP_ALL request");
+            for (int i = 0; i < NUM_TRAINS; i++)
+            {
+                if (train_arr[i].train_num != -1)
+                {
+                    IO_NS::PrintTerminal("Sending STOP command to Train %d\r\n", train_arr[i].train_num);
+                    train_arr[i].speed_level = 0;
+                    train_arr[i].actual_speed_x100 = 0;;
+                    train_arr[i].train_commands.Push({TRAIN_COMMAND::ACCELERATE, 0});
+                }
+                Conductor::UpdateTrainDisplay();
+            }
+            break;
+        }
         default:
             IO_NS::PrintTerminal("Conductor received INVALID request\r\n");
             break;
