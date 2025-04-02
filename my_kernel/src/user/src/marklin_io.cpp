@@ -229,6 +229,15 @@ namespace MARKLIN_IO_SERVER
         }
     }
 
+    static void ReplySensorTrigger(MessengerUnit *messenger)
+    {
+        SensorTriggerResponse trigger_reply = {sensor_data[messenger->sensor_idx].isTriggered, cur_tick, messenger->sensor_idx, messenger->train_num};
+        IO_NS::PrintTerminal(COLOR_GREEN "MarklinIO_server::run: Sending reply to sensor messenger %d -- sensor idx: %d, train: %d\r\n", messenger->messenger_id, messenger->sensor_idx, messenger->train_num);
+        messenger->sent_reply = true;
+        messenger->sensor_idx = -1; // reset the sensor index
+        REPLY(messenger->messenger_id, (char *)&trigger_reply, sizeof(trigger_reply));
+    }
+
     void MarklinIOServer::run()
     {
         int sender_tid;
@@ -270,11 +279,7 @@ namespace MARKLIN_IO_SERVER
                         Sensor *sensor = &sensor_data[messenger->sensor_idx];
                         if (sensor->isTriggered == SEN_ON)
                         {
-                            // send reply to the messenger
-                            SensorTriggerResponse trigger_reply = {sensor_data[messenger->sensor_idx].isTriggered, cur_tick, messenger->sensor_idx, messenger->train_num};
-                            IO_NS::PrintTerminal(COLOR_GREEN "MarklinIO_server::run: Sending reply to sensor messenger %d -- sensor idx: %d, train: %d\r\n", messenger->messenger_id, messenger->sensor_idx, messenger->train_num);
-                            REPLY(messenger->messenger_id, (char *)&trigger_reply, sizeof(trigger_reply));
-                            messenger->sent_reply = true;
+                            ReplySensorTrigger(messenger);
                         }
                     }
                 }
@@ -298,6 +303,7 @@ namespace MARKLIN_IO_SERVER
                 if (messenger->messenger_id < 0)
                 {
                     messenger->messenger_id = CREATE(PRIORITY::MARKLIN_NOTIFIER, start_sensor_messenger);
+                    messenger->sent_reply = true;
                     int ret = SEND(messenger->messenger_id, (char *)&train_num, sizeof(int), nullptr, 0);
                     uassert(ret >= 0 && "MarklinIO_server::run: -- Error sending train number to marklin sensor messenger");
                 }
@@ -306,6 +312,12 @@ namespace MARKLIN_IO_SERVER
 
                 IO_NS::PrintTerminal(COLOR_RED "MarklinIO_server::run: Received sensor listener request from tid{%d} for train %d, sensor %s {%d}\r\n", sender_tid, train_num, sensor_listener->sensor_name, messenger->sensor_idx);
                 send_reply = true;
+
+                // IF WE ARE ON QEMU AND WAITING FOR SENSOR THEN SEND THE REPLY IMMEDIATELY
+                if (!IRQ_ENABLED && messenger->sent_reply == false && messenger->sensor_idx > -1)
+                {
+                    ReplySensorTrigger(messenger);
+                }
 
                 break;
             }
@@ -322,10 +334,7 @@ namespace MARKLIN_IO_SERVER
                         // IF WE ARE ON QEMU AND WAITING FOR SENSOR THEN SEND THE REPLY IMMEDIATELY
                         if (!IRQ_ENABLED && messenger->sensor_idx > -1)
                         {
-                            SensorTriggerResponse trigger_reply = {sensor_data[messenger->sensor_idx].isTriggered, cur_tick, messenger->sensor_idx, messenger->train_num};
-                            IO_NS::PrintTerminal("MarklinIO_server::run: Sending reply to sensor messenger %d, for idx: %d, train: %d\r\n", messenger->messenger_id, messenger->sensor_idx, messenger->train_num);
-                            REPLY(messenger->messenger_id, (char *)&trigger_reply, sizeof(trigger_reply));
-                            messenger->sent_reply = true;
+                            ReplySensorTrigger(messenger);
                         }
                         else
                         {

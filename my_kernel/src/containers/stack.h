@@ -2,6 +2,7 @@
 #define _STACK_H
 
 #include <cstddef>
+#include "../user/include/track_node.h"
 
 template <typename T, std::size_t Capacity>
 class Stack
@@ -52,7 +53,37 @@ public:
         return size == Capacity;
     }
 
-    void Clear()
+    void Print()
+    {
+        IO_NS::PrintTerminal(COLOR_MAGENTA "Stack contents: {size: %d, head: %d} ", size, head);
+        if (IsEmpty())
+        {
+            IO_NS::PrintTerminal("\r\n");
+            return;
+        }
+        Stack<T, Capacity> temp;
+
+        while (!IsEmpty())
+        {
+            T item;
+            Pop(&item);
+
+            // cast item to PathNode
+            PathNode *node = &item; // No cast needed
+            IO_NS::PrintTerminal(COLOR_MAGENTA "%s ", node->node->name);
+            temp.Push(item);
+        }
+        while (!temp.IsEmpty())
+        {
+            T item;
+            temp.Pop(&item);
+            Push(item);
+        }
+        IO_NS::PrintTerminal("\r\n");
+    }
+
+    void
+    Clear()
     {
         // Clear the stack by popping all items.
         while (!IsEmpty())

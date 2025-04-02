@@ -17,11 +17,11 @@ namespace UI_CMD_NS
         int BUFFER_INDEX;
         char inputBuffer[INPUT_BUFFER_SIZE];
 
-        void Commandify(const char *str);
         void InitDisplay();
 
     public:
         bool isTrackIDKnown;
+        void Commandify(const char *str);
 
         CommandPrompt();
         void getInput();

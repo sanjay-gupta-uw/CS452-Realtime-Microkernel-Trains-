@@ -26,6 +26,14 @@ namespace MARKLIN_IO_SERVER
 #define UNDEFINED_CHAR '-'
 #define NUM_SWITCHES 22
 #define MAX_RECENT_SENSORS 10
+
+    struct MessengerUnit
+    {
+        int messenger_id;
+        int train_num;
+        int sensor_idx;
+        bool sent_reply;
+    };
     // REDEFINED QUEUE SIZE TO 32 -> change queue to accept size as a parameter?
     // #define RECEIVE_SIZE 32 // 32 chars/bytes
     class MarklinIOServer
@@ -56,13 +64,7 @@ namespace MARKLIN_IO_SERVER
         int cts_notifier_high_tid;
         int cts_notifier_low_tid;
         int switch_notifier_tid[NUM_SWITCHES];
-        struct MessengerUnit
-        {
-            int messenger_id;
-            int train_num;
-            int sensor_idx;
-            bool sent_reply;
-        };
+
         MessengerUnit sensor_messenger[NUM_TRAINS];
 
         Queue<unsigned char, 100> receive_buffer;

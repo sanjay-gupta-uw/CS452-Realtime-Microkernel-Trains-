@@ -35,7 +35,6 @@ private:
     TrackID track_id;
     int CONTROLLER_TID;
     track_node track[TRACK_MAX];
-    SwitchSetting switch_settings[NUM_SWITCHES];
 
     void init_tracka();
     void init_trackb();
@@ -45,6 +44,7 @@ public:
     Track();
     ~Track();
 
+    SwitchSetting switch_settings[NUM_SWITCHES];
     track_node *predict_next_sensor(track_node *cur_sensor);
     void set_switch_state(int switch_num, char state);
     void getLoop(Queue<PathNode, NUM_SWITCHES> *switch_config, int *distance);
