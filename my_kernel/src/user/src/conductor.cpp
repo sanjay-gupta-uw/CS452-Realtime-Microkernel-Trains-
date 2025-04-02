@@ -4,6 +4,7 @@
 #include "../include/clock_server.h"
 #include "../include/name_server.h"
 #include "../include/marklin_structs.h"
+#include "../include/speed_data.h"
 #include "../marklin/train.h"
 #include "../../include/syscall.h"
 #include "../../shared_constants.h"
@@ -97,6 +98,14 @@ namespace Conductor_NS
         IO_NS::PrintTerminal("Conductor received request for track %c\r\n", track_id);
         uassert(track_id == 'A' || track_id == 'B' || track_id == 'a' || track_id == 'b');
         track.init(track_id);
+
+        if(track_id == 'A' || track_id == 'a') {
+            speed_data.InitializeTrackA();
+        } else {
+            speed_data.InitializeTrackB();
+        }
+        speed_data.SetActiveTrack(toupper(track_id));
+
         REPLY(sender_tid, nullptr, 0);
 
         // create switch server
@@ -228,7 +237,21 @@ namespace Conductor_NS
                 IO_NS::PrintTerminal("Train %d found at index %d, sending ACCELERATE command\r\n", train_num, train_index);
             }
 
+            train_arr[train_index].speed_level = speed;
+
+            if(speed >= 7 && speed <= 14) {
+                // Get calibrated speed
+                int calibrated_speed_x100 = speed_data.GetSpeed(train_num, speed);
+                train_arr[train_index].actual_speed_x100 = calibrated_speed_x100;
+    
+                // Get stopping distance
+                //int stopping_dist = speed_data.GetStoppingDistance(train_num, speed);
+                //train_arr[train_index].stopping_distance = stopping_dist;
+            }
+            Conductor::UpdateTrainDisplay();
+
             train_arr[train_index].train_commands.Push({TRAIN_COMMAND::ACCELERATE, speed});
+
             break;
         }
         case COMMAND::REVERSE_TRAIN:
@@ -282,10 +305,10 @@ namespace Conductor_NS
                     train->last_sensor = track.get_node_by_name(sensor_name);
                     train->next_predicted_sensor = track.predict_next_sensor(train->last_sensor);
 
-                    train->actual_speed_x10 = -1;
+                    train->actual_speed_x100 = 0;
                     train->speed_level = 0;
                     train->offset = -1;
-                    memset(train->destination, 0, 5);
+                    memset(train->destination, '-', 5);
 
                     train->train_commands.Clear();
                     train->path.Clear();
@@ -374,15 +397,24 @@ namespace Conductor_NS
             IO_NS::Print(MOVE_CURSOR "%d ",
                          TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 7, train_arr[i].speed_level);
             IO_NS::Print(MOVE_CURSOR "%d.%d",
-                         TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 21, train_arr[i].actual_speed_x10, train_arr[i].actual_speed_x10 % 10);
+                         TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 21, train_arr[i].actual_speed_x100, train_arr[i].actual_speed_x100 % 100);
             IO_NS::Print(MOVE_CURSOR "%s ",
                          TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 36, train_arr[i].last_sensor->name);
             IO_NS::Print(MOVE_CURSOR "%s ",
                          TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 50, train_arr[i].next_predicted_sensor->name);
-            IO_NS::Print(MOVE_CURSOR "%s ",
-                         TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 64, train_arr[i].destination);
-            IO_NS::Print(MOVE_CURSOR "%d   ",
-                         TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 71, train_arr[i].offset);
+            if(train_arr[i].destination[0] == '-') {
+                IO_NS::Print(MOVE_CURSOR "-  ",
+                             TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 64);
+                IO_NS::Print(MOVE_CURSOR "-    ",
+                             TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 71);
+            }         
+            else
+            {
+                IO_NS::Print(MOVE_CURSOR "%s",
+                             TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 64, train_arr[i].destination);
+                IO_NS::Print(MOVE_CURSOR "%d",
+                             TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 71, train_arr[i].offset);
+            }     
 
             int approx_dist_travelled_in_segment = 0;
             int known_dist_travelled = 0;
@@ -528,12 +560,12 @@ namespace Conductor_NS
                     {
                         int delta_tick = triggered_tick - train->last_sensor_trigger_tick;
                         // IO_NS::PrintTerminal("Conductor::ConductorLoop -- delta tick: %d\r\n", delta_tick);
-                        train->actual_speed_x10 = (train->current_segment_length * 10000) / delta_tick;
-                        // IO_NS::PrintTerminal("Conductor::ConductorLoop -- actual speed: %d\r\n", train->actual_speed_x10);
+                        train->actual_speed_x100 = (train->current_segment_length * 10000) / delta_tick;
+                        // IO_NS::PrintTerminal("Conductor::ConductorLoop -- actual speed: %d\r\n", train->actual_speed_x100);
                     }
                     else
                     {
-                        train->actual_speed_x10 = 0;
+                        train->actual_speed_x100 = 0;
                     }
                     // UPDATE STACK SO NEXT SENSOR IS THE TOP
                     train->last_sensor = train->next_predicted_sensor;
@@ -600,7 +632,7 @@ namespace Conductor_NS
 
         int delta_ticks = cur_tick - train->last_sensor_trigger_tick;
 
-        int approximate_distance = (train->actual_speed_x10 * delta_ticks) / 10000;
+        int approximate_distance = (train->actual_speed_x100 * delta_ticks) / 10000;
         train->total_dist_travelled.Pop(nullptr);
         train->total_dist_travelled.Push(approximate_distance);
     }
