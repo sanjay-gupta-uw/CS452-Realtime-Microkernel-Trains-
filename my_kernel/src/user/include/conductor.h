@@ -65,8 +65,9 @@ namespace Conductor_NS
 
             int speed_level;
             int actual_speed_x100;
-            int offset;
+            int stopping_distance;
             char destination[5];
+            int offset;
 
             Queue<TrainCommandNotification, 3> train_commands;
             Stack<PathNode, TRACK_MAX> path;

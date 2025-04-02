@@ -327,6 +327,18 @@ namespace UI_CMD_NS
                 ptr++;
             }
 
+            // Parse speed num
+            int speed = 0;
+            while (*ptr == ' ')
+            {
+                ptr++;
+            }
+            while (*ptr >= '0' && *ptr <= '9')
+            {
+                speed = speed * 10 + (*ptr - '0');
+                ptr++;
+            }
+
             // capitalize the first letter
             char node_name[5] = {0};
 
@@ -362,9 +374,9 @@ namespace UI_CMD_NS
             }
             offset *= sign;
 
-            ConductorRequest request(COMMAND::GOTO, train_num, offset, node_name);
+            ConductorRequest request(COMMAND::GOTO, train_num, speed, node_name, node_name, offset);
             // send node name to conductor
-            IO_NS::PrintTerminal("Attempting to find path for Train %d to go to %s %d, sending to Conductor tid: %d\r\n", train_num, node_name, offset, CONDUCTOR_TID);
+            IO_NS::PrintTerminal("Attempting to find path for Train %d to go to %s %d with speed %d, sending to Conductor tid: %d\r\n", train_num, node_name, offset, speed, CONDUCTOR_TID);
             SEND(CONDUCTOR_TID, (char *)&request, sizeof(request), nullptr, 0);
         }
 

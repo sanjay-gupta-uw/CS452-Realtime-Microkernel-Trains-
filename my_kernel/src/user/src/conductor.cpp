@@ -245,8 +245,8 @@ namespace Conductor_NS
                 train_arr[train_index].actual_speed_x100 = calibrated_speed_x100;
     
                 // Get stopping distance
-                //int stopping_dist = speed_data.GetStoppingDistance(train_num, speed);
-                //train_arr[train_index].stopping_distance = stopping_dist;
+                int stopping_dist = speed_data.GetStoppingDistance(train_num, speed);
+                train_arr[train_index].stopping_distance = stopping_dist;
             }
             Conductor::UpdateTrainDisplay();
 
@@ -305,8 +305,9 @@ namespace Conductor_NS
                     train->last_sensor = track.get_node_by_name(sensor_name);
                     train->next_predicted_sensor = track.predict_next_sensor(train->last_sensor);
 
-                    train->actual_speed_x100 = 0;
                     train->speed_level = 0;
+                    train->actual_speed_x100 = 0;
+                    train->stopping_distance = 0;
                     train->offset = -1;
                     memset(train->destination, '-', 5);
 
@@ -342,13 +343,19 @@ namespace Conductor_NS
         {
             // Extract destination from request
             int train_num = req->id;
-            char *dest = req->src;
-            int offset = req->data;
+            int speed = req->data;
+            char *dest = req->dest;
+            int offset = req->offset;
 
             int train_index = get_train_index(train_num);
             if (train_index == -1)
             {
                 IO_NS::PrintTerminal("Train %d not found or initialized.\r\n", train_num);
+                return;
+            }
+            if (speed < 7 || speed > 14)
+            {
+                IO_NS::PrintTerminal("Go To command only go with speed 7 - 14.\r\n");
                 return;
             }
             train_task_mapping *train = &train_arr[train_index];
@@ -362,6 +369,21 @@ namespace Conductor_NS
             track.find_path(train->next_predicted_sensor->name, dest, &train->path, false, offset);
 
             SwitchNextSegment(&train->path);
+
+            // Accelerates the train
+            train_arr[train_index].speed_level = speed;
+
+            // Get calibrated speed
+            int calibrated_speed_x100 = speed_data.GetSpeed(train_num, speed);
+            train_arr[train_index].actual_speed_x100 = calibrated_speed_x100;
+    
+            // Get stopping distance
+            int stopping_dist = speed_data.GetStoppingDistance(train_num, speed);
+            train_arr[train_index].stopping_distance = stopping_dist;
+
+            Conductor::UpdateTrainDisplay();
+
+            train_arr[train_index].train_commands.Push({TRAIN_COMMAND::ACCELERATE, speed});
 
             break;
         }
