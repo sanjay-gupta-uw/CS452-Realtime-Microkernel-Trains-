@@ -79,8 +79,8 @@ namespace Trains_NS
         // uassert(sensor_messenger_tid > 0 && "Error creating train messenger");
         // retval = SEND(sensor_messenger_tid, (char *)&train_num, sizeof(int), nullptr, 0);
 
-        train_ticker_tid = CREATE(PRIORITY::DEVICE_NOTIFIER, Trains_NS::train_ticker);
-        uassert(train_ticker_tid > 0 && "Error creating train messenger");
+        // train_ticker_tid = CREATE(PRIORITY::DEVICE_NOTIFIER, Trains_NS::train_ticker);
+        // uassert(train_ticker_tid > 0 && "Error creating train messenger");
 
         TrainLoop();
     }
@@ -95,20 +95,20 @@ namespace Trains_NS
     void Train::ReverseTrain()
     {
         int initial_speed = train_speed;
-        if (initial_speed == 0)
+        if (initial_speed > 0)
         {
-            // cannot reverse a stopped train
-            // IO_NS::PrintTerminal("Cannot reverse a stopped train\r\n");
-            return;
+            Stop();
+            DELAY(CLOCK_SERVER_TID, 200); // stop for 2 seconds
         }
-
-        Stop();
-        DELAY(CLOCK_SERVER_TID, 200); // stop for 2 seconds
         Reverse();
 
-        Accelerate(initial_speed);
+        if (initial_speed > 0)
+        {
+            Accelerate(initial_speed);
+        }
     }
 
+    // sends reverse command to the train
     void Train::Reverse()
     {
         isReversed = !isReversed;
@@ -215,7 +215,7 @@ namespace Trains_NS
             break;
         case TRAIN_COMMAND::REVERSE:
             IO_NS::PrintTerminal(COLOR_RED "Train %d: Reversing\r\n", train_num);
-            Reverse();
+            ReverseTrain();
             // uassert(false && "Train::process_train_command: Reversing train -- forced error");
 
             break;
@@ -223,6 +223,7 @@ namespace Trains_NS
             IO_NS::PrintTerminal(COLOR_RED "Received command from conductor to stop train %d\r\n", train_num);
             Stop();
             break;
+            // move this to the train ticker switch case
         case TRAIN_COMMAND::TICK:
         {
             // update train position
@@ -282,8 +283,8 @@ namespace Trains_NS
         {
             // IO_NS::PrintTerminal(COLOR_MAGENTA "TRAIN %d: MYTID: %d\r\n", train_num, my_tid);
             cur_tick = TIME(CLOCK_SERVER_TID);
-            IO_NS::Print(MOVE_CURSOR "%d",
-                         TRAIN_TABLE_Y + 5 + 0, TRAIN_TABLE_X + 80, cur_tick);
+            // IO_NS::Print(MOVE_CURSOR "%d",
+            //              TRAIN_TABLE_Y + 5 + 0, TRAIN_TABLE_X + 80, cur_tick);
 
             // IO_NS::PrintTerminal(COLOR_MAGENTA "TRAIN::TICK: %d\r\n", cur_tick);
             TrainMessage message;
@@ -297,12 +298,7 @@ namespace Trains_NS
             CheckSensorTrigger();
 
             uassert(retval >= 0 && "Error receiving TrainResponse");
-            // IO_NS::PrintTerminal(COLOR_MAGENTA "TrainLoop{%d}::Sender: %d, Command: %d\r\n", my_tid, sender_tid, message.type);
-            if (message.type == TrainMessageType::TRAIN_COMMAND)
-            {
-                int cmd = int(message.data.train_command.command);
-                // IO_NS::PrintTerminal(COLOR_MAGENTA "TRAIN %d::Received %s command\r\n", train_num, cmd == 0 ? "ACCELERATE" : cmd == 1 ? "REVERSE"
-            }
+            IO_NS::PrintTerminal(COLOR_MAGENTA "TrainLoop{%d}::Sender: %d, MESSAGE TYPE: %d\r\n", my_tid, sender_tid, message.type);
 
             // uassert(segment_length <= 0 && "TrainLoop::FINALLY RECEIVED SEGMENT");
             // uassert(false && "THIS MUST BE HIT --1!");
@@ -429,6 +425,8 @@ namespace Trains_NS
             TrainMessage message(command_struct.command, command_struct.speed);
             retval = SEND(train_task_tid, (char *)&message, sizeof(TrainMessage), nullptr, 0);
             uassert(retval >= 0 && "COMMAND MESSENGER: Error sending TrainCommandNotification to Train task");
+
+            IO_NS::PrintTerminal(COLOR_YELLOW "COMMAND MESSENGER{%d}:: Train accepted command %d\r\n", my_tid, command_struct.command);
         }
     }
 

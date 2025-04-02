@@ -8,7 +8,7 @@
 #include "../include/marklin_structs.h"
 namespace Conductor_NS
 {
-#define LOOP_START_NODE "B5"
+#define LOOP_START_NODE "B5p"
 
     // CALIBRATION STAGES
     typedef enum
@@ -39,7 +39,7 @@ namespace Conductor_NS
 
         void ConductorLoop();
         void ConductorTest();
-        int GetSegmentLength(int train_num);
+        int GetSegmentLength(int train_num); // deprecate this
 
         // Queue<TrainResponse, 8> train_messages;
         Queue<PathNode, NUM_SWITCHES> loop_switch_config;
@@ -68,7 +68,11 @@ namespace Conductor_NS
             Queue<TrainCommandNotification, 3> train_commands;
             Stack<PathNode, TRACK_MAX> path;
 
+            int current_segment_length = 0;
+            int total_distance_travelled = 0;
+
             track_node *last_sent_sensor;
+            uint32_t last_sensor_trigger_tick = 0;
         };
 
         void SwitchNextSegment(Stack<PathNode, TRACK_MAX> *path);
@@ -77,7 +81,7 @@ namespace Conductor_NS
         void CalibrateTrain(train_task_mapping *train);
         void UpdateCalibrationStage(train_task_mapping *train);
         void setSwitch(int addr, Switch_NS::SWITCH_STATE state);
-        void PopSegment(Stack<PathNode, TRACK_MAX> *path);
+        void PopSegment(train_task_mapping *train);
 
         train_task_mapping train_arr[NUM_TRAINS];
         Track track;

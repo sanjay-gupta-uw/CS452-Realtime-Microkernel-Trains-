@@ -139,7 +139,7 @@ namespace Switch_NS
             // ASSUME SWITCH COMMANDS ARE VALIDATED ALREADY
             SWITCH_STATE alignment = request.alignment;
             int switch_num = request.switch_num;
-            IO_NS::PrintTerminal("SwitchServer: Setting switch %d to %c\r\n", request.switch_num, alignment == SWITCH_STATE::STRAIGHT ? 'S' : 'C');
+            IO_NS::PrintTerminal("SwitchServer{%d}: Setting switch %d to %c\r\n", my_tid, request.switch_num, alignment == SWITCH_STATE::STRAIGHT ? 'S' : 'C');
 
             bool success = SetSwitch(switch_num, alignment);
             if (!success)

@@ -1,8 +1,28 @@
 ./upload.sh ../iotest.img d8:3a:dd:1b:36:9e
 
 a
-spawn 55 E7
-go 55 b5 0
+spawn 55 a13 (-> C13)
+go 55 a6
+
+CONDUCTOR::GO_COMMAND:Train 55 found, sending it from C13 to A6 +{0}
+Track::find_path: Path: A6  - 649 - BR3  - 216 - C8  - 361 - BR18  - 215 - MR5  - 402 - BR7  - 736 - E12  - 801 - D9  - 361 - BR8  - 291 - MR9  - 484 -
+D7  - 774 - E7  - 375 - C13 ; Total distance: 3549, Count: 13
 
 
 Index: 0, Train 55 spawned with Sensor B9
+
+
+
+C13 // <-
+E7
+D7
+MR9
+BR8
+D9
+E12
+BR7
+MR5
+BR18
+C8
+BR3
+A6
