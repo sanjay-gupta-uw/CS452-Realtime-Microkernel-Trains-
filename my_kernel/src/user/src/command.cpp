@@ -57,8 +57,9 @@ namespace UI_CMD_NS
         IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Train Spawn Command: SPAWN <train_num> <sensor_id>", CMD_INFO_LOCATION + 4, 1);
         IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Train Accelerate Command: TR <train_num> <speed>", CMD_INFO_LOCATION + 2, 1);
         IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Train Reverse Command: RV <train_num>", CMD_INFO_LOCATION + 3, 1);
-        IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Go Command: GO <train_num> <node_name> <offset>", CMD_INFO_LOCATION + 5, 1);
-        IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Quit Command: q", CMD_INFO_LOCATION + 6, 1);
+        IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Go Command(support speed 7-14): GO <train_num> <speed> <node_name> <offset>", CMD_INFO_LOCATION + 5, 1);
+        IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Stop All Command: STOPALL", CMD_INFO_LOCATION + 6, 1);
+        IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Quit Command: q", CMD_INFO_LOCATION + 7, 1);
     }
 
     CommandPrompt::CommandPrompt()
