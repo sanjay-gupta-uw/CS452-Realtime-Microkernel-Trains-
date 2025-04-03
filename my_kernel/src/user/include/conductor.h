@@ -69,6 +69,12 @@ namespace Conductor_NS
             char destination[5];
             int offset;
 
+            int total_path_distance;    // Total distance of current path
+            int remaining_distance;     // Remaining distance to destination
+            int middle_distance;        // Distance traveled since last sensor
+
+            bool go;
+
             Queue<TrainCommandNotification, 3> train_commands;
             Stack<PathNode, TRACK_MAX> path;
 

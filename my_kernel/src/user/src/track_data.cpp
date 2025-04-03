@@ -2712,8 +2712,9 @@ static int get_node_index(track_node *node, TrackID track_id)
 /*
   Find a path from the destination into the loop
 */
-void Track::find_path(const char *start, const char *dest, Stack<PathNode, TRACK_MAX> *path, bool check_start_dest, int offset)
+void Track::find_path(const char *start, const char *dest, Stack<PathNode, TRACK_MAX> *path, bool check_start_dest, int offset, int* total_distance)
 {
+    if (total_distance) *total_distance = -1;
     path->Clear();
     // IO_NS::PrintTerminal(CLEAR_SCREEN "Track::find_path: Finding path from %s to %s, checking start and dest: %d\r\n", start, dest, check_start_dest);
     const int MAX_DIST = (1 << 31) - 1; // since we are using signed integers
@@ -2732,6 +2733,7 @@ void Track::find_path(const char *start, const char *dest, Stack<PathNode, TRACK
     if (start_node == NULL || start_node->type != NODE_SENSOR)
     {
         IO_NS::PrintTerminal("Track::find_path: Start node not found, please ensure only sensor nodes are requested!\r\n");
+        if (total_distance) *total_distance = -1;
         return;
     }
     int index = get_node_index(start_node, track_id);
@@ -2833,6 +2835,7 @@ void Track::find_path(const char *start, const char *dest, Stack<PathNode, TRACK
 
     if (!path_found)
     {
+        if (total_distance) *total_distance = -1;
         IO_NS::PrintTerminal("Track::find_path: No path found to %s\r\n", dest);
         return;
     }
@@ -2840,6 +2843,7 @@ void Track::find_path(const char *start, const char *dest, Stack<PathNode, TRACK
     {
         // uassert(false && "FOUND PATH");
         int dest_index = get_node_index(get_node_by_name(dest), track_id);
+        if (total_distance) *total_distance = dist[dest_index] + offset;
         int cur_index = dest_index;
         IO_NS::PrintTerminal("Track::found path from %s to %s --", start, dest);
         int prior_index = -1;
@@ -2899,7 +2903,7 @@ void Track::find_path(const char *start, const char *dest, Stack<PathNode, TRACK
         // IO_NS::PrintTerminal("Track::find_path: OFFSET: %d\r\n", offset);
         if (offset < 0)
         {
-            IO_NS::PrintTerminal("DESTINATION is %d mm away\r\n", dist[dest_index] - offset);
+            IO_NS::PrintTerminal("DESTINATION is %d mm away\r\n", dist[dest_index] + offset);
         }
         if (offset > 0)
         {

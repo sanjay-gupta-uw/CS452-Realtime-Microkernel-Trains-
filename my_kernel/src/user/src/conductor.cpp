@@ -53,17 +53,17 @@ namespace Conductor_NS
     static void InitializeTrainDisplay()
     {
         // Header
-        IO_NS::Print(COLOR_WHITE MOVE_CURSOR "+-----------------------------------------------------------------------------------------------+\r\n", TRAIN_TABLE_Y + 0, TRAIN_TABLE_X);
-        IO_NS::Print(COLOR_WHITE MOVE_CURSOR "|                                Active Trains:                                                 |\r\n", TRAIN_TABLE_Y + 1, TRAIN_TABLE_X);
-        IO_NS::Print(COLOR_WHITE MOVE_CURSOR "-------------------------------------------------------------------------------------------------\r\n", TRAIN_TABLE_Y + 2, TRAIN_TABLE_X);
-        IO_NS::Print(COLOR_WHITE MOVE_CURSOR "| ID | Speed Level | Actual Speed | Last Sensor | Next Sensor | Dest | Offset |  Dist Travelled |\r\n", TRAIN_TABLE_Y + 3, TRAIN_TABLE_X);
-        IO_NS::Print(COLOR_WHITE MOVE_CURSOR "-------------------------------------------------------------------------------------------------\r\n", TRAIN_TABLE_Y + 4, TRAIN_TABLE_X);
+        IO_NS::Print(COLOR_WHITE MOVE_CURSOR "+----------------------------------------------------------------------------------------------------------+\r\n", TRAIN_TABLE_Y + 0, TRAIN_TABLE_X);
+        IO_NS::Print(COLOR_WHITE MOVE_CURSOR "|                                Active Trains:                                                            |\r\n", TRAIN_TABLE_Y + 1, TRAIN_TABLE_X);
+        IO_NS::Print(COLOR_WHITE MOVE_CURSOR "-----------------------------------------------------------------------------------------------------------+\r\n", TRAIN_TABLE_Y + 2, TRAIN_TABLE_X);
+        IO_NS::Print(COLOR_WHITE MOVE_CURSOR "| ID | Speed Level | Actual Speed | Current Loc | Next Sensor | Dest | Offset | Total Dist | Remaining Dist|\r\n", TRAIN_TABLE_Y + 3, TRAIN_TABLE_X);
+        IO_NS::Print(COLOR_WHITE MOVE_CURSOR "-----------------------------------------------------------------------------------------------------------+\r\n", TRAIN_TABLE_Y + 4, TRAIN_TABLE_X);
         for (int i = 0; i < NUM_TRAINS; ++i)
         {
             int location_y = TRAIN_TABLE_Y + 5 + i;
-            IO_NS::Print(COLOR_WHITE MOVE_CURSOR "|    |             |              |             |             |      |        |                 |", location_y, TRAIN_TABLE_X);
+            IO_NS::Print(COLOR_WHITE MOVE_CURSOR "|    |             |              |             |             |      |        |            |               |", location_y, TRAIN_TABLE_X);
         }
-        IO_NS::Print(COLOR_WHITE MOVE_CURSOR "+-----------------------------------------------------------------------------------------------+\r\n", TRAIN_TABLE_Y + 5 + NUM_TRAINS, TRAIN_TABLE_X);
+        IO_NS::Print(COLOR_WHITE MOVE_CURSOR "+----------------------------------------------------------------------------------------------------------+\r\n", TRAIN_TABLE_Y + 5 + NUM_TRAINS, TRAIN_TABLE_X);
     }
 
     Conductor::Conductor()
@@ -97,6 +97,14 @@ namespace Conductor_NS
         IO_NS::PrintTerminal("Conductor received request for track %c\r\n", track_id);
         uassert(track_id == 'A' || track_id == 'B' || track_id == 'a' || track_id == 'b');
         track.init(track_id);
+
+        if(track_id == 'A' || track_id == 'a') {
+            speed_data.InitializeTrackA();
+        } else {
+            speed_data.InitializeTrackB();
+        }
+        speed_data.SetActiveTrack(toupper(track_id));
+
         REPLY(sender_tid, nullptr, 0);
 
         // create switch server
@@ -307,8 +315,14 @@ namespace Conductor_NS
                     train->speed_level = 0;
                     train->actual_speed_x100 = 0;
                     train->stopping_distance = 0;
-                    train->offset = -1;
+                    train->offset = 0;
                     memset(train->destination, '-', 5);
+
+                    int total_path_distance = 0;
+                    int remaining_distance = 0;
+                    int middle_distance = 0;
+
+                    train->go = false;
 
                     train->train_commands.Clear();
                     train->path.Clear();
@@ -376,8 +390,9 @@ namespace Conductor_NS
             }
 
             // extract length of the path
-            track.find_path(start_sensor->name, dest, &train->path, false, offset);
-            if (train->path.IsEmpty())
+            int total_path = 0;
+            track.find_path(start_sensor->name, dest, &train->path, false, offset, &total_path);
+            if (train->path.IsEmpty() || total_path == -1)
             {
                 IO_NS::PrintTerminal("Conductor::GOTO -- No path found from %s to %s\r\n", start_sensor->name, dest);
                 return;
@@ -416,13 +431,28 @@ namespace Conductor_NS
             int stopping_dist = speed_data.GetStoppingDistance(train_num, speed);
             train_arr[train_index].stopping_distance = stopping_dist;
 
+            IO_NS::PrintTerminal(COLOR_RED "Jack------- Stopping distance for %d is %d\r\n", speed, train->stopping_distance);
+
+            // Calculate total path distance
+            train->total_path_distance = total_path;
+
+            train->remaining_distance = train->total_path_distance - train->stopping_distance;
+           
+            train->middle_distance = 0;
+
+            train->go = true;
+
+            IO_NS::PrintTerminal(COLOR_RED "Jack------- Total Path: %d, stopping_distance: %d, remaining_distance %d\r\n", train->total_path_distance, train->stopping_distance, train->remaining_distance);
 
             SwitchNextSegment(&train->path);
 
-            Conductor::UpdateTrainDisplay();
-
             // Accelerates the train
             train->train_commands.Push({TRAIN_COMMAND::ACCELERATE, speed});
+
+            int cur_tick = TIME(CLOCK_SERVER_TID);
+            train->last_sensor_trigger_tick = cur_tick;
+
+            Conductor::UpdateTrainDisplay();
 
             break;
         }
@@ -436,7 +466,8 @@ namespace Conductor_NS
                     IO_NS::PrintTerminal("Sending STOP command to Train %d\r\n", train_arr[i].train_num);
                     train_arr[i].speed_level = 0;
                     train_arr[i].actual_speed_x100 = 0;;
-                    train_arr[i].train_commands.Push({TRAIN_COMMAND::ACCELERATE, 0});
+                    train_arr[i].train_commands.Push({TRAIN_COMMAND::ACCELERATE, 0});        
+                    train_arr[i].go = false;
                 }
                 Conductor::UpdateTrainDisplay();
             }
@@ -474,9 +505,13 @@ namespace Conductor_NS
             IO_NS::Print(MOVE_CURSOR "%d ",
                          TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 7, train_arr[i].speed_level);
             IO_NS::Print(MOVE_CURSOR "%d.%d",
-                         TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 21, train_arr[i].actual_speed_x100, train_arr[i].actual_speed_x100 % 100);
+                         TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 21, train_arr[i].actual_speed_x100 / 100, train_arr[i].actual_speed_x100 % 100);
             IO_NS::Print(MOVE_CURSOR "%s ",
                          TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 36, train_arr[i].last_sensor->name);
+            if(train_arr[i].middle_distance != 0) {
+                IO_NS::Print(MOVE_CURSOR "%d ",
+                             TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 40, train_arr[i].middle_distance);
+            }
             IO_NS::Print(MOVE_CURSOR "%s ",
                          TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 50, next_sensor_name);
             if(train_arr[i].destination[0] == '-') {
@@ -491,14 +526,22 @@ namespace Conductor_NS
                              TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 64, train_arr[i].destination);
                 IO_NS::Print(MOVE_CURSOR "%d",
                              TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 71, train_arr[i].offset);
-            }    
-            int approx_dist_travelled_in_segment = 0;
-            int known_dist_travelled = 0;
-            train_arr[i].total_dist_travelled.Pop(&approx_dist_travelled_in_segment);
-            train_arr[i].total_dist_travelled.Pop(&known_dist_travelled);
+            } 
+            if(train_arr[i].total_path_distance != 0) {
+                IO_NS::Print(MOVE_CURSOR "%d ",
+                             TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 80, train_arr[i].total_path_distance);
+            } 
+            if(train_arr[i].remaining_distance != 0) {
+                IO_NS::Print(MOVE_CURSOR "%d ",
+                             TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 93, train_arr[i].remaining_distance - train_arr[i].middle_distance);
+            }     
+            //int approx_dist_travelled_in_segment = 0;
+            //int known_dist_travelled = 0;
+            //train_arr[i].total_dist_travelled.Pop(&approx_dist_travelled_in_segment);
+            //train_arr[i].total_dist_travelled.Pop(&known_dist_travelled);
             // IO_NS::PrintTerminal("Conductor::UpdateTrainDisplay -- Train %d: approx_dist_travelled_in_segment: %d, known_dist_travelled: %d\r\n", train_arr[i].train_num, approx_dist_travelled_in_segment, known_dist_travelled);
 
-            IO_NS::Print(MOVE_CURSOR "%d", TRAIN_TABLE_Y + 5 + 0, TRAIN_TABLE_X + 80, known_dist_travelled + approx_dist_travelled_in_segment);
+            //IO_NS::Print(MOVE_CURSOR "%d", TRAIN_TABLE_Y + 5 + 0, TRAIN_TABLE_X + 80, known_dist_travelled + approx_dist_travelled_in_segment);
 
             display_row++;
         }
@@ -639,7 +682,7 @@ namespace Conductor_NS
                     {
                         int delta_tick = triggered_tick - train->last_sensor_trigger_tick;
                         // IO_NS::PrintTerminal("Conductor::ConductorLoop -- delta tick: %d\r\n", delta_tick);
-                        train->actual_speed_x100 = (train->current_segment_length * 10000) / delta_tick;
+                        train->actual_speed_x100 = (train->current_segment_length * 100) / delta_tick;
                         // IO_NS::PrintTerminal("Conductor::ConductorLoop -- actual speed: %d\r\n", train->actual_speed_x100);
                     }
                     else
@@ -649,12 +692,21 @@ namespace Conductor_NS
                     // UPDATE STACK SO NEXT SENSOR IS THE TOP
                     train->last_sensor = train->next_predicted_sensor;
 
-                    int total_distance;
-                    train->total_dist_travelled.Pop(nullptr);                                         // approximate
-                    train->total_dist_travelled.Pop(&total_distance);                                 // known
-                    train->total_dist_travelled.Push(total_distance + train->current_segment_length); // known
-                    train->total_dist_travelled.Push(0);                                              // approximate
+                    //int total_distance;
+                    //train->total_dist_travelled.Pop(nullptr);                                         // approximate
+                    //train->total_dist_travelled.Pop(&total_distance);                                 // known
+                    //train->total_dist_travelled.Push(total_distance + train->current_segment_length); // known
+                    //train->total_dist_travelled.Push(0);                                              // approximate
                     // IO_NS::PrintTerminal("HERE1\r\n");
+
+                    //new distance calculation logic
+                    train->remaining_distance -= train->current_segment_length;
+                    train->middle_distance = 0;  // Reset between-sensors distance
+
+                    // Prevent negative remaining distance
+                    if (train->remaining_distance < 0) {
+                        train->remaining_distance = 0;
+                    }
 
                     IO_NS::PrintTerminal(COLOR_CYAN "CURRENT PATH\r\n");
                     train->path.Print();
@@ -673,6 +725,7 @@ namespace Conductor_NS
                         IO_NS::PrintTerminal("LATEST SENSOR: %s, NEXT SENSOR: %s\r\n", train->last_sensor->name, train->next_predicted_sensor->name);
                         SwitchNextSegment(&train->path);
                     }
+                    Conductor::UpdateTrainDisplay();
                 }
                 else
                 {
@@ -709,14 +762,37 @@ namespace Conductor_NS
 
     void Conductor::update_position(train_task_mapping *train)
     {
+        if(!train->go) return;
         // IO_NS::PrintTerminal(COLOR_YELLOW "Conductor::ConductorLoop -- Updating position for train %d\r\n", train->train_num);
         int cur_tick = TIME(CLOCK_SERVER_TID);
 
         int delta_ticks = cur_tick - train->last_sensor_trigger_tick;
 
-        int approximate_distance = (train->actual_speed_x100 * delta_ticks) / 10000;
-        train->total_dist_travelled.Pop(nullptr);
-        train->total_dist_travelled.Push(approximate_distance);
+        // Update middle distance between sensors
+        train->middle_distance = (train->actual_speed_x100 * delta_ticks) / 100;
+
+        IO_NS::PrintTerminal(COLOR_RED "Jack:----------------- train->last_sensor_trigger_tick %d, actual_speedx100 %d.\n", cur_tick, train->last_sensor_trigger_tick, train->actual_speed_x100);
+
+        // Check stopping condition
+        int current_remaining = train->remaining_distance - train->middle_distance;
+
+        IO_NS::PrintTerminal("Train %d: remaining_distance %d, middle_distance %d, current_remaining %d,  total_path_distance%d\n",
+            train->train_num,
+            train->remaining_distance,
+            train->middle_distance,
+            current_remaining,
+            train->total_path_distance);
+
+        if (current_remaining <= 0) {
+            IO_NS::PrintTerminal(COLOR_RED "STOPPING Train %d: Reached stopping point!\n", 
+                               train->train_num);
+            train->train_commands.Push({TRAIN_COMMAND::ACCELERATE, 0});
+            train->go = false;
+        }
+    
+        Conductor::UpdateTrainDisplay();
+        //train->total_dist_travelled.Pop(nullptr);
+        //train->total_dist_travelled.Push(approximate_distance);
     }
 
     void Conductor::DispatchCommand()
@@ -878,7 +954,7 @@ namespace Conductor_NS
         {
             // IO_NS::PrintTerminal(COLOR_YELLOW "TRAIN TICKER{%d}:: Sending TICK to Train task\r\n", my_tid);
             int retval = SEND(conductor_tid, (char *)&tick_message, sizeof(tick_message), nullptr, 0);
-            DELAY(CLOCK_SERVER_TID, 20);
+            DELAY(CLOCK_SERVER_TID, 5);
         }
     }
 
