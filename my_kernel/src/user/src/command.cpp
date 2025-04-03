@@ -54,7 +54,7 @@ namespace UI_CMD_NS
     {
         IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Command List:", CMD_INFO_LOCATION, 1);
         IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Switch Command: SW <switch_num> <S/C>", CMD_INFO_LOCATION + 1, 1);
-        IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Train Spawn Command: SPAWN <train_num> <sensor_id>", CMD_INFO_LOCATION + 4, 1);
+        IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Train Spawn Command(offset must be positive): SPAWN <train_num> <sensor_id> <offset>", CMD_INFO_LOCATION + 4, 1);
         IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Train Accelerate Command: TR <train_num> <speed>", CMD_INFO_LOCATION + 2, 1);
         IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Train Reverse Command: RV <train_num>", CMD_INFO_LOCATION + 3, 1);
         IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Go Command(support speed 7-14): GO <train_num> <speed> <node_name> <offset>", CMD_INFO_LOCATION + 5, 1);
@@ -243,6 +243,8 @@ namespace UI_CMD_NS
                 bool num_set = false;
                 char sensor_id[5] = {0};
                 bool sensor_set = false;
+                //int start_offset = 0;
+                //bool offset_set = false;
 
                 const char *ptr = str + 5;
                 while (*ptr == ' ')
@@ -293,6 +295,27 @@ namespace UI_CMD_NS
                     }
                 }
 
+                while (*ptr == ' ')
+                {
+                    ptr++;
+                }
+                /*
+                // extract offset num
+                while (*ptr >= '0' && *ptr <= '9')
+                {
+                    start_offset = start_offset * 10 + (*ptr - '0');
+                    ptr++;
+                    offset_set = true;
+                }
+
+                if (!num_set || !sensor_set || !is_valid_sensor_id || !offset_set)
+                {
+                    IO_NS::PrintTerminal("Invalid Train SPAWN command\r\n");
+                    // IO_NS::PrintTerminal("Input: %s\r\n", str);
+                    // IO_NS::PrintTerminal("Train Number: %d, Sensor ID: %s\r\n", train_num, sensor_id);
+                    return;
+                }
+                */
                 if (!num_set || !sensor_set || !is_valid_sensor_id)
                 {
                     IO_NS::PrintTerminal("Invalid Train SPAWN command\r\n");
@@ -305,6 +328,7 @@ namespace UI_CMD_NS
 
                 // Create request with sensor ID
                 ConductorRequest request(COMMAND::SPAWN_TRAIN, train_num, 0, sensor_id);
+                // ConductorRequest request(COMMAND::SPAWN_TRAIN, train_num, start_offset, sensor_id);
 
                 SEND(CONDUCTOR_TID, (char *)&request, sizeof(ConductorRequest), (char *)command_received, sizeof(int));
             }

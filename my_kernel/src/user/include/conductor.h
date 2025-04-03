@@ -66,6 +66,7 @@ namespace Conductor_NS
             int speed_level;
             int actual_speed_x100;
             int stopping_distance;
+            int start_offset;
             char destination[5];
             int offset;
 
@@ -74,6 +75,7 @@ namespace Conductor_NS
             int middle_distance;        // Distance traveled since last sensor
 
             bool go;
+            bool reach_first_sensor;
 
             Queue<TrainCommandNotification, 3> train_commands;
             Stack<PathNode, TRACK_MAX> path;
