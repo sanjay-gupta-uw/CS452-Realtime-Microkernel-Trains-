@@ -389,6 +389,12 @@ namespace Conductor_NS
             }
 
             SwitchNextSegment(&train->path);
+            bool success = ReserveSegment(train);
+            if (!success)
+            {
+                IO_NS::PrintTerminal("Conductor::GOTO -- Failed to reserve segment\r\n");
+                return;
+            }
 
             train->train_commands.Push({TRAIN_COMMAND::ACCELERATE, HIGH_SPEED});
 
@@ -603,6 +609,12 @@ namespace Conductor_NS
 
                     IO_NS::PrintTerminal(COLOR_CYAN "CURRENT PATH\r\n");
                     train->path.Print();
+                    IO_NS::PrintTerminal(COLOR_GREEN "Conductor::ConductorLoop -- RESERVED NODES:\r\n");
+                    train->reserved_nodes.Print();
+                    IO_NS::PrintTerminal(COLOR_CYAN "RELEASING PREVIOUS SEGMENT TO %s\r\n", train->last_sensor->name);
+                    IO_NS::PrintTerminal(COLOR_GREEN "Conductor::ConductorLoop -- RESERVED NODES AFTER:\r\n");
+                    releaseSegment(train);
+                    train->reserved_nodes.Print();
                     IO_NS::PrintTerminal(COLOR_CYAN "POPPING SEGMENT\r\n");
                     PopSegment(train);
                     IO_NS::PrintTerminal(COLOR_CYAN "REMAINING PATH\r\n");
@@ -616,7 +628,18 @@ namespace Conductor_NS
 
                         train->next_predicted_sensor = track.predict_next_sensor(train->last_sensor);
                         IO_NS::PrintTerminal("LATEST SENSOR: %s, NEXT SENSOR: %s\r\n", train->last_sensor->name, train->next_predicted_sensor->name);
-                        SwitchNextSegment(&train->path);
+                        bool success = ReserveSegment(train);
+                        if (success)
+                        {
+                            IO_NS::PrintTerminal(COLOR_GREEN "Conductor::ConductorLoop -- Successfully reserved segment for train %d\r\n", train_num);
+
+                            SwitchNextSegment(&train->path);
+                        }
+                        else
+                        {
+                            IO_NS::PrintTerminal(COLOR_RED "Conductor::ConductorLoop -- Failed to reserve segment -- sending stop to train %d\r\n", train_num);
+                            train->train_commands.Push({TRAIN_COMMAND::STOP, 0});
+                        }
                     }
                 }
                 else
@@ -804,6 +827,79 @@ namespace Conductor_NS
             IO_NS::PrintTerminal("CONDUCTOR_SENSOR MESSENGER:: Sending request to IO server: %d\r\n", marklin_io_tid);
             SEND(marklin_io_tid, (char *)&io_request, sizeof(MARKLIN_IO_SERVER::IO_REQUEST), nullptr, 0);
             IO_NS::PrintTerminal(COLOR_RED "CONDUCTOR_SENSOR MESSENGER:: RECEIVED REPLY FROM IO SERVER\r\n");
+        }
+    }
+
+    bool Conductor::ReserveSegment(train_task_mapping *train)
+    {
+        Stack<PathNode, TRACK_MAX> *path = &train->path;
+        Stack<PathNode, 10> temp_stack;
+        // try to reserve the next segment
+
+        // D7 TRIGGERED ~~~ E7  ~~~ RESERVE THIS SEGMENT ~~~ SENSOR
+        // E7  ~~~ RESERVE THIS SEGMENT ~~~ SENSOR
+        if (path->IsEmpty())
+        {
+            IO_NS::PrintTerminal("Conductor::ReserveSegment -- path is empty, not reserving another segment\r\n");
+            return false;
+        }
+
+        PathNode start_node;
+        path->Pop(&start_node);
+        temp_stack.Push(start_node);
+        uassert(start_node.node->type == NODE_SENSOR && "Conductor::ReserveSegment -- popped node is not a sensor");
+        uassert((start_node.node->who_reserved_me == train->train_num || start_node.node->who_reserved_me == -1) && "Conductor::ReserveSegment -- NEXT SENSOR TO HIT IS NOT RESERVED BY THIS TRAIN -- FATAL ERROR");
+
+        bool reservation_conflict = false;
+        while (!path->IsEmpty())
+        {
+            PathNode node;
+            path->Pop(&node);
+            temp_stack.Push(node);
+            int reserved_by = node.node->who_reserved_me;
+            if (reserved_by != -1 && reserved_by != train->train_num)
+            {
+                IO_NS::PrintTerminal("Conductor::ReserveSegment -- reservation conflict on %s -- reserved by %d\r\n", node.node->name, reserved_by);
+                reservation_conflict = true;
+                break;
+            }
+
+            if (node.node->type == NODE_SENSOR)
+            {
+                break;
+            }
+        }
+
+        while (!temp_stack.IsEmpty())
+        {
+            PathNode node;
+            temp_stack.Pop(&node);
+            IO_NS::PrintTerminal("Conductor::ReserveSegment -- reserving %s for train %d\r\n", node.node->name, train->train_num);
+            if (reservation_conflict)
+            {
+                node.node->who_reserved_me = train->train_num;
+                train->reserved_nodes.Push(node);
+            }
+            path->Push(node);
+        }
+
+        return reservation_conflict;
+    }
+
+    void Conductor::releaseSegment(train_task_mapping *train)
+    {
+        // use last hit sensor to compare the name
+        while (!train->reserved_nodes.IsEmpty())
+        {
+            PathNode node;
+            train->reserved_nodes.Pop(&node);
+            IO_NS::PrintTerminal("Conductor::ReleaseSegment -- releasing %s for train %d\r\n", node.node->name, train->train_num);
+            node.node->who_reserved_me = -1;
+
+            if (node.node == train->last_sensor)
+            {
+                break;
+            }
         }
     }
 

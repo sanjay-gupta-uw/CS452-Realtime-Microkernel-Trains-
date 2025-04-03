@@ -82,6 +82,12 @@ void Track::init(char track_id)
     }
 
     initialize_loop();
+
+    IO_NS::PrintTerminal(CLEAR_SCREEN "VERIFYING TRACK STATE\r\n");
+    for (int i = 0; i < TRACK_MAX; i++)
+    {
+        track[i].who_reserved_me = -1;
+    }
 }
 
 void Track::init_tracka()
@@ -2502,10 +2508,10 @@ void Track::set_switch_state(int switch_num, char state)
 void Track::initialize_loop()
 {
     // set everything to false
-    for (int i = 0; i < TRACK_MAX; i++)
-    {
-        track[i].is_node_in_loop = false;
-    }
+    // for (int i = 0; i < TRACK_MAX; i++)
+    // {
+    //     // track[i].is_node_in_loop = false;
+    // }
 
     // set switch nodes in loop
     const int NUM_LOOP_SWITCHES = 12;

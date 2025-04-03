@@ -526,19 +526,19 @@ namespace UI_CMD_NS
 
         IO_NS::PrintTerminal("Command Prompt started\r\n");
 
-        // char *initial_commands_list[] = {
-        //     "SPAWN 1 A13",
-        //     "GO 1 a6 10",
-        //     // "TR 1 10",
-        //     // "GO 1 b5 10",
-        // };
-        // IO_NS::PrintTerminal("Parsing Initial commands:\r\n");
-        // for (int i = 0; i < sizeof(initial_commands_list) / sizeof(initial_commands_list[0]); i++)
-        // {
-        //     IO_NS::PrintTerminal("%s\r\n", initial_commands_list[i]);
-        //     commandPrompt.Commandify(initial_commands_list[i]);
-        // }
-        // uassert(false && "FORCED ERROR -- this is for testing only");
+        char *initial_commands_list[] = {
+            "SPAWN 1 A13",
+            "GO 1 a6 10",
+            // "TR 1 10",
+            // "GO 1 b5 10",
+        };
+        IO_NS::PrintTerminal("Parsing Initial commands:\r\n");
+        for (int i = 0; i < sizeof(initial_commands_list) / sizeof(initial_commands_list[0]); i++)
+        {
+            IO_NS::PrintTerminal("%s\r\n", initial_commands_list[i]);
+            commandPrompt.Commandify(initial_commands_list[i]);
+        }
+        uassert(false && "FORCED ERROR -- this is for testing only");
 
         while (true)
         {

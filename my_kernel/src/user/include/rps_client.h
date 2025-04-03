@@ -1,7 +1,7 @@
 #ifndef RPS_CLIENT_H
 #define RPS_CLIENT_H
 
-enum RequestType
+enum RPSRequestType
 {
     SIGNUP,
     PLAY,
@@ -17,7 +17,7 @@ enum GameMove
 
 struct GameRequest
 {
-    RequestType type;
+    RPSRequestType type;
     GameMove move;
 };
 

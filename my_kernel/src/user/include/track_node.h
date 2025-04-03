@@ -34,6 +34,8 @@ struct track_node
     int num;             /* sensor or switch number */
     track_node *reverse; /* same location, but opposite direction */
     track_edge edge[2];  // VERIFY IF THIS IS NEEDED -- SINCE POINTER TO REVERSE IS ALREADY THERE
+
+    int who_reserved_me;
     bool is_node_in_loop;
 };
 
