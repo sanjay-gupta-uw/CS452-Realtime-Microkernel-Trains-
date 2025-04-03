@@ -50,7 +50,12 @@ namespace UI_NS
             // uassert(false && "FORCED PANIC -- UI3 -- REMOVE THIS LINE");
         }
 
-        IO_NS::Print(COLOR_WHITE MOVE_CURSOR "---------------------------------------------------------------------+\r\n", SENSOR_LOCATION + 3 + 16, 1 + BOX_WIDTH);
+        for (int i = 16; i < SWITCH_COUNT; ++i)
+        {
+            IO_NS::Print(COLOR_WHITE MOVE_CURSOR "             |             |             |             |             |\r\n", SENSOR_LOCATION + 3 + i, 1 + BOX_WIDTH);
+        }
+
+        IO_NS::Print(COLOR_WHITE MOVE_CURSOR "---------------------------------------------------------------------+\r\n", SENSOR_LOCATION + 3 + SWITCH_COUNT, 1 + BOX_WIDTH);
     }
 
     void start_ui()
