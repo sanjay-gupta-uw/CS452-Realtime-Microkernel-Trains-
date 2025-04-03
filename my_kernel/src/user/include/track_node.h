@@ -43,10 +43,16 @@ typedef struct
     track_node *sensor_node;
 } SegmentReply;
 
+typedef enum
+{
+    STRAIGHT, // green
+    CURVED,   // red
+    UNINITIALIZED,
+} SwitchState;
 struct PathNode
 {
     track_node *node;
-    Switch_NS::SWITCH_STATE switch_state;
+    SwitchState switch_state;
 };
 
 #endif // TRACK_NODE_H

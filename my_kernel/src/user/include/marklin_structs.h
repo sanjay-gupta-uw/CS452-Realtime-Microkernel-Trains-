@@ -1,5 +1,6 @@
 #ifndef _marklin_structs_h_
 #define _marklin_structs_h_
+#include "track_node.h"
 
 #include "uassert.h"
 #include <cstdint>
@@ -208,4 +209,11 @@ struct ConductorRequest
     }
 };
 
+struct track_node;
+struct ListenToSensors
+{
+    int train_num;
+    track_node *first_sensor;
+    track_node *second_sensor;
+};
 #endif // _marklin_structs_h_

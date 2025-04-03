@@ -6,7 +6,7 @@
 #include "state_machine.h"
 #include <cstring>
 #include <cstdlib>
-
+#include "conductor.h"
 // #include "../marklin/sensor.h"
 
 namespace MARKLIN_IO_SERVER
@@ -32,6 +32,7 @@ namespace MARKLIN_IO_SERVER
         int messenger_id;
         int train_num;
         int sensor_idx;
+        int sensor_idx_safety; // incase the expected sensor is not triggered
         bool sent_reply;
     };
     // REDEFINED QUEUE SIZE TO 32 -> change queue to accept size as a parameter?
@@ -116,11 +117,7 @@ namespace MARKLIN_IO_SERVER
         int count;
         unsigned char bytes[10];
     };
-    struct SensorListener
-    {
-        int train_num;
-        unsigned char sensor_name[4]; // 3 chars + null terminator
-    };
+
     struct IO_REQUEST
     {
         IO_REQUEST_TYPE type;
@@ -129,7 +126,7 @@ namespace MARKLIN_IO_SERVER
         {
             MarklinRequest *request;
             RECEIVED_BYTES_STRUCT *received_bytes;
-            SensorListener *sensor_listener;
+            ListenToSensors *sensor_listener;
 
             Data()
             {
@@ -149,7 +146,7 @@ namespace MARKLIN_IO_SERVER
         IO_REQUEST(IO_REQUEST_TYPE type = IO_REQUEST_TYPE::TX_NOTIFIER) : type(type)
         {
         }
-        IO_REQUEST(SensorListener *listener) : type(IO_REQUEST_TYPE::SENSOR_LISTENER)
+        IO_REQUEST(ListenToSensors *listener) : type(IO_REQUEST_TYPE::SENSOR_LISTENER)
         {
             // IO_NS::PrintTerminal("MarklinIO_server::SENSOR_LISTENER: Received request for sensor %s\r\n", listener->sensor_name);
             data.sensor_listener = listener;

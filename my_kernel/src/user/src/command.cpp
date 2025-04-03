@@ -243,8 +243,8 @@ namespace UI_CMD_NS
                 bool num_set = false;
                 char sensor_id[5] = {0};
                 bool sensor_set = false;
-                //int start_offset = 0;
-                //bool offset_set = false;
+                // int start_offset = 0;
+                // bool offset_set = false;
 
                 const char *ptr = str + 5;
                 while (*ptr == ' ')
@@ -334,7 +334,7 @@ namespace UI_CMD_NS
             }
         }
 
-         // Jack's code for parsing the GO command
+        // Jack's code for parsing the GO command
         else if ((first == 'G' || first == 'g') &&
                  (second == 'O' || second == 'o'))
         {
@@ -362,7 +362,7 @@ namespace UI_CMD_NS
             {
                 speed = speed * 10 + (*ptr - '0');
                 ptr++;
-            }            
+            }
 
             // capitalize the first letter
             char node_name[5] = {0};
@@ -404,7 +404,6 @@ namespace UI_CMD_NS
             IO_NS::PrintTerminal("Attempting to find path for Train %d to go to %s %d with speed %d, sending to Conductor tid: %d\r\n", train_num, node_name, offset, speed, CONDUCTOR_TID);
             SEND(CONDUCTOR_TID, (char *)&request, sizeof(request), nullptr, 0);
         }
-
 
         else if ((first == 'C' || first == 'c') &&
                  (second == 'A' || second == 'a'))
@@ -454,10 +453,10 @@ namespace UI_CMD_NS
             char seventh = str[6];
 
             if ((third == 'O' || third == 'o') &&
-            (fourth == 'P' || fourth == 'p') &&
-            (fifth == 'A' || fifth == 'a') &&
-            (sixth == 'L' || sixth == 'l') &&
-            (seventh == 'L' || seventh == 'l'))
+                (fourth == 'P' || fourth == 'p') &&
+                (fifth == 'A' || fifth == 'a') &&
+                (sixth == 'L' || sixth == 'l') &&
+                (seventh == 'L' || seventh == 'l'))
             {
                 IO_NS::PrintTerminal("Attempting to stop all trains");
                 ConductorRequest request(COMMAND::STOP_ALL, 0, 0);
@@ -585,18 +584,21 @@ namespace UI_CMD_NS
 
         IO_NS::PrintTerminal("Command Prompt started\r\n");
 
-        // char *initial_commands_list[] = {
-        //     "SPAWN 1 A13",
-        //     "GO 1 a6 10",
-        //     // "TR 1 10",
-        //     // "GO 1 b5 10",
-        // };
-        // IO_NS::PrintTerminal("Parsing Initial commands:\r\n");
-        // for (int i = 0; i < sizeof(initial_commands_list) / sizeof(initial_commands_list[0]); i++)
-        // {
-        //     IO_NS::PrintTerminal("%s\r\n", initial_commands_list[i]);
-        //     commandPrompt.Commandify(initial_commands_list[i]);
-        // }
+        char *initial_commands_list[] = {
+            // "SPAWN 55 A13 10",
+            // "SPAWN 55 C13 10",
+            "SPAWN 55 D9 0",
+            "GO 55 8 A6 0",
+            "GO 55 10 b5 0",
+            // "TR 1 10",
+            // "GO 1 b5 10",
+        };
+        IO_NS::PrintTerminal("Parsing Initial commands:\r\n");
+        for (int i = 0; i < sizeof(initial_commands_list) / sizeof(initial_commands_list[0]); i++)
+        {
+            IO_NS::PrintTerminal("%s\r\n", initial_commands_list[i]);
+            commandPrompt.Commandify(initial_commands_list[i]);
+        }
         // uassert(false && "FORCED ERROR -- this is for testing only");
 
         while (true)

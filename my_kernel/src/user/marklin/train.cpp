@@ -89,6 +89,7 @@ namespace Trains_NS
     {
         train_speed = speed;
         MARKLIN_IO_SERVER::MarklinRequest request = {false, train_speed + 16, train_num};
+        IO_NS::PrintTerminal("SENDING SPEED %d to IO_SERVER %d\r\n", train_speed, MARKLIN_IO_SERVER_TID);
         MARKLIN_IO_SERVER::SendCmd(MARKLIN_IO_SERVER_TID, &request);
     }
 
@@ -174,6 +175,7 @@ namespace Trains_NS
         case TRAIN_COMMAND::ACCELERATE:
             IO_NS::PrintTerminal(COLOR_RED "Train %d: Accelerating to speed %d\r\n", train_num, message->data.train_command.speed);
             Accelerate(message->data.train_command.speed);
+            IO_NS::PrintTerminal(COLOR_RED "Train %d: Accelerated to speed %d\r\n", train_num, message->data.train_command.speed);
             break;
         case TRAIN_COMMAND::REVERSE:
             IO_NS::PrintTerminal(COLOR_RED "Train %d: Reversing\r\n", train_num);
@@ -284,7 +286,9 @@ namespace Trains_NS
             }
             case TrainMessageType::TRAIN_COMMAND:
             {
+                IO_NS::PrintTerminal(COLOR_MAGENTA "TRAIN %d::Received command from Conductor: %d\r\n", train_num, message.data.train_command.command);
                 process_train_command(&message);
+                IO_NS::PrintTerminal(COLOR_MAGENTA "TRAIN %d::PROCESSED command from Conductor: %d\r\n", train_num, message.data.train_command.command);
                 send_reply = true;
                 break;
             }
@@ -297,7 +301,7 @@ namespace Trains_NS
                 break;
             }
 
-            update_position();
+            // update_position();
 
             // if (is_sensor_messenger_ready && !has_read_target_sensor)
             // {
@@ -308,8 +312,12 @@ namespace Trains_NS
             // process sensor
             if (send_reply)
             {
-                // IO_NS::PrintTerminal("TRAIN %d::Sending reply to sender {%d}\r\n", train_num, sender_tid);
+                IO_NS::PrintTerminal("TRAIN %d::Sending reply to sender {%d}\r\n", train_num, sender_tid);
                 REPLY(sender_tid, nullptr, 0);
+            }
+            else
+            {
+                IO_NS::PrintTerminal("TRAIN %d::NOT SENDING reply to sender {%d}\r\n", train_num, sender_tid);
             }
 
             // IO_NS::PrintTerminal("\r\n");
@@ -386,6 +394,7 @@ namespace Trains_NS
             TrainMessage message(command_struct.command, command_struct.speed);
             retval = SEND(train_task_tid, (char *)&message, sizeof(TrainMessage), nullptr, 0);
             uassert(retval >= 0 && "COMMAND MESSENGER: Error sending TrainCommandNotification to Train task");
+            // uassert(false && "HERE");
 
             IO_NS::PrintTerminal(COLOR_YELLOW "COMMAND MESSENGER{%d}:: Train accepted command %d\r\n", my_tid, command_struct.command);
         }
