@@ -285,40 +285,13 @@ namespace Conductor_NS
             }
             sensor_id[4] = '\0';
 
-            /*
             for (int i = 0; i < NUM_TRAINS; i++) {
                 train_arr[i].recent_sensor_bank = sensor_bank;
                 train_arr[i].recent_sensor_num = sensor_number;
                 memcpy(train_arr[i].recent_sensor_id, sensor_id, 4);
+                IO_NS::PrintTerminal("Jack -------- conductor: Triggered sensor: bank=%c, number=%d, sensor_id = %s\r\n", train_arr[i].recent_sensor_bank, train_arr[i].recent_sensor_num, train_arr[i].recent_sensor_id);
             }
-            IO_NS::PrintTerminal("Jack -------- conductor: Triggered sensor: bank=%c, number=%d, sensor_id = %s\r\n", train_arr[i].recent_sensor_bank, train_arr[i].recent_sensor_num, train_arr[i].recent_sensor_id);
-            */
 
-            for (int i = 0; i < NUM_TRAINS; ++i) {
-                if (train_arr[i].train_num == -1) continue;
-                
-                IO_NS::PrintTerminal(COLOR_GREEN "triggered: %s; next: %s\r\n", sensor_id, train_arr[i].next_predicted_id);
-        
-                if (strcmp(train_arr[i].next_predicted_id, sensor_id) == 0) {
-                    // Update recent sensor
-                    memcpy(train_arr[i].recent_sensor_id, sensor_id, 4);
-                    
-                    // Get new prediction
-                    char next_pred[5];
-                    int dist;
-                    if (track.predict_next_sensor(sensor_id, switch_states, next_pred, dist)) {
-                        strcpy(train_arr[i].next_predicted_id, next_pred);
-                        // Parse bank and number
-                        //train_arr[i].next_predicted_bank = next_pred[0];
-                        //train_arr[i].next_predicted_num = atoi(next_pred + 1);
-                    } else {
-                        memset(train_arr[i].next_predicted_id, '-', sizeof(train_arr[i].next_predicted_id));
-                        train_arr[i].next_predicted_bank = '\0';
-                        train_arr[i].next_predicted_num = -1;
-                    }
-                    //break; // First match wins
-                }
-            }
 
             UpdateTrainDisplay();
             /*track_node* sensor_node = track.find_sensor(bank, number);
@@ -402,14 +375,14 @@ namespace Conductor_NS
             }         
             else
             {
-                IO_NS::Print(MOVE_CURSOR "%s",
+                IO_NS::Print(MOVE_CURSOR "%s ",
                          TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 36, train_arr[i].recent_sensor_id);
                 //IO_NS::Print(MOVE_CURSOR "%c",
                          //TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 36, train_arr[i].recent_sensor_bank);
                 //IO_NS::Print(MOVE_CURSOR "%d ",
                          //TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 37, train_arr[i].recent_sensor_num);
             }
-            IO_NS::Print(MOVE_CURSOR "%s",
+            IO_NS::Print(MOVE_CURSOR "%s ",
                 TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 50, train_arr[i].next_predicted_id);
             //IO_NS::Print(MOVE_CURSOR "%c",
                          //TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 50, train_arr[i].next_predicted_bank);
