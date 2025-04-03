@@ -23,6 +23,7 @@ namespace Trains_NS
     class Train
     {
     private:
+        uint32_t cur_tick;
         int MARKLIN_IO_SERVER_TID;
         int CLOCK_SERVER_TID;
         int cmd_messenger_tid;
@@ -41,7 +42,6 @@ namespace Trains_NS
         void initialize_distance_stacks();
 
         int segment_length;
-        int prev_tick, cur_tick;
 
         SensorStruct target_sensor;
         int targer_sensor_idx; // index of the target sensor in the sensor data array

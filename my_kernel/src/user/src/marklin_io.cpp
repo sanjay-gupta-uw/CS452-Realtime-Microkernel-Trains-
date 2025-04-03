@@ -248,7 +248,7 @@ namespace MARKLIN_IO_SERVER
         {
             int retval = RECEIVE(&sender_tid, (char *)&req, sizeof(req));
             cur_tick = TIME(CLOCK_SERVER_TID);
-            IO_NS::PrintTerminal(COLOR_CYAN "MarklinIO_server::run: Received request from tid{%d} at tick %d\r\n", sender_tid, cur_tick);
+            // IO_NS::PrintTerminal(COLOR_CYAN "MarklinIO_server::run: Received request from tid{%d} at tick %d\r\n", sender_tid, cur_tick);
 
             IO_REPLY reply;
             reply.type = REPLY_TYPE::FAILURE;

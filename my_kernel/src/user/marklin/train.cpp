@@ -41,7 +41,7 @@ namespace Trains_NS
         MARKLIN_IO_SERVER_TID = -1;
         isReversed = false;
         cur_tick = 0;
-        prev_tick = 0;
+        // prev_tick = 0;
     }
 
     Train::~Train()
@@ -164,44 +164,6 @@ namespace Trains_NS
 
     void Train::update_position()
     {
-        // calculate distance travelled
-        if (train_speed <= 0)
-        {
-            return;
-        }
-
-        int index = get_speed_level_index(train_speed);
-        if (approximate_speed[index] == -1)
-        {
-            return;
-        }
-
-        int dist = (cur_tick - prev_tick) * approximate_speed[index];
-
-        // update distance travelled in segment
-        int dist_travelled_in_segment;
-        dist_travelled.Pop(&dist_travelled_in_segment);
-        dist_travelled_in_segment += dist;
-        dist_travelled.Push(dist_travelled_in_segment);
-        // update stopping target in case it's within this segment
-        int stopping_target_dist;
-        stopping_target.Pop(&stopping_target_dist);
-        stopping_target.Push(stopping_target_dist - dist);
-        // make function to increase timer frequency (variable delay)
-
-        // check if we need to stop
-        stopping_target.Pop(&stopping_target_dist);
-        if (stopping_target_dist <= stopping_distance[get_speed_level_index(train_speed)])
-        {
-            // stop train
-            Stop();
-        }
-
-        // NEED TO HANDLE:
-        // CHECK IF SENSOR TRIGGER IS WITHIN A SPECFIC TIME FRAME
-        // int dist_to_next_sensor = segment_length - dist_travelled_in_segment;
-        // IF WINDOW IS EXCEEDED, REPLY TO MESSENGER FOR NEXT SEGMENT
-        // ON INITIALIZATION, SET EXPECTED TIME TO BE LONGER THAN THE TIME IT TAKES TO TRAVEL THE SEGMENT
     }
 
     void Train::process_train_command(TrainMessage *message)
@@ -220,7 +182,7 @@ namespace Trains_NS
 
             break;
         case TRAIN_COMMAND::STOP:
-            IO_NS::PrintTerminal(COLOR_RED "Received command from conductor to stop train %d\r\n", train_num);
+            IO_NS::PrintTerminal(COLOR_RED "Received command from conductor to stop train %d -- sending command at tick %d\r\n", train_num, cur_tick);
             Stop();
             break;
             // move this to the train ticker switch case
@@ -282,7 +244,6 @@ namespace Trains_NS
         while (true)
         {
             // IO_NS::PrintTerminal(COLOR_MAGENTA "TRAIN %d: MYTID: %d\r\n", train_num, my_tid);
-            cur_tick = TIME(CLOCK_SERVER_TID);
             // IO_NS::Print(MOVE_CURSOR "%d",
             //              TRAIN_TABLE_Y + 5 + 0, TRAIN_TABLE_X + 80, cur_tick);
 
@@ -293,6 +254,7 @@ namespace Trains_NS
             bool send_reply = false;
             // IO_NS::PrintTerminal(COLOR_MAGENTA "TRAIN %d: Waiting for message\r\n", train_num);
             int retval = RECEIVE(&sender_tid, (char *)&message, sizeof(TrainMessage));
+            cur_tick = TIME(CLOCK_SERVER_TID);
 
             // check if sensor was triggered
             CheckSensorTrigger();
@@ -344,8 +306,6 @@ namespace Trains_NS
             // }
 
             // process sensor
-            prev_tick = cur_tick;
-
             if (send_reply)
             {
                 // IO_NS::PrintTerminal("TRAIN %d::Sending reply to sender {%d}\r\n", train_num, sender_tid);
