@@ -20,6 +20,7 @@ enum class COMMAND
     NAVIGATE_LOOP, // NEED TO IMPLEMENT IN COMMAND.cpp
     CALIBRATE,
     SENSOR_TRIGGER,
+    STOP_ALL,
     INVALID,
 };
 
@@ -30,6 +31,7 @@ struct CMDRequest
     int data;
     char *src;
     char *dest;
+    int offset;
 };
 
 struct SensorStruct
@@ -174,7 +176,7 @@ struct ConductorRequest
     }
 
     // Constructor for CMDRequest
-    ConductorRequest(COMMAND command, int id, int requestData, char *src = nullptr, char *dest = nullptr)
+    ConductorRequest(COMMAND command, int id, int requestData, char *src = nullptr, char *dest = nullptr, int offset = 0)
         : requestType(RequestType::CMD)
     {
         data.cmdRequest = {command, id, requestData};
@@ -182,6 +184,8 @@ struct ConductorRequest
             data.cmdRequest = {command, id, requestData, src};
         if (src && dest)
             data.cmdRequest = {command, id, requestData, src, dest};
+        if (src && dest && offset)
+            data.cmdRequest = {command, id, requestData, src, dest, offset};
     }
 
     ConductorRequest(int train_num)

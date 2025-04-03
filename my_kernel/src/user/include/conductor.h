@@ -6,6 +6,7 @@
 #include "../marklin/switch.h"
 #include "../marklin/train.h"
 #include "../include/marklin_structs.h"
+#include "../include/speed_data.h"
 namespace Conductor_NS
 {
 #define LOOP_START_NODE "B5p"
@@ -63,9 +64,10 @@ namespace Conductor_NS
             track_node *next_predicted_sensor;
 
             int speed_level;
-            int actual_speed_x10;
-            int offset;
+            int actual_speed_x100;
+            int stopping_distance;
             char destination[5];
+            int offset;
 
             Queue<TrainCommandNotification, 3> train_commands;
             Stack<PathNode, TRACK_MAX> path;
@@ -88,6 +90,7 @@ namespace Conductor_NS
 
         train_task_mapping train_arr[NUM_TRAINS];
         Track track;
+        SpeedData speed_data;
     };
 
     void start_sensor_messenger();

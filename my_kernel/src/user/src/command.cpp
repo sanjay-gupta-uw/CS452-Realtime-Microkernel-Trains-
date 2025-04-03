@@ -57,8 +57,9 @@ namespace UI_CMD_NS
         IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Train Spawn Command: SPAWN <train_num> <sensor_id>", CMD_INFO_LOCATION + 4, 1);
         IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Train Accelerate Command: TR <train_num> <speed>", CMD_INFO_LOCATION + 2, 1);
         IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Train Reverse Command: RV <train_num>", CMD_INFO_LOCATION + 3, 1);
-        IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Go Command: GO <train_num> <node_name> <offset>", CMD_INFO_LOCATION + 5, 1);
-        IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Quit Command: q", CMD_INFO_LOCATION + 6, 1);
+        IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Go Command(support speed 7-14): GO <train_num> <speed> <node_name> <offset>", CMD_INFO_LOCATION + 5, 1);
+        IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Stop All Command: STOPALL", CMD_INFO_LOCATION + 6, 1);
+        IO_NS::Print(MOVE_CURSOR COLOR_WHITE "Quit Command: q", CMD_INFO_LOCATION + 7, 1);
     }
 
     CommandPrompt::CommandPrompt()
@@ -309,7 +310,7 @@ namespace UI_CMD_NS
             }
         }
 
-        // Jack's code for parsing the GO command
+         // Jack's code for parsing the GO command
         else if ((first == 'G' || first == 'g') &&
                  (second == 'O' || second == 'o'))
         {
@@ -326,6 +327,18 @@ namespace UI_CMD_NS
                 train_num = train_num * 10 + (*ptr - '0');
                 ptr++;
             }
+
+            // Parse speed num
+            int speed = 0;
+            while (*ptr == ' ')
+            {
+                ptr++;
+            }
+            while (*ptr >= '0' && *ptr <= '9')
+            {
+                speed = speed * 10 + (*ptr - '0');
+                ptr++;
+            }            
 
             // capitalize the first letter
             char node_name[5] = {0};
@@ -362,11 +375,12 @@ namespace UI_CMD_NS
             }
             offset *= sign;
 
-            ConductorRequest request(COMMAND::GOTO, train_num, offset, node_name);
+            ConductorRequest request(COMMAND::GOTO, train_num, speed, node_name, node_name, offset);
             // send node name to conductor
-            IO_NS::PrintTerminal("Attempting to find path for Train %d to go to %s %d, sending to Conductor tid: %d\r\n", train_num, node_name, offset, CONDUCTOR_TID);
+            IO_NS::PrintTerminal("Attempting to find path for Train %d to go to %s %d with speed %d, sending to Conductor tid: %d\r\n", train_num, node_name, offset, speed, CONDUCTOR_TID);
             SEND(CONDUCTOR_TID, (char *)&request, sizeof(request), nullptr, 0);
         }
+
 
         else if ((first == 'C' || first == 'c') &&
                  (second == 'A' || second == 'a'))
@@ -405,7 +419,28 @@ namespace UI_CMD_NS
                 uassert(retval >= 0 && "Error sending calibrate request to Conductor");
             }
         }
+        else if ((first == 'S' || first == 's') &&
+                 (second == 'T' || second == 't'))
+        {
+            // read next two characters
+            char third = str[2];
+            char fourth = str[3];
+            char fifth = str[4];
+            char sixth = str[5];
+            char seventh = str[6];
 
+            if ((third == 'O' || third == 'o') &&
+            (fourth == 'P' || fourth == 'p') &&
+            (fifth == 'A' || fifth == 'a') &&
+            (sixth == 'L' || sixth == 'l') &&
+            (seventh == 'L' || seventh == 'l'))
+            {
+                IO_NS::PrintTerminal("Attempting to stop all trains");
+                ConductorRequest request(COMMAND::STOP_ALL, 0, 0);
+                int retval = SEND(CONDUCTOR_TID, (char *)&request, sizeof(request), nullptr, 0);
+                uassert(retval >= 0 && "Error sending stopall to Conductor");
+            }
+        }
         else
         {
             IO_NS::PrintTerminal("Invalid Command\r\n");

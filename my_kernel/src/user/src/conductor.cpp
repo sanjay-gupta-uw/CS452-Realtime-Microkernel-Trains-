@@ -236,7 +236,18 @@ namespace Conductor_NS
             }
             else
             {
-                IO_NS::PrintTerminal("Train %d found at index %d, pushing ACCELERATE command to train command queue\r\n", train_num, train_index);
+                IO_NS::PrintTerminal("Train %d found at index %d, pushing ACCELERATE command to train command queue\r\n", train_num, train_index); train_arr[train_index].speed_level = speed;
+
+                if(speed >= 7 && speed <= 14) {
+                    // Get calibrated speed
+                    int calibrated_speed_x100 = speed_data.GetSpeed(train_num, speed);
+                    train_arr[train_index].actual_speed_x100 = calibrated_speed_x100;
+        
+                    // Get stopping distance
+                    int stopping_dist = speed_data.GetStoppingDistance(train_num, speed);
+                    train_arr[train_index].stopping_distance = stopping_dist;
+                }
+                Conductor::UpdateTrainDisplay();
                 train_arr[train_index].train_commands.Push({TRAIN_COMMAND::ACCELERATE, speed});
             }
             break;
@@ -293,10 +304,11 @@ namespace Conductor_NS
                     // train->next_predicted_sensor = track.predict_next_sensor(train->last_sensor);
                     train->next_predicted_sensor = nullptr;
 
-                    train->actual_speed_x10 = -1;
                     train->speed_level = 0;
+                    train->actual_speed_x100 = 0;
+                    train->stopping_distance = 0;
                     train->offset = -1;
-                    memset(train->destination, 0, 5);
+                    memset(train->destination, '-', 5);
 
                     train->train_commands.Clear();
                     train->path.Clear();
@@ -330,13 +342,19 @@ namespace Conductor_NS
         {
             // Extract destination from request
             int train_num = req->id;
-            char *dest = req->src;
-            int offset = req->data;
+            int speed = req->data;
+            char *dest = req->dest;
+            int offset = req->offset;
 
             int train_index = get_train_index(train_num);
             if (train_index == -1)
             {
                 IO_NS::PrintTerminal("Train %d not found or initialized.\r\n", train_num);
+                return;
+            }
+            if (speed < 7 || speed > 14)
+            {
+                IO_NS::PrintTerminal("Go To command only go with speed 7 - 14.\r\n");
                 return;
             }
             train_task_mapping *train = &train_arr[train_index];
@@ -388,13 +406,42 @@ namespace Conductor_NS
                 train->train_commands.Push({TRAIN_COMMAND::REVERSE, HIGH_SPEED});
             }
 
+            train_arr[train_index].speed_level = speed;
+
+            // Get calibrated speed
+            int calibrated_speed_x100 = speed_data.GetSpeed(train_num, speed);
+            train_arr[train_index].actual_speed_x100 = calibrated_speed_x100;
+    
+            // Get stopping distance
+            int stopping_dist = speed_data.GetStoppingDistance(train_num, speed);
+            train_arr[train_index].stopping_distance = stopping_dist;
+
+
             SwitchNextSegment(&train->path);
 
-            train->train_commands.Push({TRAIN_COMMAND::ACCELERATE, HIGH_SPEED});
+            Conductor::UpdateTrainDisplay();
+
+            // Accelerates the train
+            train->train_commands.Push({TRAIN_COMMAND::ACCELERATE, speed});
 
             break;
         }
-
+        case COMMAND::STOP_ALL:
+        {
+            IO_NS::PrintTerminal("Conductor received STOP_ALL request");
+            for (int i = 0; i < NUM_TRAINS; i++)
+            {
+                if (train_arr[i].train_num != -1)
+                {
+                    IO_NS::PrintTerminal("Sending STOP command to Train %d\r\n", train_arr[i].train_num);
+                    train_arr[i].speed_level = 0;
+                    train_arr[i].actual_speed_x100 = 0;;
+                    train_arr[i].train_commands.Push({TRAIN_COMMAND::ACCELERATE, 0});
+                }
+                Conductor::UpdateTrainDisplay();
+            }
+            break;
+        }  
         default:
             IO_NS::PrintTerminal("Conductor received INVALID request\r\n");
             break;
@@ -421,22 +468,30 @@ namespace Conductor_NS
             if (train_arr[i].train_num == -1)
                 continue;
 
-            const char *next_sensor_name = train_arr[i].next_predicted_sensor ? train_arr[i].next_predicted_sensor->name : "N/A";
+            const char *next_sensor_name = train_arr[i].next_predicted_sensor ? train_arr[i].next_predicted_sensor->name : "-  ";
             IO_NS::Print(MOVE_CURSOR "%d",
                          TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 2, train_arr[i].train_num);
             IO_NS::Print(MOVE_CURSOR "%d ",
                          TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 7, train_arr[i].speed_level);
             IO_NS::Print(MOVE_CURSOR "%d.%d",
-                         TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 21, train_arr[i].actual_speed_x10, train_arr[i].actual_speed_x10 % 10);
+                         TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 21, train_arr[i].actual_speed_x100, train_arr[i].actual_speed_x100 % 100);
             IO_NS::Print(MOVE_CURSOR "%s ",
                          TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 36, train_arr[i].last_sensor->name);
             IO_NS::Print(MOVE_CURSOR "%s ",
                          TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 50, next_sensor_name);
-            IO_NS::Print(MOVE_CURSOR "%s ",
-                         TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 64, train_arr[i].destination);
-            IO_NS::Print(MOVE_CURSOR "%d   ",
-                         TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 71, train_arr[i].offset);
-
+            if(train_arr[i].destination[0] == '-') {
+                IO_NS::Print(MOVE_CURSOR "-  ",
+                             TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 64);
+                IO_NS::Print(MOVE_CURSOR "-    ",
+                             TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 71);
+            }         
+            else
+            {
+                IO_NS::Print(MOVE_CURSOR "%s",
+                             TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 64, train_arr[i].destination);
+                IO_NS::Print(MOVE_CURSOR "%d",
+                             TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 71, train_arr[i].offset);
+            }    
             int approx_dist_travelled_in_segment = 0;
             int known_dist_travelled = 0;
             train_arr[i].total_dist_travelled.Pop(&approx_dist_travelled_in_segment);
@@ -584,12 +639,12 @@ namespace Conductor_NS
                     {
                         int delta_tick = triggered_tick - train->last_sensor_trigger_tick;
                         // IO_NS::PrintTerminal("Conductor::ConductorLoop -- delta tick: %d\r\n", delta_tick);
-                        train->actual_speed_x10 = (train->current_segment_length * 10000) / delta_tick;
-                        // IO_NS::PrintTerminal("Conductor::ConductorLoop -- actual speed: %d\r\n", train->actual_speed_x10);
+                        train->actual_speed_x100 = (train->current_segment_length * 10000) / delta_tick;
+                        // IO_NS::PrintTerminal("Conductor::ConductorLoop -- actual speed: %d\r\n", train->actual_speed_x100);
                     }
                     else
                     {
-                        train->actual_speed_x10 = 0;
+                        train->actual_speed_x100 = 0;
                     }
                     // UPDATE STACK SO NEXT SENSOR IS THE TOP
                     train->last_sensor = train->next_predicted_sensor;
@@ -659,7 +714,7 @@ namespace Conductor_NS
 
         int delta_ticks = cur_tick - train->last_sensor_trigger_tick;
 
-        int approximate_distance = (train->actual_speed_x10 * delta_ticks) / 10000;
+        int approximate_distance = (train->actual_speed_x100 * delta_ticks) / 10000;
         train->total_dist_travelled.Pop(nullptr);
         train->total_dist_travelled.Push(approximate_distance);
     }
