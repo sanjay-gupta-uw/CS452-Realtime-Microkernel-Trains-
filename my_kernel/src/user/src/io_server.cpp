@@ -120,7 +120,7 @@ namespace IO_SERVER
             case IO_REQUEST_TYPE::RTM_NOTIFIER:
             {
                 unsigned char ch = uart_getc_non_blocking(CONSOLE);
-                uassert(ch != UNDEFINED_CHAR && "IO_SERVER::run: PANIC, Error getting character from console");
+                // uassert(ch != UNDEFINED_CHAR && "IO_SERVER::run: PANIC, Error getting character from console");
 
                 if (!receive_buffer.IsFull())
                 {

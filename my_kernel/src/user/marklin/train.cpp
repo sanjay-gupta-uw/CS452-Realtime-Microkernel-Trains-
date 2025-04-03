@@ -418,6 +418,7 @@ namespace Trains_NS
         TrainCommandNotification command_struct;
         while (true)
         {
+            IO_NS::PrintTerminal(COLOR_YELLOW "COMMAND MESSENGER{%d}:: waiting for command from Conductor\r\n", my_tid);
             int retval = SEND(CONDUCTOR_TID, (char *)&conductor_request, sizeof(ConductorRequest), (char *)&command_struct, sizeof(TrainCommandNotification));
             uassert(retval >= 0 && "COMMAND MESSENGER: Error sending TrainCommandNotification to Conductor");
 

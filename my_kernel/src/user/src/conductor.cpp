@@ -236,10 +236,9 @@ namespace Conductor_NS
             }
             else
             {
-                IO_NS::PrintTerminal("Train %d found at index %d, sending ACCELERATE command\r\n", train_num, train_index);
+                IO_NS::PrintTerminal("Train %d found at index %d, pushing ACCELERATE command to train command queue\r\n", train_num, train_index);
+                train_arr[train_index].train_commands.Push({TRAIN_COMMAND::ACCELERATE, speed});
             }
-
-            train_arr[train_index].train_commands.Push({TRAIN_COMMAND::ACCELERATE, speed});
             break;
         }
         case COMMAND::REVERSE_TRAIN:
@@ -442,7 +441,7 @@ namespace Conductor_NS
             int known_dist_travelled = 0;
             train_arr[i].total_dist_travelled.Pop(&approx_dist_travelled_in_segment);
             train_arr[i].total_dist_travelled.Pop(&known_dist_travelled);
-            IO_NS::PrintTerminal("Conductor::UpdateTrainDisplay -- Train %d: approx_dist_travelled_in_segment: %d, known_dist_travelled: %d\r\n", train_arr[i].train_num, approx_dist_travelled_in_segment, known_dist_travelled);
+            // IO_NS::PrintTerminal("Conductor::UpdateTrainDisplay -- Train %d: approx_dist_travelled_in_segment: %d, known_dist_travelled: %d\r\n", train_arr[i].train_num, approx_dist_travelled_in_segment, known_dist_travelled);
 
             IO_NS::Print(MOVE_CURSOR "%d", TRAIN_TABLE_Y + 5 + 0, TRAIN_TABLE_X + 80, known_dist_travelled + approx_dist_travelled_in_segment);
 
@@ -530,9 +529,10 @@ namespace Conductor_NS
                 ProcessRequest(&(req.data.cmdRequest));
                 sendReply = true;
             }
-
             else if (req.requestType == RequestType::GET_CMD)
             {
+                IO_NS::PrintTerminal("Conductor::ConductorLoop -- Received GET_CMD request from %d -- hanging on until a command is ready\r\n", sender_tid);
+
                 // extract messenger TID
                 int train_idx = get_train_index(req.data.train_num);
                 uassert(train_idx >= 0 && "Conductor::ConductorLoop -- Error getting train index");
@@ -542,6 +542,7 @@ namespace Conductor_NS
 
                 command_messenger->messenger_id = sender_tid; // this only happens once
                 command_messenger->sent_reply = false;
+                sendReply = false;
             }
             else if (req.requestType == RequestType::GET_SENSOR)
             {
@@ -609,26 +610,14 @@ namespace Conductor_NS
 
                     // IO_NS::PrintTerminal("HERE2\r\n");
                     train->last_sensor_trigger_tick = triggered_tick;
-                    // if (train->path.IsEmpty())
-                    // {
-                    //     IO_NS::PrintTerminal(COLOR_RED "Conductor::ConductorLoop -- PATH IS EMPTY\r\n");
-                    //     train->train_commands.Push({TRAIN_COMMAND::STOP, 0});
-                    //     // uassert(false && "Conductor::ConductorLoop -- PATH IS EMPTY");
-                    //     break;
-                    // }
+                    if (!train->path.IsEmpty())
                     {
-                        int idx = 18;
-                        IO_NS::PrintTerminal(COLOR_GREEN "Conductor:: verifying: track data has switch %d{idx --- %d} set to %c\r\n", 153, idx, track.switch_settings[idx].dir == SWITCH_STRAIGHT ? 'S' : 'C');
-                    }
+                        IO_NS::PrintTerminal(COLOR_RED "Conductor::ConductorLoop -- Path is not empty after popping segment\r\n");
 
-                    train->next_predicted_sensor = track.predict_next_sensor(train->last_sensor);
-                    IO_NS::PrintTerminal("LATEST SENSOR: %s, NEXT SENSOR: %s\r\n", train->last_sensor->name, train->next_predicted_sensor->name);
-                    // IO_NS::PrintTerminal(COLOR_BLUE "PATH BEFORE SWITCHING\r\n");
-                    // train->path.Print();
-                    SwitchNextSegment(&train->path);
-                    // IO_NS::PrintTerminal(COLOR_BLUE "PATH AFTER SWITCHING\r\n");
-                    // train->path.Print();
-                    // IO_NS::PrintTerminal("HERE3\r\n");
+                        train->next_predicted_sensor = track.predict_next_sensor(train->last_sensor);
+                        IO_NS::PrintTerminal("LATEST SENSOR: %s, NEXT SENSOR: %s\r\n", train->last_sensor->name, train->next_predicted_sensor->name);
+                        SwitchNextSegment(&train->path);
+                    }
                 }
                 else
                 {
@@ -665,7 +654,7 @@ namespace Conductor_NS
 
     void Conductor::update_position(train_task_mapping *train)
     {
-        IO_NS::PrintTerminal(COLOR_YELLOW "Conductor::ConductorLoop -- Updating position for train %d\r\n", train->train_num);
+        // IO_NS::PrintTerminal(COLOR_YELLOW "Conductor::ConductorLoop -- Updating position for train %d\r\n", train->train_num);
         int cur_tick = TIME(CLOCK_SERVER_TID);
 
         int delta_ticks = cur_tick - train->last_sensor_trigger_tick;
@@ -693,23 +682,24 @@ namespace Conductor_NS
                 PathNode node;
                 train->path.Pop(&node);
                 train->path.Push(node);
-                IO_NS::PrintTerminal(COLOR_CYAN "Conductor::DispatchCommand -- Sending Sensor to messenger %d (train %d)\r\n", sensor_messenger->messenger_id, train->train_num);
 
                 // IO_NS::PrintTerminal("NODE NAME: %s\r\n", node.node->name);
                 // IO_NS::PrintTerminal("NEXT SENSOR NAME: %s\r\n", train->next_predicted_sensor->name);
                 if (train->last_sent_sensor != nullptr && train->last_sent_sensor == node.node)
                 {
                     // IO_NS::PrintTerminal(COLOR_CYAN "Conductor::DispatchCommand -- Sensor %s is the same\r\n", node.node->name);
-                    continue;
                 }
+                else
+                {
+                    IO_NS::PrintTerminal(COLOR_MAGENTA "Conductor::DispatchCommand -- REPLYING sensor %s\r\n", node.node->name);
+                    train->last_sent_sensor = node.node;
 
-                IO_NS::PrintTerminal(COLOR_MAGENTA "Conductor::DispatchCommand -- REPLYING sensor %s\r\n", node.node->name);
-                // send sensor to messenger
-                // uassert(false && "Conductor::DispatchCommand -- this is not implemented yet");
-                train->last_sent_sensor = node.node;
-                REPLY(sensor_messenger->messenger_id, (char *)&node.node, sizeof(SensorStruct));
-                sensor_messenger->sent_reply = true;
+                    // send sensor to messenger
+                    REPLY(sensor_messenger->messenger_id, (char *)&node.node, sizeof(SensorStruct));
+                    sensor_messenger->sent_reply = true;
+                }
             }
+
             if (command_messenger->messenger_id > 0 && !command_messenger->sent_reply && !train->train_commands.IsEmpty())
             {
                 IO_NS::PrintTerminal(COLOR_CYAN "Conductor::DispatchCommand -- Sending Train Command to messenger %d (train %d)\r\n", command_messenger->messenger_id, train->train_num);

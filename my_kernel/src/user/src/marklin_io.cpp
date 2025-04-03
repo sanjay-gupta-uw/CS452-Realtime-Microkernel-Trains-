@@ -248,7 +248,7 @@ namespace MARKLIN_IO_SERVER
         {
             int retval = RECEIVE(&sender_tid, (char *)&req, sizeof(req));
             cur_tick = TIME(CLOCK_SERVER_TID);
-            // IO_NS::PrintTerminal(COLOR_CYAN "MarklinIO_server::run: Received request from tid{%d} at tick %d\r\n", sender_tid, cur_tick);
+            IO_NS::PrintTerminal(COLOR_CYAN "MarklinIO_server::run: Received request from tid{%d} at tick %d\r\n", sender_tid, cur_tick);
 
             IO_REPLY reply;
             reply.type = REPLY_TYPE::FAILURE;
@@ -271,7 +271,7 @@ namespace MARKLIN_IO_SERVER
                 for (int i = 0; i < NUM_TRAINS; ++i)
                 {
                     MessengerUnit *messenger = &sensor_messenger[i];
-                    if (messenger->messenger_id > 0 && !messenger->sent_reply)
+                    if (messenger->messenger_id > 0 && !messenger->sent_reply && messenger->sensor_idx > 0)
                     {
                         // IO_NS::PrintTerminal("CHECKING IF SENSOR IDX %d is TRIGGERED\r\n", messenger->sensor_idx);
 
