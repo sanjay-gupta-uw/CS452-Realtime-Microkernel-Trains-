@@ -231,6 +231,8 @@ namespace MARKLIN_IO_SERVER
 
     static void ReplySensorTrigger(MessengerUnit *messenger, bool use_safety = false)
     {
+        // IO_NS::PrintTerminal(COLOR_YELLOW "MarklinIO_server::ReplySensorTrigger: DISABLED FOR TESTING\r\n");
+        // return;
         int idx = use_safety ? messenger->sensor_idx_safety : messenger->sensor_idx;
         SensorTriggerResponse trigger_reply = {sensor_data[idx].isTriggered, cur_tick, idx, messenger->train_num};
         IO_NS::PrintTerminal(COLOR_GREEN "MarklinIO_server::run: Sending reply to sensor messenger %d -- sensor idx: %d, train: %d\r\n", messenger->messenger_id, idx, messenger->train_num);

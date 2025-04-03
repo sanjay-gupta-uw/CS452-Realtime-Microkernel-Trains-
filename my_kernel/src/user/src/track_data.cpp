@@ -82,6 +82,12 @@ void Track::init(char track_id)
     }
 
     initialize_loop();
+
+    IO_NS::PrintTerminal(CLEAR_SCREEN "VERIFYING TRACK STATE\r\n");
+    for (int i = 0; i < TRACK_MAX; i++)
+    {
+        track[i].who_reserved_me = -1;
+    }
 }
 
 void Track::init_tracka()
@@ -2502,10 +2508,10 @@ void Track::set_switch_state(int switch_num, char state)
 void Track::initialize_loop()
 {
     // set everything to false
-    for (int i = 0; i < TRACK_MAX; i++)
-    {
-        track[i].is_node_in_loop = false;
-    }
+    // for (int i = 0; i < TRACK_MAX; i++)
+    // {
+    //     // track[i].is_node_in_loop = false;
+    // }
 
     // set switch nodes in loop
     const int NUM_LOOP_SWITCHES = 12;
@@ -2712,8 +2718,10 @@ static int get_node_index(track_node *node, TrackID track_id)
 /*
   Find a path from the destination into the loop
 */
-void Track::find_path(const char *start, const char *dest, Stack<PathNode, TRACK_MAX> *path, bool check_start_dest, int offset, int *total_distance)
+void Track::find_path(const char *start, const char *dest, Stack<PathNode, TRACK_MAX> *path, bool check_start_dest, int offset, int *total_distance, bool check_reserved, int train_num)
 {
+    uassert(!check_reserved || (check_reserved && train_num > 0) && "Track::find_path: incorrect function call");
+
     if (total_distance)
         *total_distance = -1;
     path->Clear();
@@ -2771,6 +2779,11 @@ void Track::find_path(const char *start, const char *dest, Stack<PathNode, TRACK
         track_node *curnode = &track[index];
 
         // IO_NS::PrintTerminal("Track::find_path: Exploring next node: %s{%d} ", curnode->name, index);
+        if (check_reserved && curnode->who_reserved_me != -1 && curnode->who_reserved_me != train_num)
+        {
+            // IO_NS::PrintTerminal("Track::find_path: Node %s is reserved by %d\r\n", curnode->name, curnode->who_reserved_me);
+            continue;
+        }
 
         // check if we have reached the destination
         if (strcmp(curnode->name, dest) == 0)

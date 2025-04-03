@@ -2,6 +2,7 @@
 #define _QUEUE_H_
 
 #include <cstddef>
+#include "../user/include/track_node.h"
 
 template <typename T, std::size_t Capacity>
 class Queue
@@ -50,6 +51,7 @@ public:
         return 0;
     }
 
+    // returns -1 if unsuccessful, 0 if successful
     int Peek(T *item)
     {
         if (size == 0)
@@ -70,17 +72,45 @@ public:
     {
         return size == Capacity;
     }
+    void Print()
+    {
+        IO_NS::PrintTerminal(COLOR_MAGENTA "Queue contents: {size: %d, head: %d, tail: %d} ", size, head, tail);
+        if (IsEmpty())
+        {
+            IO_NS::PrintTerminal("\r\n");
+            return;
+        }
+        Queue<T, Capacity> temp;
+
+        while (!IsEmpty())
+        {
+            T item;
+            Pop(&item);
+
+            // cast item to PathNode
+            PathNode *node = &item; // No cast needed
+            IO_NS::PrintTerminal(COLOR_MAGENTA "%s ", node->node->name);
+            temp.Push(item);
+        }
+        while (!temp.IsEmpty())
+        {
+            T item;
+            temp.Pop(&item);
+            Push(item);
+        }
+        IO_NS::PrintTerminal("\r\n");
+    }
 
     void Clear()
     {
-        size = 0;
-        head = 0;
-        tail = 0;
         while (!IsEmpty())
         {
             T item;
             Pop(&item);
         }
+        uassert(size == 0 && "Queue::Clear -- size is not zero after clearing");
+        head = 0;
+        tail = 0;
     }
 };
 

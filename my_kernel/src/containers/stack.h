@@ -91,6 +91,7 @@ public:
             T item;
             Pop(&item);
         }
+        uassert(size == 0 && "Stack::Clear -- Stack not cleared");
     }
 };
 

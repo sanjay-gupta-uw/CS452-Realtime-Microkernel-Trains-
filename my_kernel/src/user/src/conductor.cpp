@@ -374,10 +374,14 @@ namespace Conductor_NS
             }
             train_task_mapping *train = &train_arr[train_index];
 
+            train->path.Clear();
+            train->reserved_nodes.Clear();
+
             memcpy(train->destination, dest, 4);
             train->destination[4] = '\0';
             train->offset = offset;
 
+            IO_NS::PrintTerminal("Conductor::GOTO -- Train %d going to %s from %s\r\n", train_num, dest, train->last_sensor->name);
             track_node *start_sensor = train->last_sensor;
             bool isInitialPath = false;
 
@@ -390,21 +394,44 @@ namespace Conductor_NS
 
             // extract length of the path
             int total_path_length = 0;
-            track.find_path(start_sensor->name, dest, &train->path, false, offset, &total_path_length);
+            IO_NS::PrintTerminal("Conductor::GOTO -- Finding conflict free path from %s to %s for train %d\r\n", start_sensor->name, dest, train_num);
+            track.find_path(start_sensor->name, dest, &train->path, false, offset, &total_path_length, true, train->train_num);
+            if (total_path_length == -1)
+            {
+                IO_NS::PrintTerminal("Conductor::GOTO -- No unreserved path found from %s to %s for train %d\r\n", start_sensor->name, dest, train_num);
+                IO_NS::PrintTerminal("Conductor::GOTO -- searching for alternative path (won't ignore reserved segments)\r\n");
+                track.find_path(start_sensor->name, dest, &train->path, false, offset, &total_path_length);
+                if (total_path_length == -1)
+                {
+                    IO_NS::PrintTerminal("Conductor::GOTO -- No path found from %s to %s for train %d\r\n", start_sensor->name, dest, train_num);
+                    return;
+                }
+            }
+
             if (train->path.IsEmpty() || total_path_length == -1)
             {
                 IO_NS::PrintTerminal("Conductor::GOTO -- No path found from %s to %s\r\n", start_sensor->name, dest);
                 return;
             }
 
-            if (!isInitialPath)
+            SwitchNextSegment(&train->path);
+
+            int distance_to_conflict = 0;
+            bool success = ReservePath(train, &distance_to_conflict);
+            if (!success)
             {
-                IO_NS::PrintTerminal("POPPING FIRST SEGMENT SINCE WE ALREADY PASSED OVER IT\r\n");
-                // need to decrement the dist to travel by the length of popped segment
-                PopSegment(train);
-                train->current_segment_length = 0;
-                IO_NS::PrintTerminal("Conductor::GOTO -- Popped first segment, new length: %d\r\n", train->current_segment_length);
+                IO_NS::PrintTerminal("Conductor::GOTO -- PATH NOT FULLY RESERVED -- STOP NEEDED IN %d mm\r\n", distance_to_conflict);
             }
+            IO_NS::PrintTerminal("POPPING FIRST SEGMENT SINCE WE ALREADY PASSED OVER IT\r\n");
+            PopSegment(train);
+            // if (!isInitialPath)
+            // {
+            //     // ReserveSegment(train);
+            //     // need to decrement the dist to travel by the length of popped segment
+            //     PopSegment(train);
+            //     train->current_segment_length = 0;
+            //     IO_NS::PrintTerminal("Conductor::GOTO -- Popped first segment, new length: %d\r\n", train->current_segment_length);
+            // }
 
             IO_NS::PrintTerminal("VERIFYING PATH: ");
             train->path.Print();
@@ -421,6 +448,15 @@ namespace Conductor_NS
             }
 
             train_arr[train_index].speed_level = speed;
+            SwitchNextSegment(&train->path);
+            IO_NS::PrintTerminal(COLOR_GREEN "Conductor::GOTO -- Reserved segment after:\r\n");
+            train->reserved_nodes.Print();
+            // uassert(false && "VERIFY RESERVE PATH");
+            if (!success)
+            {
+                IO_NS::PrintTerminal("Conductor::GOTO -- Failed to reserve segment\r\n");
+                return;
+            }
 
             // Get calibrated speed
             int calibrated_speed_x100 = speed_data.GetSpeed(train_num, speed);
@@ -949,6 +985,164 @@ namespace Conductor_NS
         }
     }
 
+    // returns true if fully reserved (no conflicts)
+    bool Conductor::ReservePath(train_task_mapping *train, int *distance_to_conflict)
+    {
+        Stack<PathNode, TRACK_MAX> *path = &train->path;
+        Stack<PathNode, TRACK_MAX> temp_stack; // used to restore the path
+        temp_stack.Clear();
+        Queue<PathNode, TRACK_MAX> temp_queue; // used to push to the train queue for reserved nodes
+        temp_queue.Clear();
+
+        bool reservation_conflict = false;
+
+        Queue<PathNode, 6> temp_segment_queue; // use this to check if the segment is already reserved
+        while (!path->IsEmpty())
+        {
+            PathNode node;
+            path->Pop(&node);
+            temp_stack.Push(node);
+            if (node.node->who_reserved_me != -1 && node.node->who_reserved_me != train->train_num)
+            {
+                IO_NS::PrintTerminal("Conductor::ReservePath -- reservation conflict on %s -- reserved by %d\r\n", node.node->name, node.node->who_reserved_me);
+                reservation_conflict = true;
+                break;
+            }
+            // temp_queue.Push(node);
+            temp_segment_queue.Push(node);
+            if (node.node->type == NODE_SENSOR)
+            {
+                while (!temp_segment_queue.IsEmpty())
+                {
+                    PathNode segment_node;
+                    temp_segment_queue.Pop(&segment_node);
+                    temp_queue.Push(segment_node);
+                }
+            }
+        }
+        // restore the path
+        while (!temp_stack.IsEmpty())
+        {
+            PathNode node;
+            temp_stack.Pop(&node);
+            path->Push(node);
+        }
+
+        while (!temp_queue.IsEmpty())
+        {
+            PathNode node;
+            temp_queue.Pop(&node);
+
+            if (reservation_conflict)
+            {
+                int DIR = 0;
+                if (node.node->type == NODE_BRANCH)
+                {
+                    DIR = node.switch_state == SwitchState::STRAIGHT ? 0 : 1;
+                }
+                // add length of segment to distance to conflict
+
+                if (node.node != train->last_sensor)
+                {
+                    *distance_to_conflict += node.node->edge[DIR].dist;
+                }
+            }
+            node.node->who_reserved_me = train->train_num;
+            train->reserved_nodes.Push(node);
+        }
+        temp_queue.Clear();
+        temp_stack.Clear();
+        return !reservation_conflict; // return true if reservation was successful
+    }
+
+    bool Conductor::ReserveSegment(train_task_mapping *train)
+    {
+        IO_NS::PrintTerminal(COLOR_RED "Conductor::ReserveSegment -- reserving segment for train %d\r\n", train->train_num);
+        Stack<PathNode, TRACK_MAX> *path = &train->path;
+        // try to reserve the next segment
+
+        // D7 TRIGGERED ~~~ E7  ~~~ RESERVE THIS SEGMENT ~~~ SENSOR
+        // E7  ~~~ RESERVE THIS SEGMENT ~~~ SENSOR
+        if (path->IsEmpty())
+        {
+            IO_NS::PrintTerminal("Conductor::ReserveSegment -- path is empty, not reserving another segment\r\n");
+            return false;
+        }
+
+        Stack<PathNode, 10> temp_stack; // used to restore the path
+        Queue<PathNode, 10> temp_queue; // used to push to the train queue for reserved nodes
+
+        // ASSUME FIRST NODE IS ALREADY RESERVED
+        bool reservation_conflict = false;
+        bool is_first_node = true;
+        while (!path->IsEmpty())
+        {
+            PathNode node;
+            path->Pop(&node);
+            temp_stack.Push(node);
+            int reserved_by = node.node->who_reserved_me;
+            if (reserved_by == train->train_num)
+            {
+                continue;
+            }
+            temp_queue.Push(node);
+
+            if (reserved_by != -1 && reserved_by != train->train_num)
+            {
+                IO_NS::PrintTerminal("Conductor::ReserveSegment -- reservation conflict on %s -- reserved by %d\r\n", node.node->name, reserved_by);
+                reservation_conflict = true;
+                break;
+            }
+
+            if (node.node->type == NODE_SENSOR && !is_first_node)
+            {
+                break;
+            }
+            is_first_node = false;
+        }
+
+        while (!temp_stack.IsEmpty())
+        {
+            PathNode node;
+            temp_stack.Pop(&node);
+            path->Push(node);
+        }
+
+        if (reservation_conflict)
+        {
+            return false;
+        }
+
+        while (!temp_queue.IsEmpty())
+        {
+            PathNode node;
+            temp_queue.Pop(&node);
+            node.node->who_reserved_me = train->train_num;
+            train->reserved_nodes.Push(node);
+        }
+
+        return reservation_conflict;
+    }
+
+    void Conductor::ReleaseSegment(train_task_mapping *train)
+    {
+        // use last hit sensor to compare the name
+        while (!train->reserved_nodes.IsEmpty())
+        {
+            PathNode node;
+            int ret = train->reserved_nodes.Peek(&node);
+            uassert(ret == 0 && "Conductor::ReleaseSegment -- Error peeking reserved node");
+
+            if (node.node == train->last_sensor)
+            {
+                break;
+            }
+            node.node->who_reserved_me = -1;
+            IO_NS::PrintTerminal("Conductor::ReleaseSegment -- releasing %s for train %d\r\n", node.node->name, train->train_num);
+            train->reserved_nodes.Pop(&node);
+        }
+    }
+
     void ticker()
     {
         int my_tid = MYTID();
@@ -997,6 +1191,7 @@ namespace Conductor_NS
             // extract the length of the missed segment into temp var
             IO_NS::PrintTerminal("CURRENT SEGMENT LENGTH: %d\r\n", train->current_segment_length);
             PopSegment(train); // pop the segment, now current_segment_length is the length of the segment from the missed to triggered sensor
+            SwitchNextSegment(&train->path);
             missed_segment_length = train->current_segment_length;
             segment_verified = true;
         }
@@ -1039,13 +1234,18 @@ namespace Conductor_NS
             train->train_commands.Push({TRAIN_COMMAND::STOP, 0});
         }
 
-        IO_NS::PrintTerminal(COLOR_GREEN "POPPED SEGMENT FROM PATH; REMAINING PATH:");
-        train->path.Print();
-
         train->last_sensor_trigger_tick = triggered_tick;
         UpdateTrainDisplay();
 
         PopSegment(train);
+        SwitchNextSegment(&train->path);
+        IO_NS::PrintTerminal(COLOR_GREEN "Conductor::ProcessSensorTrigger -- Reserved QUEUE:");
+        train->reserved_nodes.Print();
+        IO_NS::PrintTerminal(COLOR_GREEN "Conductor::ProcessSensorTrigger -- RELEASING SEGMENT:");
+        ReleaseSegment(train);
+        train->reserved_nodes.Print();
+
+        IO_NS::PrintTerminal(COLOR_GREEN "POPPED SEGMENT FROM PATH; REMAINING PATH:");
         train->path.Print();
     }
 }
