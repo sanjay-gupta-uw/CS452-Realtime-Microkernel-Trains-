@@ -86,6 +86,8 @@ namespace Conductor_NS
             Queue<track_node, TRACK_MAX> reserved_nodes;
             Queue<track_node, TRACK_MAX> reserved_reverse_nodes;
 
+            bool isTrainBlocked;
+
             int current_segment_length = 0;
             Stack<int, 2> total_dist_travelled;
 

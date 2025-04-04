@@ -86,6 +86,7 @@ namespace Conductor_NS
             train->path_messenger = {-1, false};
             train->sensor_messenger = {-1, false};
             train->last_sent_sensor = nullptr;
+            train->last_sent_sensor_safety = nullptr;
 
             train->total_dist_travelled.Push(0);
             train->total_dist_travelled.Push(0);
@@ -323,6 +324,8 @@ namespace Conductor_NS
                     int remaining_distance = 0;
                     int middle_distance = 0;
 
+                    train->isTrainBlocked = false;
+
                     train->go = false;
                     train->reach_first_sensor = false;
 
@@ -411,13 +414,13 @@ namespace Conductor_NS
                 IO_NS::PrintTerminal("Conductor::GOTO -- No path found from %s to %s\r\n", start_sensor->name, dest);
                 return;
             }
-            bool success = ReservePath(train);
+            train->isTrainBlocked = !ReservePath(train);
 
             IO_NS::PrintTerminal(COLOR_MAGENTA "RESERVED NODES: ");
             train->reserved_nodes.Print();
             IO_NS::PrintTerminal(COLOR_MAGENTA "RESERVED REVERSE NODES: ");
             train->reserved_reverse_nodes.Print();
-            if (!success)
+            if (train->isTrainBlocked)
             {
                 IO_NS::PrintTerminal("Conductor::GOTO -- PATH NOT FULLY RESERVED -- STOP NEEDED IN %d mm\r\n", train->distance_to_conflict);
                 // uassert(false && "Conductor::GOTO -- PATH NOT FULLY RESERVED -- STOP NEEDED");
@@ -772,6 +775,8 @@ namespace Conductor_NS
 
     void Conductor::DispatchCommand()
     {
+
+        bool all_trains_blocked = true;
         for (int i = 0; i < NUM_TRAINS; ++i)
         {
             if (train_arr[i].train_num == -1)
@@ -814,14 +819,24 @@ namespace Conductor_NS
                     {
                         IO_NS::PrintTerminal(COLOR_CYAN "Conductor::DispatchCommand -- second sensor is null\r\n");
                     }
-                    train->last_sent_sensor = first_sensor;
-                    train->last_sent_sensor_safety = second_sensor;
 
-                    // send sensor to messenger
-                    ListenToSensors sensors = {train->train_num, first_sensor, second_sensor};
-                    REPLY(sensor_messenger->messenger_id, (char *)&sensors, sizeof(ListenToSensors));
-                    sensor_messenger->sent_reply = true;
-                    // uassert(false && "Conductor::DispatchCommand -- Error: sensor messenger sent reply");
+                    if (first_sensor != nullptr)
+                    {
+                        train->last_sent_sensor = first_sensor;
+                        train->last_sent_sensor_safety = second_sensor;
+
+                        // send sensor to messenger
+                        ListenToSensors sensors = {train->train_num, first_sensor, second_sensor};
+                        REPLY(sensor_messenger->messenger_id, (char *)&sensors, sizeof(ListenToSensors));
+                        sensor_messenger->sent_reply = true;
+                        // uassert(false && "Conductor::DispatchCommand -- Error: sensor messenger sent reply");
+                    }
+                    else
+                    {
+                        // set speed to 0
+                        train->train_commands.Clear();
+                        train->train_commands.Push({TRAIN_COMMAND::STOP, 0});
+                    }
                 }
             }
 
@@ -837,8 +852,8 @@ namespace Conductor_NS
             // check if the path is still reserved
             if (train->check_if_blocked)
             {
-                bool success = ReservePath(train);
-                if (success)
+                train->isTrainBlocked = !ReservePath(train);
+                if (train->isTrainBlocked)
                 {
                     train->check_if_blocked = false;
                     train->conflict_exists = false;
@@ -846,6 +861,20 @@ namespace Conductor_NS
                     train->train_commands.Push({TRAIN_COMMAND::ACCELERATE, train->speed_level});
                 }
             }
+
+            if (!train->isTrainBlocked)
+            {
+                all_trains_blocked = false;
+            }
+        }
+        if (all_trains_blocked)
+        {
+            IO_NS::PrintTerminal(COLOR_RED "Conductor::DispatchCommand -- All trains are blocked\r\n");
+            // uassert(false && "Conductor::DispatchCommand -- All trains are blocked");
+        }
+        else
+        {
+            IO_NS::PrintTerminal(COLOR_GREEN "Conductor::DispatchCommand -- Not all trains are blocked\r\n");
         }
     }
     void Conductor::PopSegment(train_task_mapping *train)
@@ -909,56 +938,71 @@ namespace Conductor_NS
 
     void Conductor::get_sensors_to_listen_to(train_task_mapping *train, track_node *&first_sensor, track_node *&second_sensor)
     {
-        Stack<PathNode, TRACK_MAX> *path = &train->path;
-        Stack<PathNode, 10> temp;
+        Queue<track_node, TRACK_MAX> *reserved_nodes = &train->reserved_nodes;
+        Stack<track_node, 20> temp_queue;
         // extract the first two nodes on the path
         first_sensor = nullptr;
         second_sensor = nullptr;
-        while (!path->IsEmpty())
+        if (reserved_nodes->IsEmpty())
         {
-            PathNode node;
-            path->Pop(&node);
-            temp.Push(node);
-            if (node.node->type == NODE_SENSOR)
+            return;
+        }
+
+        track_node last_hit_sensor;
+        reserved_nodes->Pop(&last_hit_sensor);
+        temp_queue.Push(last_hit_sensor);
+
+        uassert(last_hit_sensor.type == NODE_SENSOR && "Conductor::get_sensors_to_listen_to -- first node is not a sensor");
+
+        while (!reserved_nodes->IsEmpty())
+        {
+
+            track_node node;
+            reserved_nodes->Pop(&node);
+            temp_queue.Push(node);
+            IO_NS::PrintTerminal("Conductor::get_sensors_to_listen_to -- checking node: %s\r\n", node.name);
+
+            if (node.type == NODE_SENSOR)
             {
                 // IO_NS::PrintTerminal(COLOR_BLUE "Conductor::get_sensors_to_listen_to -- found sensor: %s\r\n", node.node->name);
                 if (first_sensor == nullptr)
                 {
-                    // IO_NS::PrintTerminal(COLOR_RED "Setting first sensor to %s\r\n", node.node->name);
-                    first_sensor = node.node;
+                    IO_NS::PrintTerminal(COLOR_RED "Setting first sensor to %s\r\n", node.name);
+                    first_sensor = this->track.get_node_by_name(node.name);
                     // IO_NS::PrintTerminal(COLOR_RED "Conductor::get_sensors_to_listen_to -- first sensor set to %s\r\n", first_sensor->name);
                 }
                 else if (second_sensor == nullptr)
                 {
-                    // IO_NS::PrintTerminal("Setting second sensor to %s\r\n", node.node->name);
-                    second_sensor = node.node;
+                    IO_NS::PrintTerminal(COLOR_RED "Setting second sensor to %s\r\n", node.name);
+                    IO_NS::PrintTerminal(COLOR_RED " FIRST SENSOR CHECKED: %s\r\n", first_sensor->name);
+                    second_sensor = this->track.get_node_by_name(node.name);
                     break;
                 }
                 else
                 {
-                    // IO_NS::PrintTerminal("Conductor::get_sensors_to_listen_to -- both not null\r\n");
+                    IO_NS::PrintTerminal("Conductor::get_sensors_to_listen_to -- both not null\r\n");
                     break;
                 }
             }
         }
 
         // push the nodes back to the path
-        while (!temp.IsEmpty())
+        while (!temp_queue.IsEmpty())
         {
-            PathNode node;
-            temp.Pop(&node);
-            path->Push(node);
+            track_node node;
+            temp_queue.Pop(&node);
+            reserved_nodes->PushFront(node);
         }
-        /*
-        if (first_sensor != nullptr)
-        {
-            IO_NS::PrintTerminal(COLOR_RED "Conductor::get_sensors_to_listen_to -- first sensor: %s\r\n", first_sensor->name);
-        }
-        if (second_sensor != nullptr)
-        {
-            IO_NS::PrintTerminal(COLOR_RED "Conductor::get_sensors_to_listen_to -- second sensor: %s\r\n", second_sensor->name);
-        }
-        */
+        // IO_NS::PrintTerminal(COLOR_BLUE "VERIFYING RESERVED NODES: ");
+        // reserved_nodes->Print();
+        // if (first_sensor != nullptr)
+        // {
+        //     IO_NS::PrintTerminal(COLOR_RED "Conductor::get_sensors_to_listen_to -- first sensor: %s\r\n", first_sensor->name);
+        // }
+        // if (second_sensor != nullptr)
+        // {
+        //     IO_NS::PrintTerminal(COLOR_RED "Conductor::get_sensors_to_listen_to -- second sensor: %s\r\n", second_sensor->name);
+        // }
     }
 
     // SENSOR/CONDUCTOR MESSENGER
