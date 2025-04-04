@@ -83,7 +83,8 @@ namespace Conductor_NS
 
             Queue<TrainCommandNotification, 5> train_commands;
             Stack<PathNode, TRACK_MAX> path;
-            Queue<PathNode, TRACK_MAX> reserved_nodes;
+            Queue<track_node, TRACK_MAX> reserved_nodes;
+            Queue<track_node, TRACK_MAX> reserved_reverse_nodes;
 
             int current_segment_length = 0;
             Stack<int, 2> total_dist_travelled;

@@ -88,8 +88,8 @@ public:
             Pop(&item);
 
             // cast item to PathNode
-            PathNode *node = &item; // No cast needed
-            IO_NS::PrintTerminal(COLOR_MAGENTA "%s ", node->node->name);
+            track_node *node = &item; // No cast needed
+            IO_NS::PrintTerminal(COLOR_MAGENTA "%s ", node->name);
             temp.Push(item);
         }
         while (!temp.IsEmpty())

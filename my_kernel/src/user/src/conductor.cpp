@@ -378,6 +378,7 @@ namespace Conductor_NS
 
             train->path.Clear();
             train->reserved_nodes.Clear();
+            train->reserved_reverse_nodes.Clear();
 
             memcpy(train->destination, dest, 4);
             train->destination[4] = '\0';
@@ -410,22 +411,20 @@ namespace Conductor_NS
             }
             bool success = ReservePath(train);
 
+            IO_NS::PrintTerminal(COLOR_MAGENTA "RESERVED NODES: ");
+            train->reserved_nodes.Print();
+            IO_NS::PrintTerminal(COLOR_MAGENTA "RESERVED REVERSE NODES: ");
+            train->reserved_reverse_nodes.Print();
             if (!success)
             {
                 IO_NS::PrintTerminal("Conductor::GOTO -- PATH NOT FULLY RESERVED -- STOP NEEDED IN %d mm\r\n", train->distance_to_conflict);
+                // uassert(false && "Conductor::GOTO -- PATH NOT FULLY RESERVED -- STOP NEEDED");
             }
+            // uassert(false && "Conductor::GOTO -- FORCED ERROR ");
 
             SwitchNextSegment(&train->path);
             IO_NS::PrintTerminal("POPPING FIRST SEGMENT SINCE WE ALREADY PASSED OVER IT\r\n");
             PopSegment(train);
-            // if (!isInitialPath)
-            // {
-            //     // ReserveSegment(train);
-            //     // need to decrement the dist to travel by the length of popped segment
-            //     PopSegment(train);
-            //     train->current_segment_length = 0;
-            //     IO_NS::PrintTerminal("Conductor::GOTO -- Popped first segment, new length: %d\r\n", train->current_segment_length);
-            // }
 
             IO_NS::PrintTerminal("VERIFYING PATH: ");
             train->path.Print();
@@ -1060,7 +1059,9 @@ namespace Conductor_NS
                 }
             }
             node.node->who_reserved_me = train->train_num;
-            train->reserved_nodes.Push(node);
+            train->reserved_nodes.Push(*node.node);
+            node.node->reverse->who_reserved_me = train->train_num;
+            train->reserved_reverse_nodes.Push(*node.node->reverse);
         }
 
         temp_queue.Clear();
@@ -1131,7 +1132,9 @@ namespace Conductor_NS
             PathNode node;
             temp_queue.Pop(&node);
             node.node->who_reserved_me = train->train_num;
-            train->reserved_nodes.Push(node);
+            train->reserved_nodes.Push(*node.node);
+            node.node->reverse->who_reserved_me = train->train_num;
+            train->reserved_reverse_nodes.Push(*node.node->reverse);
         }
 
         return reservation_conflict;
@@ -1142,17 +1145,18 @@ namespace Conductor_NS
         // use last hit sensor to compare the name
         while (!train->reserved_nodes.IsEmpty())
         {
-            PathNode node;
+            track_node node;
             int ret = train->reserved_nodes.Peek(&node);
             uassert(ret == 0 && "Conductor::ReleaseSegment -- Error peeking reserved node");
 
-            if (node.node == train->last_sensor)
+            if (&node == train->last_sensor)
             {
                 break;
             }
-            node.node->who_reserved_me = -1;
-            IO_NS::PrintTerminal("Conductor::ReleaseSegment -- releasing %s for train %d\r\n", node.node->name, train->train_num);
+            node.who_reserved_me = -1;
+            IO_NS::PrintTerminal("Conductor::ReleaseSegment -- releasing %s for train %d\r\n", node.name, train->train_num);
             train->reserved_nodes.Pop(&node);
+            train->reserved_reverse_nodes.Pop(&node);
         }
     }
 
