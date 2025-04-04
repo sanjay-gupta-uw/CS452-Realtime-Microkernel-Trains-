@@ -587,12 +587,12 @@ namespace UI_CMD_NS
         // char *initial_commands_list[] = {
         //     // "SPAWN 55 A13 10",
         //     // "SPAWN 55 C13 10",
-        //     "SPAWN 55 D9 0",
+        //     "SPAWN 55 A1 0",
+        //     // "SPAWN 54 B9 0",
         //     "GO 55 8 A6 0",
+        //     // "GO 54 8 B5 0",
         //     // "GO 55 10 b5 0",
 
-        //     "SPAWN 54 A13 0",
-        //     "GO 54 8 A6 0",
         // };
         // IO_NS::PrintTerminal("Parsing Initial commands:\r\n");
         // for (int i = 0; i < sizeof(initial_commands_list) / sizeof(initial_commands_list[0]); i++)
@@ -602,7 +602,7 @@ namespace UI_CMD_NS
         //     unsigned char ch = uart_getc(CONSOLE);
         //     commandPrompt.Commandify(initial_commands_list[i]);
         // }
-        // // uassert(false && "FORCED ERROR -- this is for testing only");
+        // uassert(false && "FORCED ERROR -- this is for testing only");
 
         while (true)
         {

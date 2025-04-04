@@ -328,6 +328,8 @@ namespace Conductor_NS
 
                     train->train_commands.Clear();
                     train->path.Clear();
+                    train->reserved_nodes.Clear();
+                    train->reserved_reverse_nodes.Clear();
 
                     IO_NS::PrintTerminal("Index: %d, Train %d spawned with last Sensor %s\r\n", i, train->train_num, train->last_sensor->name);
                     break;
@@ -1142,6 +1144,7 @@ namespace Conductor_NS
 
     void Conductor::ReleaseSegment(train_task_mapping *train)
     {
+        IO_NS::PrintTerminal(COLOR_RED "Conductor::ReleaseSegment -- releasing segment for train %d -- last sensor: %s\r\n", train->train_num, train->last_sensor->name);
         // use last hit sensor to compare the name
         while (!train->reserved_nodes.IsEmpty())
         {
@@ -1149,7 +1152,7 @@ namespace Conductor_NS
             int ret = train->reserved_nodes.Peek(&node);
             uassert(ret == 0 && "Conductor::ReleaseSegment -- Error peeking reserved node");
 
-            if (&node == train->last_sensor)
+            if (node.type == NODE_SENSOR && node.num == train->last_sensor->num)
             {
                 break;
             }
@@ -1158,6 +1161,7 @@ namespace Conductor_NS
             train->reserved_nodes.Pop(&node);
             train->reserved_reverse_nodes.Pop(&node);
         }
+        // uassert(false && "Conductor::ReleaseSegment -- Error getting last sensor address");
     }
 
     void ticker()
@@ -1269,6 +1273,7 @@ namespace Conductor_NS
 
         IO_NS::PrintTerminal(COLOR_GREEN "POPPED SEGMENT FROM PATH; REMAINING PATH:");
         train->path.Print();
+        IO_NS::PrintTerminal(COLOR_GREEN "Conductor::ProcessSensorTrigger -- HANDLED %s TRIGGER\r\n", (triggered_idx == expected_idx) ? train->last_sent_sensor->name : train->last_sent_sensor_safety->name);
     }
 
     void Conductor::StopTrainConflict(train_task_mapping *train)

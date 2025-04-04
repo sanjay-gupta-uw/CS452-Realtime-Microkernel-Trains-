@@ -173,6 +173,7 @@ unsigned char uart_getc(size_t line)
         // wait for data
     }
     ch = UART_REG(line, UART_DR);
+    // uart_printf(CONSOLE, "\033[2J"); // clear screen
     return ch;
 }
 
