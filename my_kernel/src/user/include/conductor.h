@@ -77,6 +77,8 @@ namespace Conductor_NS
             bool go;
             bool reach_first_sensor;
 
+            bool auto_mode;
+
             Queue<TrainCommandNotification, 3> train_commands;
             Stack<PathNode, TRACK_MAX> path;
 
@@ -86,6 +88,10 @@ namespace Conductor_NS
             track_node *last_sent_sensor;
             uint32_t last_sensor_trigger_tick = 0;
         };
+        int custom_rand();
+
+        void GenerateAndSendNewCommand(train_task_mapping *train);
+
         void update_position(train_task_mapping *train);
 
         void SwitchNextSegment(Stack<PathNode, TRACK_MAX> *path);
@@ -99,6 +105,7 @@ namespace Conductor_NS
         train_task_mapping train_arr[NUM_TRAINS];
         Track track;
         SpeedData speed_data;
+        int command_index;
     };
 
     void start_sensor_messenger();

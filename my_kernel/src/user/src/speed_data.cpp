@@ -18,9 +18,9 @@ void SpeedData::InitializeTrackA() {
     track_a_.entries[1][0] = {318, 462};   // 7: 3.18 mm/tick, 462.13 mm
     track_a_.entries[1][1] = {367, 503};   // 8: 3.67 mm/tick, 502.6 mm
     track_a_.entries[1][2] = {412, 562};   // 9: 4.12 mm/tick, 561.73 mm
-    track_a_.entries[1][3] = {467, 612};   // 10: 4.67 mm/tick, 612.3 mm
-    track_a_.entries[1][4] = {513, 705};   // 11: 5.13 mm/tick, 705.39 mm
-    track_a_.entries[1][5] = {572, 766};   // 12: 5.72 mm/tick, 766.35 mm
+    track_a_.entries[1][3] = {467, 712};   // 10: 4.67 mm/tick, 612.3 mm
+    track_a_.entries[1][4] = {513, 790};   // 11: 5.13 mm/tick, 705.39 mm
+    track_a_.entries[1][5] = {572, 866};   // 12: 5.72 mm/tick, 766.35 mm
     track_a_.entries[1][6] = {603, 847};   // 13: 6.03 mm/tick, 847.03 mm
     track_a_.entries[1][7] = {605, 829};   // 14: 6.05 mm/tick, 828.57 mm
 

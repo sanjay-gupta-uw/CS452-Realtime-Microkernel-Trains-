@@ -17,6 +17,19 @@ typedef struct IO_REQUEST
     unsigned char ch;
 };
 
+static constexpr char* SENSOR_IDS[] = {
+    "A3", "E5", "E2", "B16", "D12", "A3", "E9", "B15"
+};
+
+static constexpr int OFFSETS[] = {
+    -100, 0, 75, 100, -50, 75, -150, 30
+};
+
+static constexpr int SPEEDS[] = {
+    9, 8, 11, 7, 10, 11, 8, 9
+};
+
+
 namespace Conductor_NS
 {
 
@@ -97,6 +110,7 @@ namespace Conductor_NS
         IO_NS::PrintTerminal("Conductor received request for track %c\r\n", track_id);
         uassert(track_id == 'A' || track_id == 'B' || track_id == 'a' || track_id == 'b');
         track.init(track_id);
+        command_index = 0;
 
         if(track_id == 'A' || track_id == 'a') {
             speed_data.InitializeTrackA();
@@ -125,6 +139,14 @@ namespace Conductor_NS
     Conductor::~Conductor()
     {
     }
+
+    int Conductor::custom_rand() {
+        int custom_rand_seed = 20883952;
+        // Simple Linear Congruential Generator
+        custom_rand_seed = (214013 * custom_rand_seed + 2531011);
+        return (custom_rand_seed >> 16) & 0x7FFF;
+    }
+
 
     // extracts the top segment from the path and sets the switch
     // need to make sure that the top of the stack is the next sensor to be hit!
@@ -324,6 +346,8 @@ namespace Conductor_NS
                     train->go = false;
                     train->reach_first_sensor = false;
 
+                    train->auto_mode = false;
+
                     train->train_commands.Clear();
                     train->path.Clear();
 
@@ -476,6 +500,19 @@ namespace Conductor_NS
             }
             break;
         }  
+        case COMMAND::AUTO:
+        {
+            for (int i = 0; i < NUM_TRAINS; ++i) {
+                if (train_arr[i].train_num != -1) {
+                    train_arr[i].auto_mode = true;
+
+                    // Generate random parameters
+                    GenerateAndSendNewCommand(&train_arr[i]);
+                }
+            }
+            IO_NS::PrintTerminal("Auto mode enabled for all trains\r\n");
+            break;
+        }   
         default:
             IO_NS::PrintTerminal("Conductor received INVALID request\r\n");
             break;
@@ -764,6 +801,33 @@ namespace Conductor_NS
         EXIT();
     }
 
+    void Conductor::GenerateAndSendNewCommand(train_task_mapping *train) {
+        // Get values from lists
+        char* dest_sensor = SENSOR_IDS[command_index];
+        int offset = OFFSETS[command_index];
+        int speed = SPEEDS[command_index];
+        
+        // Create command
+        ConductorRequest req(COMMAND::GOTO, 
+                            train->train_num, 
+                            speed,
+                            dest_sensor,
+                            dest_sensor,
+                            offset);
+        
+        ProcessRequest(&req.data.cmdRequest);
+
+        IO_NS::PrintTerminal(COLOR_YELLOW "Automated GOTO: train %d go to %s %d with speed %d\r\n", train->train_num, dest_sensor, offset, speed);
+        
+        // Move to next index
+        command_index++;
+        
+        // Optional: Reset index if needed
+        if (command_index >= sizeof(SENSOR_IDS)/sizeof(SENSOR_IDS[0])) {
+            command_index = 0;
+        }
+    }
+
     void Conductor::update_position(train_task_mapping *train)
     {
         if(!train->go) return;
@@ -794,11 +858,18 @@ namespace Conductor_NS
             train->train_commands.Push({TRAIN_COMMAND::ACCELERATE, 0});
             train->go = false;
             train->reach_first_sensor = false;
+
+            train->train_commands.Clear();
+            train->train_commands.Push({TRAIN_COMMAND::ACCELERATE, 0}); 
+            if (train->auto_mode) {
+                // Send new command after short delay
+                DELAY(CLOCK_SERVER_TID, 5000);
+ 
+                GenerateAndSendNewCommand(train);
+            }            
         }
     
         Conductor::UpdateTrainDisplay();
-        //train->total_dist_travelled.Pop(nullptr);
-        //train->total_dist_travelled.Push(approximate_distance);
     }
 
     void Conductor::DispatchCommand()

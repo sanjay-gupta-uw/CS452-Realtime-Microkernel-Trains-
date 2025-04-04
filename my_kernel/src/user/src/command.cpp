@@ -465,6 +465,21 @@ namespace UI_CMD_NS
                 uassert(retval >= 0 && "Error sending stopall to Conductor");
             }
         }
+        else if ((first == 'A' || first == 'a') &&
+                (second == 'U' || second == 'u'))
+        {
+            // read next two characters
+            char third = str[2];
+            char fourth = str[3];
+
+            if ((third == 'T' || third == 't') &&
+                (fourth == 'O' || fourth == 'o')) 
+            {
+                IO_NS::PrintTerminal("Attempting to enable auto mode for all trains\r\n");
+                ConductorRequest request(COMMAND::AUTO, 0, 0);
+                SEND(CONDUCTOR_TID, (char *)&request, sizeof(ConductorRequest), nullptr, 0);
+            }
+        }
         else
         {
             IO_NS::PrintTerminal("Invalid Command\r\n");

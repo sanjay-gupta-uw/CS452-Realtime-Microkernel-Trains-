@@ -21,6 +21,7 @@ enum class COMMAND
     CALIBRATE,
     SENSOR_TRIGGER,
     STOP_ALL,
+    AUTO,
     INVALID,
 };
 
