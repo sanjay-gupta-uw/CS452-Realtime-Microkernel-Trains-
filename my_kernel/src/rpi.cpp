@@ -4,6 +4,11 @@
 #include <stdint.h>
 #include "shared_constants.h"
 static char *const MMIO_BASE = (char *)0xFE000000;
+#if IRQEn == 1
+#define IRQ_ENABLED 1
+#else
+#define IRQ_ENABLED 0
+#endif
 
 /*********** GPIO CONFIGURATION ********************************/
 // Offsets can be found at page 67: https://datasheets.raspberrypi.com/bcm2711/bcm2711-peripherals.pdf
@@ -157,6 +162,10 @@ int uart_getc_non_blocking(size_t line)
 
 unsigned char uart_getc(size_t line)
 {
+    if (IRQ_ENABLED)
+    {
+        return ' ';
+    }
     unsigned char ch;
     /* wait for data if necessary */
     while (UART_REG(line, UART_FR) & UART_FR_RXFE)

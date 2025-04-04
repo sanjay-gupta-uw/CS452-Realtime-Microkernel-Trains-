@@ -83,7 +83,7 @@ void Track::init(char track_id)
 
     initialize_loop();
 
-    IO_NS::PrintTerminal(CLEAR_SCREEN "VERIFYING TRACK STATE\r\n");
+    // IO_NS::PrintTerminal(CLEAR_SCREEN "VERIFYING TRACK STATE\r\n");
     for (int i = 0; i < TRACK_MAX; i++)
     {
         track[i].who_reserved_me = -1;
@@ -2865,7 +2865,7 @@ void Track::find_path(const char *start, const char *dest, Stack<PathNode, TRACK
         IO_NS::PrintTerminal("PLEASE PRESS ANY KEY TO CONTINUE\r\n");
         unsigned char ch = uart_getc(CONSOLE);
 
-        IO_NS::PrintTerminal(CLEAR_SCREEN MOVE_CURSOR "Track::found path from %s to %s --", 1, 1, start, dest);
+        IO_NS::PrintTerminal(MOVE_CURSOR "Track::found path from %s to %s --", 1, 1, start, dest);
         // IO_NS::PrintTerminal("%s ", track[cur_index].name);
         int prior_index = -1;
 

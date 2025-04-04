@@ -69,14 +69,17 @@ namespace Conductor_NS
             char destination[5];
             int offset;
 
-            int total_path_distance;  // Total distance of current path
-            int remaining_distance;   // Remaining distance to destination
+            int total_path_distance; // Total distance of current path
+            int remaining_distance;  // Remaining distance to destination
+
+            bool conflict_exists;
             int distance_to_conflict; // STOP TRAIN BEFORE this distance
 
             int middle_distance; // Distance traveled since last sensor
 
             bool go;
             bool reach_first_sensor;
+            bool check_if_blocked;
 
             Queue<TrainCommandNotification, 5> train_commands;
             Stack<PathNode, TRACK_MAX> path;
@@ -100,11 +103,13 @@ namespace Conductor_NS
         void PopSegment(train_task_mapping *train);
 
         bool ReserveSegment(train_task_mapping *train);
-        bool ReservePath(train_task_mapping *train, int *distance_to_conflict);
+        bool ReservePath(train_task_mapping *train);
         void ReleaseSegment(train_task_mapping *train);
 
         void get_sensors_to_listen_to(train_task_mapping *train, track_node *&first_sensor, track_node *&second_sensor);
         void ProcessSensorTrigger(SensorTriggerResponse *trigger_response);
+
+        void StopTrainConflict(train_task_mapping *train);
 
         train_task_mapping train_arr[NUM_TRAINS];
         Track track;
