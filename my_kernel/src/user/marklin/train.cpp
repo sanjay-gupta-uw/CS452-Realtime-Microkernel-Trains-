@@ -390,7 +390,7 @@ namespace Trains_NS
             int retval = SEND(CONDUCTOR_TID, (char *)&conductor_request, sizeof(ConductorRequest), (char *)&command_struct, sizeof(TrainCommandNotification));
             uassert(retval >= 0 && "COMMAND MESSENGER: Error sending TrainCommandNotification to Conductor");
 
-            IO_NS::PrintTerminal(COLOR_YELLOW "COMMAND MESSENGER{%d}:: received command from Conductor for Train %d, relaying command...\r\n", my_tid, train_num);
+            IO_NS::PrintTerminal(COLOR_YELLOW "COMMAND MESSENGER{%d}:: received command from Conductor for Train {%d}, relaying command...\r\n", my_tid, train_num);
             TrainMessage message(command_struct.command, command_struct.speed);
             retval = SEND(train_task_tid, (char *)&message, sizeof(TrainMessage), nullptr, 0);
             uassert(retval >= 0 && "COMMAND MESSENGER: Error sending TrainCommandNotification to Train task");

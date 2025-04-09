@@ -20,7 +20,7 @@ namespace MARKLIN_IO_SERVER
 #define IRQ_ENABLED 0
 #endif
     Sensor sensor_data[NUM_BANKS * SENSORS_PER_BANK];
-    Queue<int, 20> sensor_change_buffer;
+    Queue<int, 80> sensor_change_buffer;
     uint32_t cur_tick;
 
     // returns -1 if not a switch command, otherwise, returns the index of the switch
@@ -40,6 +40,22 @@ namespace MARKLIN_IO_SERVER
     {
         if (byte1 == 0 && byte2 == 0)
         {
+            // set all sensors in this bank to off
+            // IO_NS::PrintTerminal("SensorManager::processSensorData: bank %c -- setting all sensors off\r\n", bank);
+            for (int sensor = 1; sensor <= SENSORS_PER_BANK; ++sensor)
+            {
+                int idx = ((int)(bank - 'A') * SENSORS_PER_BANK) + (sensor - 1);
+                int old_state = sensor_data[idx].isTriggered;
+
+                if (old_state == SEN_ON)
+                {
+                    sensor_data[idx].trigger_tick = 0;
+                    sensor_data[idx].isTriggered = false;
+                    sensor_change_buffer.Push(idx);
+                }
+            }
+            // IO_NS::PrintTerminal("SensorManager::processSensorData: bank %c -- all sensors off\r\n", bank);
+
             return;
         }
         // uassert(false && "PROCESSING SENSOR DATA -- THIS IS GETTING HIT");
@@ -52,6 +68,7 @@ namespace MARKLIN_IO_SERVER
             int old_state = sensor_data[idx].isTriggered;
             if (old_state != new_state)
             {
+                IO_NS::PrintTerminal(COLOR_YELLOW "SensorManager::processSensorData: Sensor %c%d changed from %d to %d\r\n", bank, sensor, old_state, new_state);
                 sensor_change_buffer.Push(idx);
                 sensor_data[idx].isTriggered = new_state;
 
@@ -156,6 +173,7 @@ namespace MARKLIN_IO_SERVER
             {
                 for (int i = 0; i < 5; ++i)
                 {
+                    // IO_NS::PrintTerminal(COLOR_YELLOW "RX NOTIFIER::Received %d bytes, processing bank %c\r\n", count, 'A' + i);
                     processSensorData(char('A' + i), receive_buffer.bytes[i * 2], receive_buffer.bytes[i * 2 + 1]);
                 }
 
@@ -283,17 +301,21 @@ namespace MARKLIN_IO_SERVER
                         // IO_NS::PrintTerminal("CHECKING IF SENSOR IDX %d is TRIGGERED\r\n", messenger->sensor_idx);
                         // check if the sensor is triggered
                         Sensor *sensor = &sensor_data[messenger->sensor_idx];
-                        if (sensor->isTriggered == SEN_ON)
+                        if (sensor->isTriggered)
                         {
+                            IO_NS::PrintTerminal(COLOR_GREEN "MarklinIO_server::run: Sending reply to sensor messenger %d -- sensor idx: %d, train: %d\r\n", messenger->messenger_id, messenger->sensor_idx, messenger->train_num);
                             ReplySensorTrigger(messenger);
+                            sensor->isTriggered = false; // reset the sensor state
                         }
                         else if (messenger->sensor_idx_safety > -1)
                         {
                             // check if the safety sensor was triggered
                             sensor = &sensor_data[messenger->sensor_idx_safety];
-                            if (sensor->isTriggered == SEN_ON)
+                            if (sensor->isTriggered)
                             {
+                                IO_NS::PrintTerminal(COLOR_GREEN "MarklinIO_server::run: Sending reply to sensor messenger %d -- safety sensor idx: %d, train: %d\r\n", messenger->messenger_id, messenger->sensor_idx_safety, messenger->train_num);
                                 ReplySensorTrigger(messenger, true); // use the safety sensor
+                                sensor->isTriggered = false;         // reset the sensor state
                             }
                         }
                     }

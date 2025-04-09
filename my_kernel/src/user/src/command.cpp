@@ -585,10 +585,10 @@ namespace UI_CMD_NS
         IO_NS::PrintTerminal("Command Prompt started\r\n");
 
         char *initial_commands_list[] = {
-            "SPAWN 55 A1 0",
+            "SPAWN 55 B11 0", // run test without this train on the track to verify if 54 stops at D10
             "SPAWN 54 B9 0",
-            "GO 55 8 A6 0",
-            "GO 54 8 B5 0",
+            "GO 55 8 A15 0",
+            "GO 54 8 A14 0",
         };
 
         IO_NS::PrintTerminal("Parsing Initial commands:\r\n");

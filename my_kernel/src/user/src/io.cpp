@@ -111,6 +111,7 @@ namespace IO_NS
 
     extern "C" void PrintTerminal(const char *fmt, ...)
     {
+        // return;
         // uassert(false && "DISABLED PRINTTERMINAL FOR TESTING");
         // uart_printf(CONSOLE, RESTORE_CURSOR "PRINTTERMINAL CALLED\r\n" SAVE_CURSOR);
         // int IO_SERVER_TID = WHOIS("IOServer");

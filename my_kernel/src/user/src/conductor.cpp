@@ -415,11 +415,7 @@ namespace Conductor_NS
                 return;
             }
             train->isTrainBlocked = !ReservePath(train);
-
-            IO_NS::PrintTerminal(COLOR_MAGENTA "RESERVED NODES: ");
-            train->reserved_nodes.Print();
-            IO_NS::PrintTerminal(COLOR_MAGENTA "RESERVED REVERSE NODES: ");
-            train->reserved_reverse_nodes.Print();
+            // print reserved nodes
             if (train->isTrainBlocked)
             {
                 IO_NS::PrintTerminal("Conductor::GOTO -- PATH NOT FULLY RESERVED -- STOP NEEDED IN %d mm\r\n", train->distance_to_conflict);
@@ -534,6 +530,7 @@ namespace Conductor_NS
                 continue;
 
             const char *next_sensor_name = train_arr[i].last_sent_sensor ? train_arr[i].last_sent_sensor->name : "N/A";
+            IO_NS::PrintTerminal("Conductor::UpdateTrainDisplay -- Train %d: next sensor -> {%s}\r\n", train_arr[i].train_num, next_sensor_name);
             IO_NS::Print(MOVE_CURSOR "%d",
                          TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 2, train_arr[i].train_num);
             IO_NS::Print(MOVE_CURSOR "%d ",
@@ -719,6 +716,8 @@ namespace Conductor_NS
 
             DispatchCommand();
 
+            UpdateTrainDisplay();
+
             if (sendReply)
             {
                 REPLY(sender_tid, nullptr, 0);
@@ -763,7 +762,7 @@ namespace Conductor_NS
         }
 
         int conflict_distance_remaining = train->distance_to_conflict - train->middle_distance;
-        if (train->conflict_exists > 0 && conflict_distance_remaining <= 0)
+        if (train->conflict_exists && conflict_distance_remaining <= 0)
         {
             StopTrainConflict(train);
         }
@@ -775,7 +774,6 @@ namespace Conductor_NS
 
     void Conductor::DispatchCommand()
     {
-
         bool all_trains_blocked = true;
         for (int i = 0; i < NUM_TRAINS; ++i)
         {
@@ -803,22 +801,22 @@ namespace Conductor_NS
                     track_node *first_sensor;
                     track_node *second_sensor;
                     get_sensors_to_listen_to(train, first_sensor, second_sensor);
-                    if (first_sensor != nullptr)
-                    {
-                        IO_NS::PrintTerminal(COLOR_CYAN "Conductor::DispatchCommand -- Sensor %s is the first sensor\r\n", first_sensor->name);
-                    }
-                    else
-                    {
-                        IO_NS::PrintTerminal(COLOR_CYAN "Conductor::DispatchCommand -- first sensor is null\r\n");
-                    }
-                    if (second_sensor != nullptr)
-                    {
-                        IO_NS::PrintTerminal(COLOR_CYAN "Conductor::DispatchCommand -- Sensor %s is the second sensor\r\n", second_sensor->name);
-                    }
-                    else
-                    {
-                        IO_NS::PrintTerminal(COLOR_CYAN "Conductor::DispatchCommand -- second sensor is null\r\n");
-                    }
+                    // if (first_sensor != nullptr)
+                    // {
+                    //     IO_NS::PrintTerminal(COLOR_CYAN "Conductor::DispatchCommand -- Sensor %s is the first sensor\r\n", first_sensor->name);
+                    // }
+                    // else
+                    // {
+                    //     IO_NS::PrintTerminal(COLOR_CYAN "Conductor::DispatchCommand -- first sensor is null\r\n");
+                    // }
+                    // if (second_sensor != nullptr)
+                    // {
+                    //     IO_NS::PrintTerminal(COLOR_CYAN "Conductor::DispatchCommand -- Sensor %s is the second sensor\r\n", second_sensor->name);
+                    // }
+                    // else
+                    // {
+                    //     IO_NS::PrintTerminal(COLOR_CYAN "Conductor::DispatchCommand -- second sensor is null\r\n");
+                    // }
 
                     if (first_sensor != nullptr)
                     {
@@ -853,13 +851,17 @@ namespace Conductor_NS
             if (train->check_if_blocked)
             {
                 train->isTrainBlocked = !ReservePath(train);
-                if (train->isTrainBlocked)
+                if (!train->isTrainBlocked)
                 {
                     train->check_if_blocked = false;
                     train->conflict_exists = false;
                     train->go = true;
                     train->train_commands.Push({TRAIN_COMMAND::ACCELERATE, train->speed_level});
                 }
+            }
+            else
+            {
+                // IO_NS::PrintTerminal(COLOR_MAGENTA "Train %d is not blocked -- not checking\r\n", train->train_num);
             }
 
             if (!train->isTrainBlocked)
@@ -869,12 +871,12 @@ namespace Conductor_NS
         }
         if (all_trains_blocked)
         {
-            IO_NS::PrintTerminal(COLOR_RED "Conductor::DispatchCommand -- All trains are blocked\r\n");
+            // IO_NS::PrintTerminal(COLOR_RED "Conductor::DispatchCommand -- All trains are blocked\r\n");
             // uassert(false && "Conductor::DispatchCommand -- All trains are blocked");
         }
         else
         {
-            IO_NS::PrintTerminal(COLOR_GREEN "Conductor::DispatchCommand -- Not all trains are blocked\r\n");
+            // IO_NS::PrintTerminal(COLOR_GREEN "Conductor::DispatchCommand -- Not all trains are blocked\r\n");
         }
     }
     void Conductor::PopSegment(train_task_mapping *train)
@@ -1071,6 +1073,10 @@ namespace Conductor_NS
                 {
                     PathNode segment_node;
                     temp_segment_queue.Pop(&segment_node);
+                    if (segment_node.node->who_reserved_me == train->train_num)
+                    {
+                        continue; // already reserved
+                    }
                     temp_queue.Push(segment_node);
                 }
             }
@@ -1095,7 +1101,7 @@ namespace Conductor_NS
                 int DIR = 0;
                 if (node.node->type == NODE_BRANCH)
                 {
-                    DIR = node.switch_state == SwitchState::STRAIGHT ? 0 : 1;
+                    DIR = (node.switch_state == SwitchState::STRAIGHT) ? 0 : 1;
                 }
                 // add length of segment to distance to conflict
 
@@ -1112,6 +1118,12 @@ namespace Conductor_NS
 
         temp_queue.Clear();
         temp_stack.Clear();
+
+        IO_NS::PrintTerminal(COLOR_BLUE "Conductor::RESERVE_PATH -- Reserved nodes:\r\n");
+        train->reserved_nodes.Print();
+        IO_NS::PrintTerminal(COLOR_MAGENTA "Conductor::RESERVE_PATH -- Reserved REVERSE nodes: ");
+        train->reserved_reverse_nodes.Print();
+
         return !reservation_conflict; // return true if reservation was successful
     }
 
@@ -1202,8 +1214,10 @@ namespace Conductor_NS
             }
             node.who_reserved_me = -1;
             IO_NS::PrintTerminal("Conductor::ReleaseSegment -- releasing %s for train %d\r\n", node.name, train->train_num);
+            IO_NS::PrintTerminal("NODE: %s -- reserved by %d\r\n", node.name, node.who_reserved_me);
             train->reserved_nodes.Pop(&node);
             train->reserved_reverse_nodes.Pop(&node);
+            node.reverse->who_reserved_me = -1;
         }
         // uassert(false && "Conductor::ReleaseSegment -- Error getting last sensor address");
     }
@@ -1299,7 +1313,7 @@ namespace Conductor_NS
             train->remaining_distance = 0;
             train->train_commands.Push({TRAIN_COMMAND::STOP, 0});
         }
-        if (train->conflict_exists && train->distance_to_conflict < 0)
+        if (train->conflict_exists && train->distance_to_conflict <= 0)
         {
             StopTrainConflict(train);
         }
@@ -1328,5 +1342,6 @@ namespace Conductor_NS
         train->go = false;
         train->conflict_exists = true;
         train->distance_to_conflict = 0;
+        // uassert(false && "Conductor::StopTrainConflict -- Error stopping train");
     }
 }
