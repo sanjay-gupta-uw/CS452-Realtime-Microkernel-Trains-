@@ -89,7 +89,7 @@ namespace Trains_NS
     {
         train_speed = speed;
         MARKLIN_IO_SERVER::MarklinRequest request = {false, train_speed + 16, train_num};
-        IO_NS::PrintTerminal("SENDING SPEED %d to IO_SERVER %d\r\n", train_speed, MARKLIN_IO_SERVER_TID);
+        IO_NS::PrintTerminal("SENDING SPEED %d to IO_SERVER %d at tick %d\r\n", train_speed, MARKLIN_IO_SERVER_TID);
         MARKLIN_IO_SERVER::SendCmd(MARKLIN_IO_SERVER_TID, &request);
     }
 

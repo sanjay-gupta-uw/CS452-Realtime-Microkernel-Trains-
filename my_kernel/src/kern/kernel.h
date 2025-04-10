@@ -28,7 +28,7 @@ private:
 
     TaskDescriptor task_table[MAX_TASKS];
     RingBuffer<int> free_tid;
-    PQueue<int> ready_queue; // ready queue is a priority queue of task ids
+    PQueue<int, HEAP_SIZE> ready_queue; // ready queue is a priority queue of task ids
     // PQueue<TaskDescriptor *> ready_queue;
 
     // Array of Queues for each event type

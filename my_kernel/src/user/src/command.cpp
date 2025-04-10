@@ -243,8 +243,8 @@ namespace UI_CMD_NS
                 bool num_set = false;
                 char sensor_id[5] = {0};
                 bool sensor_set = false;
-                // int start_offset = 0;
-                // bool offset_set = false;
+                int offset = 0;
+                bool offset_set = false;
 
                 const char *ptr = str + 5;
                 while (*ptr == ' ')
@@ -299,6 +299,24 @@ namespace UI_CMD_NS
                 {
                     ptr++;
                 }
+
+                // Parse offset (optional)
+                int sign = 1;
+                if (*ptr == '-')
+                {
+                    sign = -1;
+                    ptr++;
+                }
+
+                while (*ptr >= '0' && *ptr <= '9')
+                {
+                    offset = offset * 10 + (*ptr - '0');
+                    ptr++;
+                    offset_set = true;
+                }
+
+                offset *= sign;
+
                 /*
                 // extract offset num
                 while (*ptr >= '0' && *ptr <= '9')
@@ -324,11 +342,11 @@ namespace UI_CMD_NS
                     return;
                 }
 
-                IO_NS::PrintTerminal("Attempting to spawn Train %d in front of sensor %s\r\n", train_num, sensor_id);
+                IO_NS::PrintTerminal("Attempting to spawn Train %d in front of sensor %s with offset %d\r\n", train_num, sensor_id, offset);
 
                 // Create request with sensor ID
-                ConductorRequest request(COMMAND::SPAWN_TRAIN, train_num, 0, sensor_id);
-                // ConductorRequest request(COMMAND::SPAWN_TRAIN, train_num, start_offset, sensor_id);
+                ConductorRequest request(COMMAND::SPAWN_TRAIN, train_num, 0, sensor_id, nullptr, offset);
+                request.data.cmdRequest.offset = offset;
 
                 SEND(CONDUCTOR_TID, (char *)&request, sizeof(ConductorRequest), (char *)command_received, sizeof(int));
             }
@@ -585,10 +603,10 @@ namespace UI_CMD_NS
         IO_NS::PrintTerminal("Command Prompt started\r\n");
 
         char *initial_commands_list[] = {
-            "SPAWN 55 B11 0", // run test without this train on the track to verify if 54 stops at D10
-            "SPAWN 54 B9 0",
-            "GO 55 8 A15 0",
-            "GO 54 8 A14 0",
+            "SPAWN 54 B11 0",
+            "SPAWN 77 B9 0",
+            "GO 54 7 A15 0",
+            "GO 77 7 A14 0",
         };
 
         IO_NS::PrintTerminal("Parsing Initial commands:\r\n");

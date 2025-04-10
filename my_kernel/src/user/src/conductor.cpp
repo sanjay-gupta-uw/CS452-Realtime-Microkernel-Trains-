@@ -56,7 +56,7 @@ namespace Conductor_NS
         IO_NS::Print(COLOR_WHITE MOVE_CURSOR "+----------------------------------------------------------------------------------------------------------+\r\n", TRAIN_TABLE_Y + 0, TRAIN_TABLE_X);
         IO_NS::Print(COLOR_WHITE MOVE_CURSOR "|                                Active Trains:                                                            |\r\n", TRAIN_TABLE_Y + 1, TRAIN_TABLE_X);
         IO_NS::Print(COLOR_WHITE MOVE_CURSOR "-----------------------------------------------------------------------------------------------------------+\r\n", TRAIN_TABLE_Y + 2, TRAIN_TABLE_X);
-        IO_NS::Print(COLOR_WHITE MOVE_CURSOR "| ID | Speed Level | Actual Speed | Current Loc | Next Sensor | Dest | Offset | Total Dist | Remaining Dist|\r\n", TRAIN_TABLE_Y + 3, TRAIN_TABLE_X);
+        IO_NS::Print(COLOR_WHITE MOVE_CURSOR "| ID | Speed Level | Actual Speed | Current Loc | Next Sensor | Dest | Offset | Total Dist | Dist Travelled|\r\n", TRAIN_TABLE_Y + 3, TRAIN_TABLE_X);
         IO_NS::Print(COLOR_WHITE MOVE_CURSOR "-----------------------------------------------------------------------------------------------------------+\r\n", TRAIN_TABLE_Y + 4, TRAIN_TABLE_X);
         for (int i = 0; i < NUM_TRAINS; ++i)
         {
@@ -88,8 +88,7 @@ namespace Conductor_NS
             train->last_sent_sensor = nullptr;
             train->last_sent_sensor_safety = nullptr;
 
-            train->total_dist_travelled.Push(0);
-            train->total_dist_travelled.Push(0);
+            train->total_dist_travelled = 0;
         }
 
         int sender_tid;
@@ -317,7 +316,8 @@ namespace Conductor_NS
                     train->actual_speed_x100 = 0;
                     // train->start_offset = req->data;
                     train->stopping_distance = 0;
-                    train->offset = 0;
+                    train->offset = req->offset;
+                    IO_NS::PrintTerminal(COLOR_RED "OFFSET: %d\r\n", req->offset);
                     memset(train->destination, '-', 5);
 
                     int total_path_distance = 0;
@@ -326,7 +326,7 @@ namespace Conductor_NS
 
                     train->isTrainBlocked = false;
 
-                    train->go = false;
+                    train->isMoving = false;
                     train->reach_first_sensor = false;
 
                     train->train_commands.Clear();
@@ -357,6 +357,9 @@ namespace Conductor_NS
             // CalibrateTrain(train);
             UpdateTrainDisplay();
 
+            // PUT TRACK IN LOOP
+            // track.find_path("C10", "C10", &train->path, false, 0, &train->total_path_distance, false, train->train_num);
+            // uassert(false && "FORCED ERROR");
             break;
         }
         // based off of Jack's code
@@ -384,10 +387,11 @@ namespace Conductor_NS
             train->path.Clear();
             train->reserved_nodes.Clear();
             train->reserved_reverse_nodes.Clear();
+            train->reserved_sensors_count = 0;
 
             memcpy(train->destination, dest, 4);
             train->destination[4] = '\0';
-            train->offset = offset;
+            // train->offset = offset;
 
             IO_NS::PrintTerminal("Conductor::GOTO -- Train %d going to %s from %s\r\n", train_num, dest, train->last_sensor->name);
             track_node *start_sensor = train->last_sensor;
@@ -407,7 +411,6 @@ namespace Conductor_NS
                     return;
                 }
             }
-            train->check_if_blocked = false;
 
             if (train->path.IsEmpty() || total_path_length == -1)
             {
@@ -415,10 +418,16 @@ namespace Conductor_NS
                 return;
             }
             train->isTrainBlocked = !ReservePath(train);
+            IO_NS::PrintTerminal(COLOR_GREEN "Conductor::GOTO -- Reserved path for train %d\r\n", train_num);
+            train->check_if_blocked = train->isTrainBlocked;
+
             // print reserved nodes
             if (train->isTrainBlocked)
             {
-                IO_NS::PrintTerminal("Conductor::GOTO -- PATH NOT FULLY RESERVED -- STOP NEEDED IN %d mm\r\n", train->distance_to_conflict);
+                int dist_to_conflict;
+                track_node conflict_node;
+                // train->stopping_targets.Peek(&conflict_node, &dist_to_conflict);
+                // IO_NS::PrintTerminal("Conductor::GOTO -- PATH NOT FULLY RESERVED for TRAIN %d -- STOP NEEDED IN %d mm AT %s\r\n", train_num, dist_to_conflict, conflict_node.name);
                 // uassert(false && "Conductor::GOTO -- PATH NOT FULLY RESERVED -- STOP NEEDED");
             }
             // uassert(false && "Conductor::GOTO -- FORCED ERROR ");
@@ -458,25 +467,22 @@ namespace Conductor_NS
 
             // Calculate total path distance
             train->total_path_distance = total_path_length;
+            track_node *destination_node = track.get_node_by_name(dest);
 
-            train->remaining_distance = train->total_path_distance - train->stopping_distance;
-            if (train->conflict_exists)
-            {
-                train->distance_to_conflict -= train->stopping_distance;
-            }
-
+            train->stopping_targets.Clear();
+            train->stopping_targets.Push(*destination_node, total_path_length - train->stopping_distance - train->offset);
+            int stopping_target;
+            train->stopping_targets.Peek(destination_node, &stopping_target);
+            IO_NS::PrintTerminal(COLOR_GREEN "Conductor::GOTO -- Stopping target: %s in %d mm\r\n", destination_node->name, stopping_target);
             train->middle_distance = 0;
 
-            train->go = true;
+            // train->isMoving = true;
 
             train->reach_first_sensor = false;
 
-            IO_NS::PrintTerminal(COLOR_RED "Jack------- Total Path: %d, stopping_distance: %d, remaining_distance %d\r\n", train->total_path_distance, train->stopping_distance, train->remaining_distance);
-
             // SwitchNextSegment(&train->path);
-
             // Accelerates the train
-            train->train_commands.Push({TRAIN_COMMAND::ACCELERATE, speed});
+            // train->train_commands.Push({TRAIN_COMMAND::ACCELERATE, speed});
 
             int cur_tick = TIME(CLOCK_SERVER_TID);
 
@@ -497,7 +503,7 @@ namespace Conductor_NS
                     train_arr[i].speed_level = 0;
                     train_arr[i].actual_speed_x100 = 0;
                     train_arr[i].train_commands.Push({TRAIN_COMMAND::STOP, 0});
-                    train_arr[i].go = false;
+                    train_arr[i].isMoving = false;
                 }
                 Conductor::UpdateTrainDisplay();
             }
@@ -529,8 +535,9 @@ namespace Conductor_NS
             if (train_arr[i].train_num == -1)
                 continue;
 
-            const char *next_sensor_name = train_arr[i].last_sent_sensor ? train_arr[i].last_sent_sensor->name : "N/A";
-            IO_NS::PrintTerminal("Conductor::UpdateTrainDisplay -- Train %d: next sensor -> {%s}\r\n", train_arr[i].train_num, next_sensor_name);
+            train_task_mapping *train = &train_arr[i];
+            const char *next_sensor_name = (train->last_sent_sensor && train->last_sensor != train->last_sent_sensor) ? train_arr[i].last_sent_sensor->name : "N/A";
+            // IO_NS::PrintTerminal("Conductor::UpdateTrainDisplay -- Train %d: next sensor -> {%s}\r\n", train_arr[i].train_num, next_sensor_name);
             IO_NS::Print(MOVE_CURSOR "%d",
                          TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 2, train_arr[i].train_num);
             IO_NS::Print(MOVE_CURSOR "%d ",
@@ -565,11 +572,9 @@ namespace Conductor_NS
                 IO_NS::Print(MOVE_CURSOR "%d ",
                              TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 80, train_arr[i].total_path_distance);
             }
-            if (train_arr[i].remaining_distance != 0)
-            {
-                IO_NS::Print(MOVE_CURSOR "%d ",
-                             TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 93, train_arr[i].remaining_distance - train_arr[i].middle_distance);
-            }
+
+            IO_NS::Print(MOVE_CURSOR "%d ",
+                         TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 93, train_arr[i].middle_distance + train_arr[i].middle_distance);
             // int approx_dist_travelled_in_segment = 0;
             // int known_dist_travelled = 0;
             // train_arr[i].total_dist_travelled.Pop(&approx_dist_travelled_in_segment);
@@ -705,7 +710,7 @@ namespace Conductor_NS
                 // IO_NS::PrintTerminal(COLOR_YELLOW "Conductor::ConductorLoop -- Received TICK request from %d\r\n", sender_tid);
                 for (int i = 0; i < NUM_TRAINS; ++i)
                 {
-                    if (train_arr[i].train_num == -1)
+                    if (train_arr[i].train_num == -1 || train_arr[i].speed_level <= 0)
                     {
                         continue;
                     }
@@ -728,48 +733,29 @@ namespace Conductor_NS
 
     void Conductor::update_position(train_task_mapping *train)
     {
-        if (!train->go)
-            return;
-        if (!train->reach_first_sensor)
-            return;
-        // IO_NS::PrintTerminal(COLOR_YELLOW "Conductor::ConductorLoop -- Updating position for train %d\r\n", train->train_num);
-        int cur_tick = TIME(CLOCK_SERVER_TID);
+        // if (!train->isMoving)
+        return;
 
+        int cur_tick = TIME(CLOCK_SERVER_TID);
         int delta_ticks = cur_tick - train->last_sensor_trigger_tick;
 
         // Update middle distance between sensors
         train->middle_distance = (train->actual_speed_x100 * delta_ticks) / 100;
 
-        // IO_NS::PrintTerminal(COLOR_RED "Jack:----------------- train->last_sensor_trigger_tick %d, actual_speedx100 %d.\r\n", cur_tick, train->last_sensor_trigger_tick, train->actual_speed_x100);
+        // PEEK the stopping target
+        track_node stopping_target;
+        int dist_to_conflict;
+        train->stopping_targets.Peek(&stopping_target, &dist_to_conflict);
 
-        // Check stopping condition
-        int current_remaining = train->remaining_distance - train->middle_distance;
-
-        // IO_NS::PrintTerminal("Train %d: remaining_distance %d, middle_distance %d, current_remaining %d,  total_path_distance%d\r\n",
-        //                      train->train_num,
-        //                      train->remaining_distance,
-        //                      train->middle_distance,
-        //                      current_remaining,
-        //                      train->total_path_distance);
-
-        if (current_remaining <= 0)
+        // int dist_to_conflict =
+        if (train->middle_distance + train->total_dist_travelled >= dist_to_conflict)
         {
-            IO_NS::PrintTerminal(COLOR_RED "STOPPING Train %d: Reached stopping point!\r\n",
-                                 train->train_num);
-            train->train_commands.Push({TRAIN_COMMAND::STOP, 0});
-            train->go = false;
-            train->reach_first_sensor = false;
-        }
-
-        int conflict_distance_remaining = train->distance_to_conflict - train->middle_distance;
-        if (train->conflict_exists && conflict_distance_remaining <= 0)
-        {
+            IO_NS::PrintTerminal(COLOR_RED "Conductor::update_position -- Train %d reached stopping target %s\r\n", train->train_num, stopping_target.name);
             StopTrainConflict(train);
+            train->stopping_targets.Pop(nullptr);
         }
 
         Conductor::UpdateTrainDisplay();
-        // train->total_dist_travelled.Pop(nullptr);
-        // train->total_dist_travelled.Push(approximate_distance);
     }
 
     void Conductor::DispatchCommand()
@@ -785,6 +771,28 @@ namespace Conductor_NS
             MessengerUnit *command_messenger = &train->command_messenger;
             MessengerUnit *sensor_messenger = &train->sensor_messenger;
 
+            // check if the path is still reserved
+            if (train->check_if_blocked && !train->path.IsEmpty())
+            {
+                IO_NS::PrintTerminal(COLOR_RED "Conductor::DispatchCommand -- TRAIN %d is blocked, trying to reserve path\r\n", train->train_num);
+                train->isTrainBlocked = !ReservePath(train);
+                IO_NS::PrintTerminal("Conductor::DispatchCommand -- finished reserving path -- STATUS BELOW:\r\n");
+                IO_NS::PrintTerminal("Conductor::DispatchCommand -- TRAIN %d is blocked: %d\r\n", train->train_num, train->isTrainBlocked);
+                train->check_if_blocked = train->isTrainBlocked;
+                // if (!train->isTrainBlocked)
+                {
+                    // IO_NS::PrintTerminal(COLOR_GREEN "Conductor::DispatchCommand -- Train %d is unblocked\r\n", train->train_num);
+                    // train->check_if_blocked = false;
+                    //         // train->conflict_exists = false;
+                    //         // train->isMoving = true;
+                    //         // train->train_commands.Push({TRAIN_COMMAND::ACCELERATE, train->speed_level});
+                }
+            }
+            else
+            {
+                IO_NS::PrintTerminal(COLOR_BLUE "Conductor::DispatchCommand -- Train %d is not blocked -- not checking\r\n", train->train_num);
+            }
+
             if (sensor_messenger->messenger_id > 0 && !sensor_messenger->sent_reply && !train->path.IsEmpty())
             {
                 // check if current top node is still what was last sent
@@ -796,45 +804,42 @@ namespace Conductor_NS
                 {
                     // IO_NS::PrintTerminal(COLOR_CYAN "Conductor::DispatchCommand -- Sensor %s is the same\r\n", node.node->name);
                 }
-                else
+                else if (train->reserved_sensors_count > 2)
                 {
                     track_node *first_sensor;
                     track_node *second_sensor;
                     get_sensors_to_listen_to(train, first_sensor, second_sensor);
-                    // if (first_sensor != nullptr)
-                    // {
-                    //     IO_NS::PrintTerminal(COLOR_CYAN "Conductor::DispatchCommand -- Sensor %s is the first sensor\r\n", first_sensor->name);
-                    // }
-                    // else
-                    // {
-                    //     IO_NS::PrintTerminal(COLOR_CYAN "Conductor::DispatchCommand -- first sensor is null\r\n");
-                    // }
-                    // if (second_sensor != nullptr)
-                    // {
-                    //     IO_NS::PrintTerminal(COLOR_CYAN "Conductor::DispatchCommand -- Sensor %s is the second sensor\r\n", second_sensor->name);
-                    // }
-                    // else
-                    // {
-                    //     IO_NS::PrintTerminal(COLOR_CYAN "Conductor::DispatchCommand -- second sensor is null\r\n");
-                    // }
 
-                    if (first_sensor != nullptr)
-                    {
-                        train->last_sent_sensor = first_sensor;
-                        train->last_sent_sensor_safety = second_sensor;
+                    // get num sensors reserved
 
-                        // send sensor to messenger
-                        ListenToSensors sensors = {train->train_num, first_sensor, second_sensor};
-                        REPLY(sensor_messenger->messenger_id, (char *)&sensors, sizeof(ListenToSensors));
-                        sensor_messenger->sent_reply = true;
-                        // uassert(false && "Conductor::DispatchCommand -- Error: sensor messenger sent reply");
-                    }
-                    else
+                    if (!train->isMoving)
                     {
-                        // set speed to 0
-                        train->train_commands.Clear();
-                        train->train_commands.Push({TRAIN_COMMAND::STOP, 0});
+                        // SEND ACCELERATE COMMAND
+                        IO_NS::PrintTerminal(COLOR_GREEN "Conductor::DispatchCommand -- Making Train %d move\r\n", train->train_num);
+                        train->train_commands.Push({TRAIN_COMMAND::ACCELERATE, train->speed_level});
+                        // if (train->train_num == 77)
+                        // {
+                        // uassert(false && "Conductor::DispatchCommand -- Train 77 is moving FORCED ERROR FOR TESTING!");
+                        // }
                     }
+
+                    train->last_sent_sensor = first_sensor;
+                    train->last_sent_sensor_safety = second_sensor;
+
+                    // send sensor to messenger
+                    ListenToSensors sensors = {train->train_num, first_sensor, second_sensor};
+                    REPLY(sensor_messenger->messenger_id, (char *)&sensors, sizeof(ListenToSensors));
+                    sensor_messenger->sent_reply = true;
+                    // uassert(false && "Conductor::DispatchCommand -- Error: sensor messenger sent reply");
+                }
+                else
+                {
+                    train->last_sent_sensor = nullptr;
+                    train->last_sent_sensor_safety = nullptr;
+                    IO_NS::PrintTerminal(COLOR_RED "Conductor::DispatchCommand -- Train %d does not have more than 2 reserved sensors SENDING STOP\r\n", train->train_num);
+                    // set speed to 0
+                    train->train_commands.Clear();
+                    train->train_commands.Push({TRAIN_COMMAND::STOP, 0});
                 }
             }
 
@@ -843,25 +848,19 @@ namespace Conductor_NS
                 IO_NS::PrintTerminal(COLOR_CYAN "Conductor::DispatchCommand -- Sending Train Command to messenger %d (train %d)\r\n", command_messenger->messenger_id, train->train_num);
                 TrainCommandNotification command;
                 train->train_commands.Pop(&command);
+                // check for accelerate command
+                if (command.command == TRAIN_COMMAND::ACCELERATE)
+                {
+                    train->isMoving = true;
+                    train->last_sensor_trigger_tick = TIME(CLOCK_SERVER_TID);
+                }
+                else if (command.command == TRAIN_COMMAND::STOP)
+                {
+                    train->isMoving = false;
+                }
+
                 REPLY(command_messenger->messenger_id, (char *)&command, sizeof(TrainCommandNotification));
                 command_messenger->sent_reply = true;
-            }
-
-            // check if the path is still reserved
-            if (train->check_if_blocked)
-            {
-                train->isTrainBlocked = !ReservePath(train);
-                if (!train->isTrainBlocked)
-                {
-                    train->check_if_blocked = false;
-                    train->conflict_exists = false;
-                    train->go = true;
-                    train->train_commands.Push({TRAIN_COMMAND::ACCELERATE, train->speed_level});
-                }
-            }
-            else
-            {
-                // IO_NS::PrintTerminal(COLOR_MAGENTA "Train %d is not blocked -- not checking\r\n", train->train_num);
             }
 
             if (!train->isTrainBlocked)
@@ -1054,6 +1053,7 @@ namespace Conductor_NS
         bool reservation_conflict = false;
 
         Queue<PathNode, 6> temp_segment_queue; // use this to check if the segment is already reserved
+        PathNode last_reserved_node;
         while (!path->IsEmpty())
         {
             PathNode node;
@@ -1067,6 +1067,7 @@ namespace Conductor_NS
             }
             // temp_queue.Push(node);
             temp_segment_queue.Push(node);
+            last_reserved_node = node;
             if (node.node->type == NODE_SENSOR)
             {
                 while (!temp_segment_queue.IsEmpty())
@@ -1089,8 +1090,8 @@ namespace Conductor_NS
             path->Push(node);
         }
 
-        train->distance_to_conflict = 0;
         train->conflict_exists = reservation_conflict;
+        int distance_to_conflict = 0;
         while (!temp_queue.IsEmpty())
         {
             PathNode node;
@@ -1107,11 +1108,15 @@ namespace Conductor_NS
 
                 if (node.node != train->last_sensor)
                 {
-                    train->distance_to_conflict += node.node->edge[DIR].dist;
+                    distance_to_conflict += node.node->edge[DIR].dist;
                 }
             }
             node.node->who_reserved_me = train->train_num;
             train->reserved_nodes.Push(*node.node);
+            if (node.node->type == NODE_SENSOR)
+            {
+                train->reserved_sensors_count++;
+            }
             node.node->reverse->who_reserved_me = train->train_num;
             train->reserved_reverse_nodes.Push(*node.node->reverse);
         }
@@ -1124,78 +1129,33 @@ namespace Conductor_NS
         IO_NS::PrintTerminal(COLOR_MAGENTA "Conductor::RESERVE_PATH -- Reserved REVERSE nodes: ");
         train->reserved_reverse_nodes.Print();
 
-        return !reservation_conflict; // return true if reservation was successful
-    }
-
-    bool Conductor::ReserveSegment(train_task_mapping *train)
-    {
-        IO_NS::PrintTerminal(COLOR_RED "Conductor::ReserveSegment -- reserving segment for train %d\r\n", train->train_num);
-        Stack<PathNode, TRACK_MAX> *path = &train->path;
-        // try to reserve the next segment
-
-        // D7 TRIGGERED ~~~ E7  ~~~ RESERVE THIS SEGMENT ~~~ SENSOR
-        // E7  ~~~ RESERVE THIS SEGMENT ~~~ SENSOR
-        if (path->IsEmpty())
+        if (reservation_conflict) // if we have a reservation conflict, PUSH NEW STOPPING TARGET
         {
-            IO_NS::PrintTerminal("Conductor::ReserveSegment -- path is empty, not reserving another segment\r\n");
-            return false;
+            IO_NS::PrintTerminal("CONFLICT ENCOUNTERED -- LAST RESERVED NODE: %s\r\n", last_reserved_node.node->name);
+            // PEEK INTO STOPPING_TARGETS TO SEE IF THIS NODE IS ALREADY REGISTERED
+            // track_node *next_proposed_target;
+            // train->stopping_targets.Peek(next_proposed_target, nullptr);
+            // if (next_proposed_target && next_proposed_target == last_reserved_node.node)
+            // {
+            //     IO_NS::PrintTerminal("Conductor::ReservePath -- already registered as stopping target\r\n");
+            //     uassert(false && "FORCED ERROR -- CONFLICT ENCOUNTERED (THIS IS GOOD!)");
+            // }
+            // else
+            // {
+            //     IO_NS::PrintTerminal("Train %d OFFSET: %d\r\n", train->train_num, train->offset);
+            //     int stopping_target = train->total_dist_travelled + distance_to_conflict - train->stopping_distance - train->offset;
+            //     // add to stopping targets
+            //     train->stopping_targets.Push(*last_reserved_node.node, stopping_target);
+            //     IO_NS::PrintTerminal(COLOR_RED "Conductor::ReservePath -- added %s to stopping targets in %d mm\r\n", last_reserved_node.node->name, stopping_target);
+            //     IO_NS::PrintTerminal(COLOR_RED "Conductor::ReservePath -- WITHOUT OFFSET: %s to stopping targets in %d mm\r\n", last_reserved_node.node->name, distance_to_conflict - train->stopping_distance);
+            //     // uassert(false && "FORCED ERROR -- CONFLICT ENCOUNTERED");
+            //     train->offset = 0;
+            // }
+            IO_NS::PrintTerminal(COLOR_RED "Conductor::ReservePath -- CONFLICT ENCOUNTERED -- Train %d -- distance to conflict: %d\r\n", train->train_num, distance_to_conflict);
         }
+        IO_NS::PrintTerminal("RETURNING FROM RESERVE PATH -- CONFLICT: %d\r\n", reservation_conflict);
 
-        Stack<PathNode, 10> temp_stack; // used to restore the path
-        Queue<PathNode, 10> temp_queue; // used to push to the train queue for reserved nodes
-
-        // ASSUME FIRST NODE IS ALREADY RESERVED
-        bool reservation_conflict = false;
-        bool is_first_node = true;
-        while (!path->IsEmpty())
-        {
-            PathNode node;
-            path->Pop(&node);
-            temp_stack.Push(node);
-            int reserved_by = node.node->who_reserved_me;
-            if (reserved_by == train->train_num)
-            {
-                continue;
-            }
-            temp_queue.Push(node);
-
-            if (reserved_by != -1 && reserved_by != train->train_num)
-            {
-                IO_NS::PrintTerminal("Conductor::ReserveSegment -- reservation conflict on %s -- reserved by %d\r\n", node.node->name, reserved_by);
-                reservation_conflict = true;
-                break;
-            }
-
-            if (node.node->type == NODE_SENSOR && !is_first_node)
-            {
-                break;
-            }
-            is_first_node = false;
-        }
-
-        while (!temp_stack.IsEmpty())
-        {
-            PathNode node;
-            temp_stack.Pop(&node);
-            path->Push(node);
-        }
-
-        if (reservation_conflict)
-        {
-            return false;
-        }
-
-        while (!temp_queue.IsEmpty())
-        {
-            PathNode node;
-            temp_queue.Pop(&node);
-            node.node->who_reserved_me = train->train_num;
-            train->reserved_nodes.Push(*node.node);
-            node.node->reverse->who_reserved_me = train->train_num;
-            train->reserved_reverse_nodes.Push(*node.node->reverse);
-        }
-
-        return reservation_conflict;
+        return (reservation_conflict ? false : true);
     }
 
     void Conductor::ReleaseSegment(train_task_mapping *train)
@@ -1216,6 +1176,10 @@ namespace Conductor_NS
             IO_NS::PrintTerminal("Conductor::ReleaseSegment -- releasing %s for train %d\r\n", node.name, train->train_num);
             IO_NS::PrintTerminal("NODE: %s -- reserved by %d\r\n", node.name, node.who_reserved_me);
             train->reserved_nodes.Pop(&node);
+            if (node.type == NODE_SENSOR)
+            {
+                train->reserved_sensors_count--;
+            }
             train->reserved_reverse_nodes.Pop(&node);
             node.reverse->who_reserved_me = -1;
         }
@@ -1303,45 +1267,33 @@ namespace Conductor_NS
         train->last_sensor = next_sensor.node;
 
         // new distance calculation logic
-        train->remaining_distance -= train->current_segment_length;
-        train->distance_to_conflict -= train->current_segment_length;
+        train->total_dist_travelled += train->current_segment_length + missed_segment_length;
         train->middle_distance = 0; // Reset between-sensors distance
 
-        // Prevent negative remaining distance
-        if (train->remaining_distance < 0)
-        {
-            train->remaining_distance = 0;
-            train->train_commands.Push({TRAIN_COMMAND::STOP, 0});
-        }
-        if (train->conflict_exists && train->distance_to_conflict <= 0)
-        {
-            StopTrainConflict(train);
-        }
-
         train->last_sensor_trigger_tick = triggered_tick;
-        UpdateTrainDisplay();
+        // UpdateTrainDisplay();
 
         PopSegment(train);
         SwitchNextSegment(&train->path);
-        IO_NS::PrintTerminal(COLOR_GREEN "Conductor::ProcessSensorTrigger -- Reserved QUEUE:");
-        train->reserved_nodes.Print();
-        IO_NS::PrintTerminal(COLOR_GREEN "Conductor::ProcessSensorTrigger -- RELEASING SEGMENT:");
+        // IO_NS::PrintTerminal(COLOR_GREEN "Conductor::ProcessSensorTrigger -- Reserved QUEUE:");
+        // train->reserved_nodes.Print();
+        // IO_NS::PrintTerminal(COLOR_GREEN "Conductor::ProcessSensorTrigger -- RELEASING SEGMENT:");
         ReleaseSegment(train);
-        train->reserved_nodes.Print();
+        // train->reserved_nodes.Print();
 
-        IO_NS::PrintTerminal(COLOR_GREEN "POPPED SEGMENT FROM PATH; REMAINING PATH:");
-        train->path.Print();
-        IO_NS::PrintTerminal(COLOR_GREEN "Conductor::ProcessSensorTrigger -- HANDLED %s TRIGGER\r\n", (triggered_idx == expected_idx) ? train->last_sent_sensor->name : train->last_sent_sensor_safety->name);
+        // IO_NS::PrintTerminal(COLOR_GREEN "POPPED SEGMENT FROM PATH; REMAINING PATH:");
+        // train->path.Print();
+        // IO_NS::PrintTerminal(COLOR_GREEN "Conductor::ProcessSensorTrigger -- HANDLED %s TRIGGER\r\n", (triggered_idx == expected_idx) ? train->last_sent_sensor->name : train->last_sent_sensor_safety->name);
     }
 
     void Conductor::StopTrainConflict(train_task_mapping *train)
     {
-        IO_NS::PrintTerminal(COLOR_RED "Conductor::StopTrainConflict -- Train %d is in conflict\r\n", train->train_num);
+        IO_NS::PrintTerminal(COLOR_RED "STOPTRAINCONFLICT DISABLED");
+        // IO_NS::PrintTerminal(COLOR_RED "Conductor::StopTrainConflict -- Train %d is in conflict\r\n", train->train_num);
         train->train_commands.Push({TRAIN_COMMAND::STOP, 0});
         train->check_if_blocked = true;
-        train->go = false;
-        train->conflict_exists = true;
-        train->distance_to_conflict = 0;
         // uassert(false && "Conductor::StopTrainConflict -- Error stopping train");
     }
 }
+
+// ADD IS_MOVING UPDATE

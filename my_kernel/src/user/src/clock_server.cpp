@@ -95,7 +95,7 @@ private:
     }
 
     uint32_t TOTAL_TICKS = 0;
-    PQueue<int> waitingTasks;
+    PQueue<int, HEAP_SIZE> waitingTasks;
 };
 
 // wrappers for calls to the clock server

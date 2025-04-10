@@ -2,6 +2,7 @@
 #define _CONDUCTOR_H_
 
 #include "track_data.h"
+#include "../../containers/pqueue.h"
 #include "../marklin/sensor.h"
 #include "../marklin/switch.h"
 #include "../marklin/train.h"
@@ -60,40 +61,37 @@ namespace Conductor_NS
             MessengerUnit path_messenger;
             MessengerUnit sensor_messenger;
 
-            track_node *last_sensor;
+            track_node *last_sensor;               // LAST TRIGGERED SENSOR
+            track_node *last_sent_sensor;          // LAST SENSOR SENT TO MARKLIN WATCHER
+            track_node *last_sent_sensor_safety;   // LAST SAFETY SENSOR SENT TO MARKLIN WATCHER
+            uint32_t last_sensor_trigger_tick = 0; // LAST TICK WHEN SENSOR WAS TRIGGERED
 
             int speed_level;
             int actual_speed_x100;
             int stopping_distance;
+
             int start_offset;
             char destination[5];
             int offset;
 
             int total_path_distance; // Total distance of current path
-            int remaining_distance;  // Remaining distance to destination
-
+            int middle_distance;     // Distance traveled since last sensor
+            PQueue<track_node, 3> stopping_targets;
             bool conflict_exists;
-            int distance_to_conflict; // STOP TRAIN BEFORE this distance
 
-            int middle_distance; // Distance traveled since last sensor
-
-            bool go;
+            bool isMoving;
             bool reach_first_sensor;
             bool check_if_blocked;
+            bool isTrainBlocked;
 
             Queue<TrainCommandNotification, 5> train_commands;
             Stack<PathNode, TRACK_MAX> path;
             Queue<track_node, TRACK_MAX> reserved_nodes;
+            int reserved_sensors_count;
             Queue<track_node, TRACK_MAX> reserved_reverse_nodes;
 
-            bool isTrainBlocked;
-
             int current_segment_length = 0;
-            Stack<int, 2> total_dist_travelled;
-
-            track_node *last_sent_sensor;
-            track_node *last_sent_sensor_safety;
-            uint32_t last_sensor_trigger_tick = 0;
+            int total_dist_travelled;
         };
         void update_position(train_task_mapping *train);
 
@@ -105,7 +103,7 @@ namespace Conductor_NS
         void setSwitch(int addr, SwitchState state);
         void PopSegment(train_task_mapping *train);
 
-        bool ReserveSegment(train_task_mapping *train);
+        // bool ReserveSegment(train_task_mapping *train);
         bool ReservePath(train_task_mapping *train);
         void ReleaseSegment(train_task_mapping *train);
 

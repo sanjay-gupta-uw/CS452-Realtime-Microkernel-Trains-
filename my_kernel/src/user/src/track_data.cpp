@@ -2753,7 +2753,7 @@ void Track::find_path(const char *start, const char *dest, Stack<PathNode, TRACK
     dist[index] = 0;
 
     // PQueue for nodes to explore, sorted by distance
-    PQueue<int> pq;
+    PQueue<int, HEAP_SIZE> pq;
     pq.Push(index, 0); // push start node
 
     bool path_found = false;
@@ -2886,6 +2886,7 @@ void Track::find_path(const char *start, const char *dest, Stack<PathNode, TRACK
                 edge_length = node->edge[DIR_AHEAD].dist;
                 IO_NS::PrintTerminal(COLOR_YELLOW " - %d - ", edge_length);
                 IO_NS::PrintTerminal("%s ", node->name);
+                total_length += edge_length;
                 path->Push({node, SwitchState::UNINITIALIZED});
                 break;
             }
