@@ -86,6 +86,8 @@ namespace Conductor_NS
             bool check_if_blocked;
             bool isTrainBlocked;
 
+            bool auto_mode;
+
             Queue<TrainCommandNotification, 5> train_commands;
             Stack<PathNode, TRACK_MAX> path;
             Queue<PathNode, TRACK_MAX> reserved_nodes;
@@ -95,6 +97,10 @@ namespace Conductor_NS
             int current_segment_length = 0;
             int total_dist_travelled;
         };
+        int custom_rand();
+
+        void GenerateAndSendNewCommand(train_task_mapping *train);
+
         void update_position(train_task_mapping *train);
 
         void SwitchNextSegment(Stack<PathNode, TRACK_MAX> *path);
@@ -120,6 +126,8 @@ namespace Conductor_NS
         train_task_mapping train_arr[NUM_TRAINS];
         Track track;
         SpeedData speed_data;
+
+        int command_index;
     };
 
     void start_sensor_messenger();

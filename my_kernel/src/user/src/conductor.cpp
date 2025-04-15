@@ -17,6 +17,33 @@ typedef struct IO_REQUEST
     unsigned char ch;
 };
 
+
+static constexpr char* SENSOR_IDS_0[] = {
+    "A3", "E5", "E2", "B16", "D12", "A3", "E9", "B15"
+};
+
+static constexpr int OFFSETS_0[] = {
+    0, 0, 0, 0, 0, 0, 0, 0
+};
+
+static constexpr int SPEEDS_0[] = {
+    7, 7, 7, 7, 7, 7, 7, 7
+};
+
+
+static constexpr char* SENSOR_IDS_1[] = {
+    "D11", "C14", "A3", "E5", "E2", "B16", "D12", "A3"
+};
+
+static constexpr int OFFSETS_1[] = {
+    0, 0, 0, 0, 0, 0, 0, 0
+};
+
+static constexpr int SPEEDS_1[] = {
+    7, 7, 7, 7, 7, 7, 7, 7
+};
+
+
 namespace Conductor_NS
 {
 
@@ -97,6 +124,7 @@ namespace Conductor_NS
         IO_NS::PrintTerminal("Conductor received request for track %c\r\n", track_id);
         uassert(track_id == 'A' || track_id == 'B' || track_id == 'a' || track_id == 'b');
         track.init(track_id);
+        command_index = 0;
 
         if (track_id == 'A' || track_id == 'a')
         {
@@ -501,6 +529,19 @@ namespace Conductor_NS
         {
             StopAllTrains();
         }
+        case COMMAND::AUTO:
+        {
+            for (int i = 0; i < NUM_TRAINS; ++i) {
+                if (train_arr[i].train_num != -1) {
+                    train_arr[i].auto_mode = true;
+
+                    // Generate random parameters
+                    GenerateAndSendNewCommand(&train_arr[i]);
+                }
+            }
+            IO_NS::PrintTerminal("Auto mode enabled for all trains\r\n");
+            break;
+        }   
         default:
             IO_NS::PrintTerminal("Conductor received INVALID request\r\n");
             break;
@@ -736,6 +777,62 @@ namespace Conductor_NS
             }
         }
         EXIT();
+    }
+
+    int Conductor::custom_rand() {
+        int custom_rand_seed = 20883952;
+        // Simple Linear Congruential Generator
+        custom_rand_seed = (214013 * custom_rand_seed + 2531011);
+        return (custom_rand_seed >> 16) & 0x7FFF;
+    }
+    
+
+    void Conductor::GenerateAndSendNewCommand(train_task_mapping *train) {
+        // Get values from lists
+        char* dest_sensor;
+        int offset;
+        int speed;
+        int list_size;
+        if (train->train_num == 54)
+        {
+            dest_sensor = SENSOR_IDS_0[command_index];
+            offset = OFFSETS_0[command_index];
+            speed = SPEEDS_0[command_index];
+            list_size = sizeof(SENSOR_IDS_0)/sizeof(SENSOR_IDS_0[0]);
+        } 
+        else if(train->train_num == 77)
+        {
+            dest_sensor = SENSOR_IDS_1[command_index];
+            offset = OFFSETS_1[command_index];
+            speed = SPEEDS_1[command_index]; 
+            list_size = sizeof(SENSOR_IDS_1)/sizeof(SENSOR_IDS_1[0]);           
+        }
+        else {
+            dest_sensor = SENSOR_IDS_1[command_index];
+            offset = OFFSETS_1[command_index];
+            speed = SPEEDS_1[command_index];  
+            list_size = sizeof(SENSOR_IDS_1)/sizeof(SENSOR_IDS_1[0]);            
+        }
+        
+        // Create command
+        ConductorRequest req(COMMAND::GOTO, 
+                            train->train_num, 
+                            speed,
+                            dest_sensor,
+                            dest_sensor,
+                            offset);
+        
+        ProcessRequest(&req.data.cmdRequest);
+
+        IO_NS::PrintTerminal(COLOR_YELLOW "Automated GOTO: train %d go to %s %d with speed %d\r\n", train->train_num, dest_sensor, offset, speed);
+        
+        // Move to next index
+        command_index++;
+        
+        // Optional: Reset index if needed
+        if (command_index >= list_size) {
+            command_index = 0;
+        }
     }
 
     void Conductor::update_position(train_task_mapping *train)
