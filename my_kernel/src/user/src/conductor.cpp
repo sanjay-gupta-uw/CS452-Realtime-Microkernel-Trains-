@@ -454,6 +454,7 @@ namespace Conductor_NS
                 train->train_commands.Push({TRAIN_COMMAND::REVERSE, speed});
             }
 
+            // this should be done after the train is moving
             train_arr[train_index].speed_level = speed;
             SwitchNextSegment(&train->path);
             IO_NS::PrintTerminal(COLOR_GREEN "Conductor::GOTO -- Reserved segment after:\r\n");
@@ -664,7 +665,7 @@ namespace Conductor_NS
             // receive request from terminal
             retval = RECEIVE(&sender_tid, (char *)&req, sizeof(ConductorRequest));
             uassert(retval >= 0 && "Error receiving request from terminal");
-            // IO_NS::PrintTerminal("Conductor received %s from %d\r\n", req.requestType == RequestType::CMD ? "CMD" : (req.requestType == RequestType::GET_SEGMENT ? "GET_SEGMENT" : (req.requestType == RequestType::GET_CMD ? "GET_CMD" : (req.requestType == RequestType::GET_SENSOR ? "GET_SENSOR" : (req.requestType == RequestType::SENSOR_TRIGGER ? "SENSOR_TRIGGER" : "TICK")))), sender_tid);
+            IO_NS::PrintTerminal("Conductor received %s from %d\r\n", req.requestType == RequestType::CMD ? "CMD" : (req.requestType == RequestType::GET_SEGMENT ? "GET_SEGMENT" : (req.requestType == RequestType::GET_CMD ? "GET_CMD" : (req.requestType == RequestType::GET_SENSOR ? "GET_SENSOR" : (req.requestType == RequestType::SENSOR_TRIGGER ? "SENSOR_TRIGGER" : "TICK")))), sender_tid);
 
             bool sendReply = false;
             if (req.requestType == RequestType::CMD)
@@ -757,10 +758,10 @@ namespace Conductor_NS
             // check if the path is still reserved
             if (train->check_if_blocked && !train->path.IsEmpty())
             {
-                IO_NS::PrintTerminal(COLOR_RED "Conductor::DispatchCommand -- TRAIN %d is blocked, trying to reserve path\r\n", train->train_num);
+                // IO_NS::PrintTerminal(COLOR_RED "Conductor::DispatchCommand -- TRAIN %d is blocked, trying to reserve path\r\n", train->train_num);
                 train->isTrainBlocked = !ReservePath(train);
-                IO_NS::PrintTerminal("Conductor::DispatchCommand -- finished reserving path -- STATUS BELOW:\r\n");
-                IO_NS::PrintTerminal("Conductor::DispatchCommand -- TRAIN %d is blocked: %d\r\n", train->train_num, train->isTrainBlocked);
+                // IO_NS::PrintTerminal("Conductor::DispatchCommand -- finished reserving path -- STATUS BELOW:\r\n");
+                // IO_NS::PrintTerminal("Conductor::DispatchCommand -- TRAIN %d is blocked: %d\r\n", train->train_num, train->isTrainBlocked);
                 train->check_if_blocked = train->isTrainBlocked;
                 // if (!train->isTrainBlocked)
                 {
@@ -773,7 +774,7 @@ namespace Conductor_NS
             }
             else
             {
-                IO_NS::PrintTerminal(COLOR_BLUE "Conductor::DispatchCommand -- Train %d is not blocked -- not checking\r\n", train->train_num);
+                // IO_NS::PrintTerminal(COLOR_BLUE "Conductor::DispatchCommand -- Train %d is not blocked -- not checking\r\n", train->train_num);
             }
 
             if (sensor_messenger->messenger_id > 0 && !sensor_messenger->sent_reply && !train->path.IsEmpty())
@@ -1209,7 +1210,7 @@ namespace Conductor_NS
         {
             // IO_NS::PrintTerminal(COLOR_YELLOW "TRAIN TICKER{%d}:: Sending TICK to Train task\r\n", my_tid);
             int retval = SEND(conductor_tid, (char *)&tick_message, sizeof(tick_message), nullptr, 0);
-            DELAY(CLOCK_SERVER_TID, 1);
+            DELAY(CLOCK_SERVER_TID, 100);
         }
     }
 
