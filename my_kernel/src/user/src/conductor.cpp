@@ -17,35 +17,26 @@ typedef struct IO_REQUEST
     unsigned char ch;
 };
 
-static constexpr char* FORBIDDEN_SENSORS[] = {
-    "A3", "B16", "D6", "D7"
-};
+static constexpr char *FORBIDDEN_SENSORS[] = {
+    "A3", "B16", "D6", "D7"};
 
-static constexpr char* SENSOR_IDS_0[] = {
-    "A15", "E5", "E2", "B16", "D12", "A3", "E9", "B15"
-};
+static constexpr char *SENSOR_IDS_0[] = {
+    "A15", "E5", "E2", "B16", "D12", "A3", "E9", "B15"};
 
 static constexpr int OFFSETS_0[] = {
-    0, 0, 0, 0, 0, 0, 0, 0
-};
+    0, 0, 0, 0, 0, 0, 0, 0};
 
 static constexpr int SPEEDS_0[] = {
-    7, 7, 7, 7, 7, 7, 7, 7
-};
+    7, 7, 7, 7, 7, 7, 7, 7};
 
-
-static constexpr char* SENSOR_IDS_1[] = {
-    "A14", "C14", "A3", "E5", "E2", "B16", "D12", "A3"
-};
+static constexpr char *SENSOR_IDS_1[] = {
+    "A14", "C14", "A3", "E5", "E2", "B16", "D12", "A3"};
 
 static constexpr int OFFSETS_1[] = {
-    0, 0, 0, 0, 0, 0, 0, 0
-};
+    0, 0, 0, 0, 0, 0, 0, 0};
 
 static constexpr int SPEEDS_1[] = {
-    7, 7, 7, 7, 7, 7, 7, 7
-};
-
+    7, 7, 7, 7, 7, 7, 7, 7};
 
 namespace Conductor_NS
 {
@@ -545,8 +536,10 @@ namespace Conductor_NS
         }
         case COMMAND::AUTO:
         {
-            for (int i = 0; i < NUM_TRAINS; ++i) {
-                if (train_arr[i].train_num != -1) {
+            for (int i = 0; i < NUM_TRAINS; ++i)
+            {
+                if (train_arr[i].train_num != -1)
+                {
                     train_arr[i].auto_mode = true;
 
                     // Generate random parameters
@@ -555,7 +548,7 @@ namespace Conductor_NS
             }
             IO_NS::PrintTerminal("Auto mode enabled for all trains\r\n");
             break;
-        }   
+        }
         default:
             IO_NS::PrintTerminal("Conductor received INVALID request\r\n");
             break;
@@ -795,82 +788,93 @@ namespace Conductor_NS
         EXIT();
     }
 
-    int Conductor::custom_rand() {
+    int Conductor::custom_rand()
+    {
         int custom_rand_seed = 20883952;
         // Simple Linear Congruential Generator
         custom_rand_seed = (214013 * custom_rand_seed + 2531011);
         return (custom_rand_seed >> 16) & 0x7FFF;
     }
-    
 
-    void Conductor::GenerateAndSendNewCommand(train_task_mapping *train) {
-        char* dest_sensor;
+    void Conductor::GenerateAndSendNewCommand(train_task_mapping *train)
+    {
+        char *dest_sensor;
         int offset;
         int speed;
 
         bool is_forbidden;
-        const int num_forbidden = sizeof(FORBIDDEN_SENSORS)/sizeof(FORBIDDEN_SENSORS[0]);
-        
-/*
-        // Get values from lists for testing
-        int list_size;
-        if (train->train_num == 54)
-        {
-            dest_sensor = SENSOR_IDS_0[command_index];
-            offset = OFFSETS_0[command_index];
-            speed = SPEEDS_0[command_index];
-            list_size = sizeof(SENSOR_IDS_0)/sizeof(SENSOR_IDS_0[0]);
-        } 
-        else if(train->train_num == 77)
-        {
-            dest_sensor = SENSOR_IDS_1[command_index];
-            offset = OFFSETS_1[command_index];
-            speed = SPEEDS_1[command_index]; 
-            list_size = sizeof(SENSOR_IDS_1)/sizeof(SENSOR_IDS_1[0]);           
-        }
-        else {
-            dest_sensor = SENSOR_IDS_1[command_index];
-            offset = OFFSETS_1[command_index];
-            speed = SPEEDS_1[command_index];  
-            list_size = sizeof(SENSOR_IDS_1)/sizeof(SENSOR_IDS_1[0]);            
-        }
-*/
+        const int num_forbidden = sizeof(FORBIDDEN_SENSORS) / sizeof(FORBIDDEN_SENSORS[0]);
 
-        for(int i = 0; i <= 10; i++) {
+        /*
+                // Get values from lists for testing
+                int list_size;
+                if (train->train_num == 54)
+                {
+                    dest_sensor = SENSOR_IDS_0[command_index];
+                    offset = OFFSETS_0[command_index];
+                    speed = SPEEDS_0[command_index];
+                    list_size = sizeof(SENSOR_IDS_0)/sizeof(SENSOR_IDS_0[0]);
+                }
+                else if(train->train_num == 77)
+                {
+                    dest_sensor = SENSOR_IDS_1[command_index];
+                    offset = OFFSETS_1[command_index];
+                    speed = SPEEDS_1[command_index];
+                    list_size = sizeof(SENSOR_IDS_1)/sizeof(SENSOR_IDS_1[0]);
+                }
+                else {
+                    dest_sensor = SENSOR_IDS_1[command_index];
+                    offset = OFFSETS_1[command_index];
+                    speed = SPEEDS_1[command_index];
+                    list_size = sizeof(SENSOR_IDS_1)/sizeof(SENSOR_IDS_1[0]);
+                }
+        */
+
+        for (int i = 0; i <= 10; i++)
+        {
             // Generate random sensor components
-            char bank = 'A' + (custom_rand() % 5);  // A-E
+            char bank = 'A' + (custom_rand() % 5);     // A-E
             int sensor_num = (custom_rand() % 30) + 1; // 1-30
-                
+
             // Manually construct sensor name
             dest_sensor[0] = bank;
-            if(sensor_num >= 10) {
-                dest_sensor[1] = '0' + (sensor_num / 10);  // Tens digit
-                dest_sensor[2] = '0' + (sensor_num % 10);   // Units digit
-            } else {
-                dest_sensor[1] = '0' + sensor_num;          // Single digit
+            if (sensor_num >= 10)
+            {
+                dest_sensor[1] = '0' + (sensor_num / 10); // Tens digit
+                dest_sensor[2] = '0' + (sensor_num % 10); // Units digit
+            }
+            else
+            {
+                dest_sensor[1] = '0' + sensor_num; // Single digit
             }
             IO_NS::PrintTerminal(COLOR_YELLOW "Random generated: %s\r\n", dest_sensor);
         }
-    
+
         // Generate valid random sensor
-        do {
+        do
+        {
             // Generate random sensor components
-            char bank = 'A' + (custom_rand() % 5);  // A-E
+            char bank = 'A' + (custom_rand() % 5);     // A-E
             int sensor_num = (custom_rand() % 30) + 1; // 1-30
-    
+
             // Manually construct sensor name
             dest_sensor[0] = bank;
-            if(sensor_num >= 10) {
-                dest_sensor[1] = '0' + (sensor_num / 10);  // Tens digit
-                dest_sensor[2] = '0' + (sensor_num % 10);   // Units digit
-            } else {
-                dest_sensor[1] = '0' + sensor_num;          // Single digit
+            if (sensor_num >= 10)
+            {
+                dest_sensor[1] = '0' + (sensor_num / 10); // Tens digit
+                dest_sensor[2] = '0' + (sensor_num % 10); // Units digit
+            }
+            else
+            {
+                dest_sensor[1] = '0' + sensor_num; // Single digit
             }
 
             // Check against forbidden list
             is_forbidden = false;
-            for (int i = 0; i < num_forbidden; ++i) {
-                if (strcmp(dest_sensor, FORBIDDEN_SENSORS[i]) == 0) {
+            for (int i = 0; i < num_forbidden; ++i)
+            {
+                if (strcmp(dest_sensor, FORBIDDEN_SENSORS[i]) == 0)
+                {
                     is_forbidden = true;
                     break;
                 }
@@ -879,15 +883,15 @@ namespace Conductor_NS
 
         offset = 0;
         speed = 7;
-        
+
         // Create command
-        ConductorRequest req(COMMAND::GOTO, 
-                            train->train_num, 
-                            speed,
-                            dest_sensor,
-                            dest_sensor,
-                            offset);
-        
+        ConductorRequest req(COMMAND::GOTO,
+                             train->train_num,
+                             speed,
+                             dest_sensor,
+                             dest_sensor,
+                             offset);
+
         ProcessRequest(&req.data.cmdRequest);
 
         IO_NS::PrintTerminal(COLOR_YELLOW "Automated GOTO: train %d go to %s %d with speed %d\r\n", train->train_num, dest_sensor, offset, speed);
@@ -895,7 +899,7 @@ namespace Conductor_NS
         /*
         // Move to next index
         command_index++;
-        
+
         // Optional: Reset index if needed
         if (command_index >= list_size) {
             command_index = 0;
