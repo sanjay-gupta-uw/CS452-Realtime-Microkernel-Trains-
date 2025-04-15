@@ -19,6 +19,17 @@ typedef struct IO_REQUEST
 
 namespace Conductor_NS
 {
+    static void releaseNode(track_node *node)
+    {
+        node->who_reserved_me = -1;
+        node->reverse->who_reserved_me = -1;
+    }
+
+    static void reserveNode(track_node *node, int train_num)
+    {
+        node->who_reserved_me = train_num;
+        node->reverse->who_reserved_me = train_num;
+    }
 
     static void StackTest()
     {
@@ -334,7 +345,6 @@ namespace Conductor_NS
                     train->train_commands.Clear();
                     train->path.Clear();
                     train->reserved_nodes.Clear();
-                    train->reserved_reverse_nodes.Clear();
 
                     IO_NS::PrintTerminal("Index: %d, Train %d spawned with last Sensor %s\r\n", i, train->train_num, train->last_sensor->name);
                     break;
@@ -388,7 +398,6 @@ namespace Conductor_NS
 
             train->path.Clear();
             train->reserved_nodes.Clear();
-            train->reserved_reverse_nodes.Clear();
             train->reserved_sensors_count = 0;
 
             memcpy(train->destination, dest, 4);
@@ -439,6 +448,8 @@ namespace Conductor_NS
             SwitchNextSegment(&train->path);
             IO_NS::PrintTerminal("POPPING FIRST SEGMENT SINCE WE ALREADY PASSED OVER IT\r\n");
             PopSegment(train);
+            IO_NS::PrintTerminal(COLOR_GREEN "Conductor::GOTO -- Reserved path after popping:\r\n");
+            train->reserved_nodes.Print();
 
             IO_NS::PrintTerminal("VERIFYING PATH: ");
             train->path.Print();
@@ -662,6 +673,8 @@ namespace Conductor_NS
         int sensor_trigger_count = 0;
         while (true)
         {
+            // track_node *BR2 = track.get_node_by_name("BR2");
+            // IO_NS::PrintTerminal(COLOR_CYAN "Conductor::ConductorLoop -- BR2: reserved by %d\r\n", BR2->who_reserved_me);
             // receive request from terminal
             retval = RECEIVE(&sender_tid, (char *)&req, sizeof(ConductorRequest));
             uassert(retval >= 0 && "Error receiving request from terminal");
@@ -1034,14 +1047,13 @@ namespace Conductor_NS
                     distance_to_conflict += node.node->edge[DIR].dist;
                 }
             }
-            node.node->who_reserved_me = train->train_num;
-            train->reserved_nodes.Push(node);
+
             if (node.node->type == NODE_SENSOR)
             {
                 train->reserved_sensors_count++;
             }
-            node.node->reverse->who_reserved_me = train->train_num;
-            train->reserved_reverse_nodes.Push(*node.node->reverse);
+            reserveNode(node.node, train->train_num);
+            train->reserved_nodes.Push(node);
         }
 
         temp_queue.Clear();
@@ -1144,15 +1156,12 @@ namespace Conductor_NS
         {
             PathNode pnode;
             train->reserved_nodes.Pop(&pnode);
-            track_node node = *pnode.node;
-            node.who_reserved_me = -1;
             // IO_NS::PrintTerminal("Conductor::ReleasePath -- releasing %s for train %d\r\n", node.name, train->train_num);
-            if (node.type == NODE_SENSOR)
+            if (pnode.node->type == NODE_SENSOR)
             {
                 train->reserved_sensors_count--;
             }
-            train->reserved_reverse_nodes.Pop(&node);
-            node.reverse->who_reserved_me = -1;
+            releaseNode(pnode.node);
         }
     }
 
@@ -1170,26 +1179,26 @@ namespace Conductor_NS
             PathNode pnode;
             int ret = train->reserved_nodes.Peek(&pnode);
             uassert(ret == 0 && "Conductor::ReleaseSegment -- Error peeking reserved node");
-            track_node node = *pnode.node;
 
-            if (node.type == NODE_SENSOR && node.num == train->last_sensor->num)
+            if (pnode.node->type == NODE_SENSOR && pnode.node->num == train->last_sensor->num)
             {
                 break;
             }
-            node.who_reserved_me = -1;
-            IO_NS::PrintTerminal("Conductor::ReleaseSegment -- releasing %s for train %d\r\n", node.name, train->train_num);
-            // get key to continue
-            IO_NS::PrintTerminal(COLOR_RED "Conductor::ReleaseSegment -- Press any key to continue\r\n");
-            unsigned char ch = uart_getc(CONSOLE);
 
-            IO_NS::PrintTerminal("NODE: %s -- reserved by %d\r\n", node.name, node.who_reserved_me);
+            IO_NS::PrintTerminal("Conductor::ReleaseSegment -- releasing %s for train %d\r\n", pnode.node->name, train->train_num);
             train->reserved_nodes.Pop(&pnode);
-            if (node.type == NODE_SENSOR)
+            releaseNode(pnode.node);
+            if (pnode.node->type == NODE_SENSOR)
             {
                 train->reserved_sensors_count--;
             }
-            train->reserved_reverse_nodes.Pop(&node);
-            node.reverse->who_reserved_me = -1;
+
+            IO_NS::PrintTerminal(COLOR_RED "Conductor::ReleaseSegment -- RELEASED REVERSE NODE: %s = {%d}\r\n", pnode.node->reverse->name, pnode.node->reverse->who_reserved_me);
+            // get key to continue
+            // IO_NS::PrintTerminal(COLOR_RED "Conductor::ReleaseSegment -- Press any key to continue\r\n");
+            // track_node *BR2 = track.get_node_by_name("BR2");
+            // IO_NS::PrintTerminal(COLOR_RED "Conductor::ReleaseSegment -- BR2: reserved by %d\r\n", BR2->who_reserved_me);
+            // char c = uart_getc(CONSOLE);
         }
         // uassert(false && "Conductor::ReleaseSegment -- Error getting last sensor address");
     }

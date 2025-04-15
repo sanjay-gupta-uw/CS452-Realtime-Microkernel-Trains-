@@ -90,7 +90,6 @@ namespace Conductor_NS
             Stack<PathNode, TRACK_MAX> path;
             Queue<PathNode, TRACK_MAX> reserved_nodes;
             int reserved_sensors_count;
-            Queue<track_node, TRACK_MAX> reserved_reverse_nodes;
 
             int current_segment_length = 0;
             int total_dist_travelled;
