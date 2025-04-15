@@ -79,6 +79,7 @@ struct TrainCommandNotification
 {
     TRAIN_COMMAND command;
     int speed;
+    int reserved_distance; // distance the train is allowed to travel (must stop within this distance)
 };
 
 struct TrainMessage
@@ -112,10 +113,10 @@ struct TrainMessage
     }
 
     // Constructor for TrainCommandNotification
-    TrainMessage(TRAIN_COMMAND command, int speed)
+    TrainMessage(TRAIN_COMMAND command, int speed, int reserved_distance = 0)
         : type(TrainMessageType::TRAIN_COMMAND)
     {
-        data.train_command = {command, speed};
+        data.train_command = {command, speed, reserved_distance};
         // IO_NS::PrintTerminal("TrainMessage::TrainCommandNotification CONSTRUCTOR -- %d, %d\r\n", command, speed);
     }
 

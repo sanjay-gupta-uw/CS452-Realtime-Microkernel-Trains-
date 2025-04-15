@@ -602,12 +602,21 @@ namespace UI_CMD_NS
 
         IO_NS::PrintTerminal("Command Prompt started\r\n");
 
+        // track A
         char *initial_commands_list[] = {
             "SPAWN 54 B11 0",
             "SPAWN 77 B9 0",
             "GO 54 7 A15 0",
             "GO 77 7 A14 0",
         };
+
+        // track B
+        // char *initial_commands_list[] = {
+        //     "SPAWN 55 B7 0",
+        //     "SPAWN 58 B9 0",
+        //     "GO 55 7 A14 0",
+        //     "GO 58 7 A2 0",
+        // };
 
         IO_NS::PrintTerminal("Parsing Initial commands:\r\n");
         for (int i = 0; i < sizeof(initial_commands_list) / sizeof(initial_commands_list[0]); i++)

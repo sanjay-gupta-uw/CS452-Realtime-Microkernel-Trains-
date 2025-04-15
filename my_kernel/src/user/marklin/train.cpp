@@ -148,21 +148,6 @@ namespace Trains_NS
         return false;
     }
 
-    // need to account for elapsed ticks since the sensor was hit and where we are now
-    void Train::CompleteSegment()
-    {
-        // update distance travelled in segment
-        int dist_travelled_in_segment;
-        int total_dist;
-        dist_travelled.Pop(&dist_travelled_in_segment);
-        dist_travelled.Pop(&total_dist);
-
-        dist_travelled.Push(total_dist + segment_length);
-        dist_travelled.Push(0);
-
-        // update stopping target
-    }
-
     void Train::update_position()
     {
     }
@@ -173,10 +158,12 @@ namespace Trains_NS
         switch (message->data.train_command.command)
         {
         case TRAIN_COMMAND::ACCELERATE:
-            IO_NS::PrintTerminal(COLOR_RED "Train %d: Accelerating to speed %d\r\n", train_num, message->data.train_command.speed);
+        {
+            int reserved_path_distance = message->data.train_command.reserved_distance;
+            IO_NS::PrintTerminal(COLOR_RED "Train %d: Received command to accelerate to speed %d, reserved distance %d\r\n", train_num, message->data.train_command.speed, reserved_path_distance);
             Accelerate(message->data.train_command.speed);
-            IO_NS::PrintTerminal(COLOR_RED "Train %d: Accelerated to speed %d\r\n", train_num, message->data.train_command.speed);
             break;
+        }
         case TRAIN_COMMAND::REVERSE:
             IO_NS::PrintTerminal(COLOR_RED "Train %d: Reversing\r\n", train_num);
             ReverseTrain();
@@ -186,6 +173,7 @@ namespace Trains_NS
         case TRAIN_COMMAND::STOP:
             IO_NS::PrintTerminal(COLOR_RED "Received command from conductor to stop train %d -- sending command at tick %d\r\n", train_num, cur_tick);
             Stop();
+            // uassert(false && "TRAIN STOPPED -- FORCED ERROR");
             break;
             // move this to the train ticker switch case
         case TRAIN_COMMAND::TICK:
@@ -198,6 +186,7 @@ namespace Trains_NS
         default:
             break;
         }
+        IO_NS::PrintTerminal(COLOR_GREEN "Train %d: Processed command %d\r\n", train_num, message->data.train_command.command);
     }
 
     void Train::ReleaseSensorMessenger()
@@ -211,26 +200,6 @@ namespace Trains_NS
         SensorStruct response = {target_sensor.bank, target_sensor.id};
         REPLY(sensor_messenger_tid, (char *)&response, sizeof(response));
         // IO_NS::PrintTerminal("REPLIED TO SENSOR MESSENGER\r\n");
-    }
-
-    void Train::CheckSensorTrigger()
-    {
-        if (targer_sensor_idx < 0)
-        {
-            return;
-        }
-        // check if sensor was triggered
-        MARKLIN_IO_SERVER::Sensor *sensor = &MARKLIN_IO_SERVER::sensor_data[targer_sensor_idx];
-        if (sensor->trigger_tick > 0)
-        {
-            IO_NS::PrintTerminal(COLOR_CYAN "TRAIN %d: Sensor %c%d triggered at tick %d\r\n", train_num, sensor->bank, sensor->id, sensor->trigger_tick);
-            sensor->trigger_tick = 0; // reset trigger tick
-            // uassert(false && "Train::CheckSensorTrigger: Sensor triggered -- forced error");
-            // update velocities
-
-            // REPLY to path messenger
-            REPLY(path_messenger_tid, nullptr, 0);
-        }
     }
 
     void Train::TrainLoop()
@@ -259,7 +228,6 @@ namespace Trains_NS
             cur_tick = TIME(CLOCK_SERVER_TID);
 
             // check if sensor was triggered
-            CheckSensorTrigger();
 
             uassert(retval >= 0 && "Error receiving TrainResponse");
             IO_NS::PrintTerminal(COLOR_MAGENTA "TrainLoop{%d}::Sender: %d, MESSAGE TYPE: %d\r\n", my_tid, sender_tid, message.type);
@@ -288,7 +256,7 @@ namespace Trains_NS
             {
                 IO_NS::PrintTerminal(COLOR_MAGENTA "TRAIN %d::Received command from Conductor: %d\r\n", train_num, message.data.train_command.command);
                 process_train_command(&message);
-                IO_NS::PrintTerminal(COLOR_MAGENTA "TRAIN %d::PROCESSED command from Conductor: %d\r\n", train_num, message.data.train_command.command);
+                // IO_NS::PrintTerminal(COLOR_MAGENTA "TRAIN %d::PROCESSED command from Conductor: %d\r\n", train_num, message.data.train_command.command);
                 send_reply = true;
                 break;
             }
@@ -391,49 +359,13 @@ namespace Trains_NS
             uassert(retval >= 0 && "COMMAND MESSENGER: Error sending TrainCommandNotification to Conductor");
 
             IO_NS::PrintTerminal(COLOR_YELLOW "COMMAND MESSENGER{%d}:: received command from Conductor for Train {%d}, relaying command...\r\n", my_tid, train_num);
-            TrainMessage message(command_struct.command, command_struct.speed);
+            TrainMessage message(command_struct.command, command_struct.speed, command_struct.reserved_distance);
             retval = SEND(train_task_tid, (char *)&message, sizeof(TrainMessage), nullptr, 0);
             uassert(retval >= 0 && "COMMAND MESSENGER: Error sending TrainCommandNotification to Train task");
             // uassert(false && "HERE");
 
             IO_NS::PrintTerminal(COLOR_YELLOW "COMMAND MESSENGER{%d}:: Train accepted command %d\r\n", my_tid, command_struct.command);
         }
-    }
-
-    // SENSOR/CONDUCTOR MESSENGER
-    void path_messenger()
-    {
-        // int my_tid = MYTID();
-        // // Train task should spawn its own messenger
-        // int train_num;
-        // int train_task_tid;
-        // int param_init_retval = RECEIVE(&train_task_tid, (char *)&train_num, sizeof(int));
-        // uassert(param_init_retval >= 0 && train_task_tid >= 0 && "PATH MESSENGER: Error receiving train_num from parent task");
-        // REPLY(train_task_tid, nullptr, 0);
-
-        // IO_NS::PrintTerminal(COLOR_YELLOW "PATH %d messenger spawned with TID %d\r\n", train_num, my_tid);
-
-        // int conductor_tid = WHOIS("Conductor");
-        // uassert(conductor_tid > 0 && "PATH MESSENGER: Error finding Conductor");
-
-        // TrainMessage conductor_response;
-        // ConductorRequest conductor_request(train_task_tid);
-        // while (true)
-        // {
-        //     // IO_NS::PrintTerminal(COLOR_RED "ENTER KEY TO CONTINUE");
-        //     // char c = uart_getc(CONSOLE);
-        //     // SEND SEGMENT REQUEST TO CONDUCTOR
-        //     IO_NS::PrintTerminal(COLOR_YELLOW "PATH MESSENGER{%d}:: requesting segment from Conductor for Train %d\r\n", my_tid, train_num);
-        //     int retval = SEND(conductor_tid, (char *)&conductor_request, sizeof(ConductorRequest), (char *)&conductor_response, sizeof(TrainMessage));
-        //     uassert(retval >= 0 && "PATH MESSENGER: Error sending SegmentRequest to Conductor");
-
-        //     IO_NS::PrintTerminal(COLOR_YELLOW "PATH MESSENGER{%d}:: received segment from Conductor for Train %d\r\n", my_tid, train_num);
-
-        //     IO_NS::PrintTerminal(COLOR_YELLOW "PATH MESSENGER{%d}:: Sending data to Train task for Train %d, NEXT SENSOR: %c%d\r\n", my_tid, train_num, conductor_response.data.segment.sensor.bank, conductor_response.data.segment.sensor.id);
-        //     retval = SEND(train_task_tid, (char *)&conductor_response, sizeof(TrainMessage), nullptr, 0);
-        //     uassert(retval >= 0 && "PATH MESSENGER: Error sending SegmentReply to Train task");
-        //     // uassert(false && "THIS MUST BE HIT!");
-        // }
     }
 
 } // namespace Trains_NS

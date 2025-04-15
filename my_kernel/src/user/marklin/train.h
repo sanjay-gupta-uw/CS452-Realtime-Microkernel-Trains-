@@ -59,8 +59,6 @@ namespace Trains_NS
 
         void Reverse();   // sends reverse train command to marklin
         void TrainLoop(); // train loop task
-        void CompleteSegment();
-        void CheckSensorTrigger();
 
     public:
         int train_num;
@@ -86,7 +84,6 @@ namespace Trains_NS
     void train_ticker();
 
     void command_messenger();
-    void path_messenger();
     // void sensor_messenger();
 
 };

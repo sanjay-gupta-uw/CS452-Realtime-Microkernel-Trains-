@@ -10,7 +10,7 @@
 #include "../include/speed_data.h"
 namespace Conductor_NS
 {
-#define LOOP_START_NODE "B5p"
+#define LOOP_START_NODE "B5"
 
     // CALIBRATION STAGES
     typedef enum
@@ -61,6 +61,8 @@ namespace Conductor_NS
             MessengerUnit path_messenger;
             MessengerUnit sensor_messenger;
 
+            track_node *destination_node; // DESTINATION NODE
+
             track_node *last_sensor;               // LAST TRIGGERED SENSOR
             track_node *last_sent_sensor;          // LAST SENSOR SENT TO MARKLIN WATCHER
             track_node *last_sent_sensor_safety;   // LAST SAFETY SENSOR SENT TO MARKLIN WATCHER
@@ -86,7 +88,7 @@ namespace Conductor_NS
 
             Queue<TrainCommandNotification, 5> train_commands;
             Stack<PathNode, TRACK_MAX> path;
-            Queue<track_node, TRACK_MAX> reserved_nodes;
+            Queue<PathNode, TRACK_MAX> reserved_nodes;
             int reserved_sensors_count;
             Queue<track_node, TRACK_MAX> reserved_reverse_nodes;
 
@@ -106,11 +108,14 @@ namespace Conductor_NS
         // bool ReserveSegment(train_task_mapping *train);
         bool ReservePath(train_task_mapping *train);
         void ReleaseSegment(train_task_mapping *train);
+        int GetReservedPathLength(train_task_mapping *train);
 
         void get_sensors_to_listen_to(train_task_mapping *train, track_node *&first_sensor, track_node *&second_sensor);
         void ProcessSensorTrigger(SensorTriggerResponse *trigger_response);
 
         void StopTrainConflict(train_task_mapping *train);
+        void StopAllTrains();
+        void ReleasePath(train_task_mapping *train);
 
         train_task_mapping train_arr[NUM_TRAINS];
         Track track;
