@@ -17,9 +17,12 @@ typedef struct IO_REQUEST
     unsigned char ch;
 };
 
+static constexpr char* FORBIDDEN_SENSORS[] = {
+    "A3", "B16", "D6", "D7"
+};
 
 static constexpr char* SENSOR_IDS_0[] = {
-    "A3", "E5", "E2", "B16", "D12", "A3", "E9", "B15"
+    "A15", "E5", "E2", "B16", "D12", "A3", "E9", "B15"
 };
 
 static constexpr int OFFSETS_0[] = {
@@ -32,7 +35,7 @@ static constexpr int SPEEDS_0[] = {
 
 
 static constexpr char* SENSOR_IDS_1[] = {
-    "D11", "C14", "A3", "E5", "E2", "B16", "D12", "A3"
+    "A14", "C14", "A3", "E5", "E2", "B16", "D12", "A3"
 };
 
 static constexpr int OFFSETS_1[] = {
@@ -801,10 +804,15 @@ namespace Conductor_NS
     
 
     void Conductor::GenerateAndSendNewCommand(train_task_mapping *train) {
-        // Get values from lists
         char* dest_sensor;
         int offset;
         int speed;
+
+        bool is_forbidden;
+        const int num_forbidden = sizeof(FORBIDDEN_SENSORS)/sizeof(FORBIDDEN_SENSORS[0]);
+        
+/*
+        // Get values from lists for testing
         int list_size;
         if (train->train_num == 54)
         {
@@ -826,6 +834,51 @@ namespace Conductor_NS
             speed = SPEEDS_1[command_index];  
             list_size = sizeof(SENSOR_IDS_1)/sizeof(SENSOR_IDS_1[0]);            
         }
+*/
+
+        for(int i = 0; i <= 10; i++) {
+            // Generate random sensor components
+            char bank = 'A' + (custom_rand() % 5);  // A-E
+            int sensor_num = (custom_rand() % 30) + 1; // 1-30
+                
+            // Manually construct sensor name
+            dest_sensor[0] = bank;
+            if(sensor_num >= 10) {
+                dest_sensor[1] = '0' + (sensor_num / 10);  // Tens digit
+                dest_sensor[2] = '0' + (sensor_num % 10);   // Units digit
+            } else {
+                dest_sensor[1] = '0' + sensor_num;          // Single digit
+            }
+            IO_NS::PrintTerminal(COLOR_YELLOW "Random generated: %s\r\n", dest_sensor);
+        }
+    
+        // Generate valid random sensor
+        do {
+            // Generate random sensor components
+            char bank = 'A' + (custom_rand() % 5);  // A-E
+            int sensor_num = (custom_rand() % 30) + 1; // 1-30
+    
+            // Manually construct sensor name
+            dest_sensor[0] = bank;
+            if(sensor_num >= 10) {
+                dest_sensor[1] = '0' + (sensor_num / 10);  // Tens digit
+                dest_sensor[2] = '0' + (sensor_num % 10);   // Units digit
+            } else {
+                dest_sensor[1] = '0' + sensor_num;          // Single digit
+            }
+
+            // Check against forbidden list
+            is_forbidden = false;
+            for (int i = 0; i < num_forbidden; ++i) {
+                if (strcmp(dest_sensor, FORBIDDEN_SENSORS[i]) == 0) {
+                    is_forbidden = true;
+                    break;
+                }
+            }
+        } while (is_forbidden);
+
+        offset = 0;
+        speed = 7;
         
         // Create command
         ConductorRequest req(COMMAND::GOTO, 
@@ -838,7 +891,8 @@ namespace Conductor_NS
         ProcessRequest(&req.data.cmdRequest);
 
         IO_NS::PrintTerminal(COLOR_YELLOW "Automated GOTO: train %d go to %s %d with speed %d\r\n", train->train_num, dest_sensor, offset, speed);
-        
+
+        /*
         // Move to next index
         command_index++;
         
@@ -846,6 +900,7 @@ namespace Conductor_NS
         if (command_index >= list_size) {
             command_index = 0;
         }
+            */
     }
 
     void Conductor::update_position(train_task_mapping *train)
