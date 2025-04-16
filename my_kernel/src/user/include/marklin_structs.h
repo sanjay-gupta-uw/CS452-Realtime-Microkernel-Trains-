@@ -81,7 +81,8 @@ struct TrainCommandNotification
 {
     TRAIN_COMMAND command;
     int speed;
-    int reserved_distance; // distance the train is allowed to travel (must stop within this distance)
+    int reserved_distance;               // distance the train is allowed to travel (must stop within this distance)
+    bool is_destination_within_reserved; // true if the destination is within the reserved distance
 };
 
 struct TrainMessage
@@ -115,10 +116,10 @@ struct TrainMessage
     }
 
     // Constructor for TrainCommandNotification
-    TrainMessage(TRAIN_COMMAND command, int speed, int reserved_distance = 0)
+    TrainMessage(TRAIN_COMMAND command, int speed, int reserved_distance = 0, bool is_destination_within_reserved = false)
         : type(TrainMessageType::TRAIN_COMMAND)
     {
-        data.train_command = {command, speed, reserved_distance};
+        data.train_command = {command, speed, reserved_distance, is_destination_within_reserved};
         // IO_NS::PrintTerminal("TrainMessage::TrainCommandNotification CONSTRUCTOR -- %d, %d\r\n", command, speed);
     }
 

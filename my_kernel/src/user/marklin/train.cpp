@@ -173,6 +173,7 @@ namespace Trains_NS
         {
         case TRAIN_COMMAND::ACCELERATE:
         {
+            is_destination_within_reach = message->data.train_command.is_destination_within_reserved;
             int reserved_path_distance = message->data.train_command.reserved_distance;
             IO_NS::PrintTerminal(COLOR_GREEN "Train %d: Received command to accelerate to speed %d, reserved distance %d\r\n", train_num, message->data.train_command.speed, reserved_path_distance);
             Accelerate(message->data.train_command.speed);
@@ -225,6 +226,7 @@ namespace Trains_NS
         targer_sensor_idx = -1;
 
         // IO_NS::PrintTerminal(CLEAR_SCREEN);
+        is_destination_within_reach = false;
 
         while (true)
         {
@@ -282,6 +284,12 @@ namespace Trains_NS
             {
                 // if we have the distance until the stop, we can calculate the delay until time
                 // int delay_until_time ;
+
+                if (is_destination_within_reach)
+                {
+                    // WE NEED TO REPLY TO THE STOP MECHANISM
+                }
+                // OTHERWISE, NORMAL STOP UNTIL CONDUCTOR RESERVES MORE
             }
             default:
                 break;
@@ -416,7 +424,7 @@ namespace Trains_NS
             uassert(retval >= 0 && "COMMAND MESSENGER: Error sending TrainCommandNotification to Conductor");
 
             IO_NS::PrintTerminal(COLOR_YELLOW "COMMAND MESSENGER{%d}:: received command from Conductor for Train {%d}, relaying command...\r\n", my_tid, train_num);
-            TrainMessage message(command_struct.command, command_struct.speed, command_struct.reserved_distance);
+            TrainMessage message(command_struct.command, command_struct.speed, command_struct.reserved_distance, command_struct.is_destination_within_reserved);
             retval = SEND(train_task_tid, (char *)&message, sizeof(TrainMessage), nullptr, 0);
             uassert(retval >= 0 && "COMMAND MESSENGER: Error sending TrainCommandNotification to Train task");
             // uassert(false && "HERE");

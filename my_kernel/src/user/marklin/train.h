@@ -31,6 +31,7 @@ namespace Trains_NS
         int stop_messenger_tid;
         int sensor_messenger_tid;
         int train_ticker_tid;
+        bool is_destination_within_reach;
 
         int train_speed; // between 0 and 14
         bool isReversed;

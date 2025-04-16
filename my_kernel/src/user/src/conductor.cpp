@@ -993,9 +993,12 @@ namespace Conductor_NS
                     {
                         // get reserved path distance
                         int reserved_path_distance = GetReservedPathLength(train);
+                        // check if destination is reserved by train
+                        bool is_destination_reserved = train->destination_node->who_reserved_me == train->train_num;
+
                         // SEND ACCELERATE COMMAND
                         IO_NS::PrintTerminal(COLOR_GREEN "Conductor::DispatchCommand -- Making Train %d move with reserved path distance: %d\r\n", train->train_num, reserved_path_distance);
-                        TrainCommandNotification command = {TRAIN_COMMAND::ACCELERATE, train->speed_level, reserved_path_distance};
+                        TrainCommandNotification command = {TRAIN_COMMAND::ACCELERATE, train->speed_level, reserved_path_distance, is_destination_reserved};
                         train->train_commands.Push(command);
                     }
                 }
