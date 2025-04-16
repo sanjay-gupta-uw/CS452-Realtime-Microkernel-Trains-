@@ -508,6 +508,18 @@ namespace Conductor_NS
         {
             StopAllTrains();
         }
+        case COMMAND::AUTO:
+        {
+            for (int i = 0; i < NUM_TRAINS; ++i)
+            {
+                if (train_arr[i].train_num != -1)
+                {
+                    train_arr[i].train_commands.Push({TRAIN_COMMAND::AUTO, 0});
+                }
+            }
+            IO_NS::PrintTerminal("Auto mode enabled for all trains\r\n");
+            break;
+        }
         case COMMAND::UPDATE_RESERVED_PATH:
         {
             // get train num

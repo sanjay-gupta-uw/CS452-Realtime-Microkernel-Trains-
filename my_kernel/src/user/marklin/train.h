@@ -36,6 +36,8 @@ namespace Trains_NS
         int train_speed; // between 0 and 14
         bool isReversed;
 
+        bool auto_mode;
+
         // USE THESE TO CALCULATE DISTANCE TRAVELLED AS FOLLOWS
         // first push is defined length (when we finish a segment we add the length of the segment)
         // second push represents the distance travelled in the segment

@@ -40,6 +40,7 @@ namespace Trains_NS
         train_speed = 0;
         MARKLIN_IO_SERVER_TID = -1;
         isReversed = false;
+        auto_mode = false;
         cur_tick = 0;
         // prev_tick = 0;
     }
@@ -189,6 +190,10 @@ namespace Trains_NS
             // uassert(false && "TRAIN STOPPED -- FORCED ERROR");
             break;
             // move this to the train ticker switch case
+        case TRAIN_COMMAND::AUTO:
+            IO_NS::PrintTerminal(COLOR_GREEN "Received command from conductor to set train %d to AUTO mode\r\n", train_num);
+            auto_mode = true;
+            break;
         case TRAIN_COMMAND::TICK:
         {
             // update train position

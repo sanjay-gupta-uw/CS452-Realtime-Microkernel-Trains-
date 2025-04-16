@@ -24,6 +24,9 @@ public:
     // Get stopping distance for current track
     int GetStoppingDistance(int train_number, int speed_level) const;
 
+    // Get acceleration for current track
+    int GetAcc(int train_number, int speed_level) const;
+
 private:
     static constexpr int CAL_NUM_TRAINS = 4;
     static constexpr int SPEED_LEVELS = 8; // 7-14 inclusive
@@ -32,6 +35,7 @@ private:
     struct CalibrationEntry {
         int actual_speed_x100;   // Speed multiplied by 100 (e.g., 150 = 1.50 mm/tick)
         int stopping_distance;  // Stopping distance in millimeters
+        int acceleration;
     };
 
     struct CalData {

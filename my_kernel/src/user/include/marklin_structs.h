@@ -56,6 +56,7 @@ enum class TRAIN_COMMAND
     STOP,
     TICK,
     UPDATE_RESERVED,
+    AUTO,
 };
 
 enum class TrainMessageType
