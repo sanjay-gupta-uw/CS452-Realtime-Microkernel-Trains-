@@ -70,6 +70,7 @@ namespace Trains_NS
         cmd_messenger_tid = CREATE(PRIORITY::DEVICE_NOTIFIER, Trains_NS::command_messenger);
         uassert(cmd_messenger_tid > 0 && "Error creating train messenger");
         int retval = SEND(cmd_messenger_tid, (char *)&train_num, sizeof(int), nullptr, 0);
+        uassert(retval >= 0 && "Error sending train number to command messenger");
 
         // path_messenger_tid = CREATE(PRIORITY::DEVICE_NOTIFIER, Trains_NS::path_messenger);
         // uassert(path_messenger_tid > 0 && "Error creating train messenger");
@@ -81,6 +82,11 @@ namespace Trains_NS
 
         train_ticker_tid = CREATE(PRIORITY::DEVICE_NOTIFIER, Trains_NS::train_ticker);
         uassert(train_ticker_tid > 0 && "Error creating train messenger");
+
+        stop_messenger_tid = CREATE(PRIORITY::DEVICE_NOTIFIER, Trains_NS::stop_messenger);
+        uassert(stop_messenger_tid > 0 && "Error creating train messenger");
+        int retval2 = SEND(stop_messenger_tid, (char *)&train_num, sizeof(int), nullptr, 0);
+        uassert(retval2 >= 0 && "Error sending train number to stop messenger");
 
         TrainLoop();
     }
@@ -114,6 +120,13 @@ namespace Trains_NS
     {
         isReversed = !isReversed;
         MARKLIN_IO_SERVER::MarklinRequest request = {false, REVERSE_CMD + 16, train_num};
+        MARKLIN_IO_SERVER::SendCmd(MARKLIN_IO_SERVER_TID, &request);
+    }
+
+    static void STOP(int train_num, int MARKLIN_IO_SERVER_TID)
+    {
+        int train_speed = 0;
+        MARKLIN_IO_SERVER::MarklinRequest request = {false, train_speed + 16, train_num};
         MARKLIN_IO_SERVER::SendCmd(MARKLIN_IO_SERVER_TID, &request);
     }
 
@@ -265,7 +278,11 @@ namespace Trains_NS
                 // update train position
                 send_reply = true;
                 break;
-
+            case TrainMessageType::TRAIN_STOPPED:
+            {
+                // if we have the distance until the stop, we can calculate the delay until time
+                // int delay_until_time ;
+            }
             default:
                 break;
             }
@@ -336,6 +353,45 @@ namespace Trains_NS
             // IO_NS::PrintTerminal(COLOR_YELLOW "TRAIN TICKER{%d}:: Sending TICK to Train task\r\n", my_tid);
             int retval = SEND(train_tid, (char *)&message, sizeof(TrainMessage), nullptr, 0);
             DELAY(CLOCK_SERVER_TID, 20);
+        }
+    }
+
+    // messenger for train stopped
+    void stop_messenger()
+    {
+        int my_tid = MYTID();
+        IO_NS::PrintTerminal(COLOR_YELLOW "STOP MESSENGER spawned with TID %d\r\n", my_tid);
+        int train_num;
+        int train_task_tid;
+        int param_init_retval = RECEIVE(&train_task_tid, (char *)&train_num, sizeof(int));
+        uassert(param_init_retval >= 0 && train_task_tid >= 0 && "STOP MESSENGER: Error receiving train_num from parent task");
+        REPLY(train_task_tid, nullptr, 0);
+
+        int CLOCK_SERVER_TID = WHOIS("ClockServer");
+        uassert(CLOCK_SERVER_TID > 0 && "STOP MESSENGER: Error finding ClockServer");
+
+        int MARKLIN_IO_SERVER_TID = WHOIS("MarklinIOServer");
+        uassert(MARKLIN_IO_SERVER_TID > 0 && "STOP MESSENGER: Error finding MarklinIOServer");
+
+        TrainMessage message(TrainMessageType::TRAIN_STOPPED);
+
+        while (true)
+        {
+            int delay_until_time = 0;
+            // SEND TO TRAIN TASK TO WAIT FOR STOP REPLY
+            int retval = SEND(train_task_tid, (char *)&message, sizeof(TrainMessage), (char *)&delay_until_time, sizeof(int));
+            uassert(retval >= 0 && "STOP MESSENGER: Error sending TrainMessage to Train task");
+            // RESPONSE NEEDS TO CONTAIN THE TICK TO DELAY UNTIL
+
+            DELAY_UNTIL(CLOCK_SERVER_TID, delay_until_time);
+
+            // SEND STOP COMMAND
+            STOP(train_num, MARKLIN_IO_SERVER_TID);
+            // THIS RUNS WHEN MARKLIN ACCEPTS THE STOP COMMAND
+
+            DELAY(CLOCK_SERVER_TID, 400); // wait for 2 seconds
+
+            // SEND TO CONDUCTOR TO NOTFIY TRAIN STOPPED
         }
     }
 

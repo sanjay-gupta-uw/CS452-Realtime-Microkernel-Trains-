@@ -28,6 +28,7 @@ namespace Trains_NS
         int CLOCK_SERVER_TID;
         int cmd_messenger_tid;
         int path_messenger_tid;
+        int stop_messenger_tid;
         int sensor_messenger_tid;
         int train_ticker_tid;
 
@@ -84,6 +85,7 @@ namespace Trains_NS
     void train_ticker();
 
     void command_messenger();
+    void stop_messenger();
     // void sensor_messenger();
 
 };
