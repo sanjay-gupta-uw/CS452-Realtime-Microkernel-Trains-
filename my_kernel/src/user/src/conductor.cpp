@@ -153,7 +153,7 @@ namespace Conductor_NS
         uassert(ticker_tid > 0 && "Conductor::Error creating ticker");
         IO_NS::PrintTerminal("Conductor ticker created with TID %d\r\n", ticker_tid);
 
-        LOOP_START_SENSOR_DATA = {'B', 5};
+        // LOOP_START_SENSOR_DATA = {'B', 5};
 
         InitializeTrainDisplay();
 
@@ -220,40 +220,6 @@ namespace Conductor_NS
         Switch_NS::SwitchRequest switch_req = {addr, (Switch_NS::SWITCH_STATE)state};
         int retval = SEND(SWITCH_SERVER_TID, (char *)&switch_req, sizeof(Switch_NS::SwitchRequest), nullptr, 0);
         uassert(retval >= 0 && "Conductor::setSwitch -- Error sending switch request to switch server");
-    }
-
-    static void get_switch_queue(Stack<PathNode, TRACK_MAX> *path, Queue<PathNode, NUM_SWITCHES> *switch_nodes)
-    {
-        Stack<PathNode, TRACK_MAX> temp;
-        while (!path->IsEmpty())
-        {
-            PathNode node;
-            path->Pop(&node);
-            if (node.node->type == NODE_BRANCH)
-            {
-                switch_nodes->Push(node);
-            }
-            temp.Push(node);
-        }
-
-        while (!temp.IsEmpty())
-        {
-            PathNode node;
-            temp.Pop(&node);
-            path->Push(node);
-        }
-    }
-
-    static SensorStruct name_to_sensor_struct(char sensor_name[4])
-    {
-        SensorStruct sensor = {};
-
-        sensor.bank = sensor_name[0];
-        const char *sensor_name_ptr = sensor_name + 1;
-        sensor.id = a2ui((char **)&sensor_name_ptr, 10);
-
-        IO_NS::PrintTerminal("name_to_sensor_struct:: for %c%d\r\n", sensor.bank, sensor.id);
-        return sensor;
     }
 
     void Conductor::ProcessRequest(CMDRequest *req)
@@ -368,6 +334,8 @@ namespace Conductor_NS
                     train->path.Clear();
                     train->reserved_nodes.Clear();
 
+                    train->update_reserved_path = false;
+
                     IO_NS::PrintTerminal("Index: %d, Train %d spawned with last Sensor %s\r\n", i, train->train_num, train->last_sensor->name);
                     break;
                 }
@@ -382,18 +350,8 @@ namespace Conductor_NS
             train->sensor_messenger = {sensor_messenger_tid, false};
 
             IO_NS::PrintTerminal("Train %d spawned successfully!\r\n", req->id);
-
-            // IO_NS::PrintTerminal("Train %d spawned successfully, beginning calibration!\r\n", req->id);
-
-            // train->calibration_stage = CALIBRATION_STAGE::CALIBRATE_NAV_TO_LOOP;
-            // IO_NS::PrintTerminal("Train %d, TID: %d calibrating -- start: %s", train->train_num, train->train_task_tid, train->target_sensor_name);
-
-            // CalibrateTrain(train);
             UpdateTrainDisplay();
 
-            // PUT TRACK IN LOOP
-            // track.find_path("C10", "C10", &train->path, false, 0, &train->total_path_distance, false, train->train_num);
-            // uassert(false && "FORCED ERROR");
             break;
         }
         // based off of Jack's code
@@ -534,19 +492,24 @@ namespace Conductor_NS
         {
             StopAllTrains();
         }
-        case COMMAND::AUTO:
+        case COMMAND::UPDATE_RESERVED_PATH:
         {
-            for (int i = 0; i < NUM_TRAINS; ++i)
+            // get train num
+            int train_num = req->id;
+            int train_index = get_train_index(train_num);
+            if (train_index == -1)
             {
-                if (train_arr[i].train_num != -1)
-                {
-                    train_arr[i].auto_mode = true;
-
-                    // Generate random parameters
-                    GenerateAndSendNewCommand(&train_arr[i]);
-                }
+                IO_NS::PrintTerminal("Train %d not found or initialized.\r\n", train_num);
+                return;
             }
-            IO_NS::PrintTerminal("Auto mode enabled for all trains\r\n");
+            else
+            {
+                IO_NS::PrintTerminal("Train %d found, enabling reserved path\r\n", train_num);
+            }
+
+            train_task_mapping *train = &train_arr[train_index];
+            train->update_reserved_path = true;
+
             break;
         }
         default:
@@ -642,29 +605,6 @@ namespace Conductor_NS
         }
     }
 
-    // deprecated
-    void Conductor::SetSwitches(Queue<PathNode, NUM_SWITCHES> *switch_nodes)
-    {
-        uassert(false && "this is deprecated -- use on demand switching");
-        while (!switch_nodes->IsEmpty())
-        {
-            PathNode node;
-            switch_nodes->Pop(&node);
-            // IO_NS::PrintTerminal("CONDUCTOR::SettingSwitches -- NODE: %s\r\n", node.node->name);
-
-            if (node.node->type == NODE_BRANCH)
-            {
-                track.set_switch_state(node.node->num, node.switch_state);
-                Switch_NS::SwitchRequest switch_req = {node.node->num, (Switch_NS::SWITCH_STATE)node.switch_state};
-                int retval = SEND(SWITCH_SERVER_TID, (char *)&switch_req, sizeof(switch_req), nullptr, 0);
-                uassert(retval >= 0 && "Error sending switch request");
-
-                // break;
-            }
-        }
-        // uassert(false && "FORCED ERROR");
-    }
-
     static void clear_path(Stack<PathNode, TRACK_MAX> *path)
     {
         while (!path->IsEmpty())
@@ -756,23 +696,7 @@ namespace Conductor_NS
             // REPLACE WITH SENSOR_TRIGGER FUNCTION
             else if (req.requestType == RequestType::SENSOR_TRIGGER)
             {
-                IO_NS::PrintTerminal(COLOR_BLUE "TYPE CHARACTER TO CONTINUE RUNNING\r\n");
-                unsigned char ch = uart_getc(CONSOLE);
-
                 ProcessSensorTrigger(&req.data.sensor_trigger_response);
-                sendReply = true;
-            }
-            else if (req.requestType == RequestType::TICK)
-            {
-                // IO_NS::PrintTerminal(COLOR_YELLOW "Conductor::ConductorLoop -- Received TICK request from %d\r\n", sender_tid);
-                for (int i = 0; i < NUM_TRAINS; ++i)
-                {
-                    if (train_arr[i].train_num == -1 || train_arr[i].speed_level <= 0)
-                    {
-                        continue;
-                    }
-                    update_position(train_arr + i);
-                }
                 sendReply = true;
             }
 
@@ -789,7 +713,7 @@ namespace Conductor_NS
     }
 
     int Conductor::custom_rand()
-    {       
+    {
         int custom_rand_seed = TIME(CLOCK_SERVER_TID);
         // Simple Linear Congruential Generator
         custom_rand_seed = (214013 * custom_rand_seed + 2531011);
@@ -798,7 +722,7 @@ namespace Conductor_NS
 
     void Conductor::GenerateAndSendNewCommand(train_task_mapping *train)
     {
-        char dest_sensor[5] ={0};
+        char dest_sensor[5] = {0};
         int offset;
         int speed;
 
@@ -922,10 +846,6 @@ namespace Conductor_NS
         */
     }
 
-    void Conductor::update_position(train_task_mapping *train)
-    {
-    }
-
     void Conductor::DispatchCommand()
     {
         bool all_trains_blocked = true;
@@ -940,25 +860,19 @@ namespace Conductor_NS
             MessengerUnit *sensor_messenger = &train->sensor_messenger;
 
             // check if the path is still reserved
-            if (train->check_if_blocked && !train->path.IsEmpty())
+            if (train->update_reserved_path)
             {
+                int prev_reserved_length = GetReservedPathLength(train);
                 // IO_NS::PrintTerminal(COLOR_RED "Conductor::DispatchCommand -- TRAIN %d is blocked, trying to reserve path\r\n", train->train_num);
                 train->isTrainBlocked = !ReservePath(train);
-                // IO_NS::PrintTerminal("Conductor::DispatchCommand -- finished reserving path -- STATUS BELOW:\r\n");
-                // IO_NS::PrintTerminal("Conductor::DispatchCommand -- TRAIN %d is blocked: %d\r\n", train->train_num, train->isTrainBlocked);
-                train->check_if_blocked = train->isTrainBlocked;
-                // if (!train->isTrainBlocked)
+                int new_reserved_length = GetReservedPathLength(train);
+                if (prev_reserved_length != new_reserved_length)
                 {
-                    // IO_NS::PrintTerminal(COLOR_GREEN "Conductor::DispatchCommand -- Train %d is unblocked\r\n", train->train_num);
-                    // train->check_if_blocked = false;
-                    //         // train->conflict_exists = false;
-                    //         // train->isMoving = true;
-                    //         // train->train_commands.Push({TRAIN_COMMAND::ACCELERATE, train->speed_level});
+                    train->update_reserved_path = false;
+
+                    // PUSH NEW COMMAND to train
+                    train->train_commands.Push({TRAIN_COMMAND::UPDATE_RESERVED, train->speed_level, new_reserved_length, !train->isTrainBlocked});
                 }
-            }
-            else
-            {
-                // IO_NS::PrintTerminal(COLOR_BLUE "Conductor::DispatchCommand -- Train %d is not blocked -- not checking\r\n", train->train_num);
             }
 
             if (sensor_messenger->messenger_id > 0 && !sensor_messenger->sent_reply && !train->path.IsEmpty())
@@ -988,24 +902,6 @@ namespace Conductor_NS
                     ListenToSensors sensors = {train->train_num, first_sensor, second_sensor};
                     REPLY(sensor_messenger->messenger_id, (char *)&sensors, sizeof(ListenToSensors));
                     sensor_messenger->sent_reply = true;
-
-                    if (!train->isMoving)
-                    {
-                        // get reserved path distance
-                        int reserved_path_distance = GetReservedPathLength(train);
-                        // check if destination is reserved by train
-                        bool is_destination_reserved = train->destination_node->who_reserved_me == train->train_num;
-
-                        // SEND ACCELERATE COMMAND
-                        IO_NS::PrintTerminal(COLOR_GREEN "Conductor::DispatchCommand -- Making Train %d move with reserved path distance: %d\r\n", train->train_num, reserved_path_distance);
-                        TrainCommandNotification command = {TRAIN_COMMAND::ACCELERATE, train->speed_level, reserved_path_distance, is_destination_reserved};
-                        train->train_commands.Push(command);
-                    }
-                }
-                else if (second_sensor == nullptr)
-                {
-                    // IO_NS::PrintTerminal("Conductor::DispatchCommand -- train %d: getting stopped due to unreserved path\r\n", train->train_num);
-                    // train->train_commands.Push({TRAIN_COMMAND::STOP, 0});
                 }
             }
 
@@ -1044,6 +940,7 @@ namespace Conductor_NS
             // IO_NS::PrintTerminal(COLOR_GREEN "Conductor::DispatchCommand -- Not all trains are blocked\r\n");
         }
     }
+
     void Conductor::get_sensors_to_listen_to(train_task_mapping *train, track_node *&first_sensor, track_node *&second_sensor)
     {
         Queue<PathNode, TRACK_MAX> *reserved_nodes = &train->reserved_nodes;
@@ -1114,41 +1011,6 @@ namespace Conductor_NS
         // {
         //     IO_NS::PrintTerminal(COLOR_RED "Conductor::get_sensors_to_listen_to -- second sensor: %s\r\n", second_sensor->name);
         // }
-    }
-
-    // SENSOR/CONDUCTOR MESSENGER
-    void start_sensor_messenger()
-    {
-        int my_tid = MYTID();
-        // Train task should spawn its own messenger
-        int train_num;
-        int conductor_tid;
-        int param_init_retval = RECEIVE(&conductor_tid, (char *)&train_num, sizeof(int));
-        uassert(param_init_retval >= 0 && conductor_tid > 0 && train_num > 0 && "PATH MESSENGER: Error receiving train_num from parent task");
-        REPLY(conductor_tid, nullptr, 0);
-
-        IO_NS::PrintTerminal(COLOR_YELLOW "CONDUCTOR_SENSOR MESSENGER{%d/%d}  spawned with TID %d\r\n", my_tid, train_num, my_tid);
-
-        ListenToSensors target_pair;
-        ConductorRequest conductor_request(train_num, RequestType::GET_SENSOR);
-        int marklin_io_tid = WHOIS("MarklinIOServer");
-        uassert(marklin_io_tid > 0 && "CONDUCTOR_SENSOR MESSENGER: Error finding MarklinIOServer");
-        while (true)
-        {
-            // IO_NS::PrintTerminal(COLOR_RED "ENTER KEY TO CONTINUE");
-            // char c = uart_getc(CONSOLE);
-            // SEND SEGMENT REQUEST TO CONDUCTOR
-            IO_NS::PrintTerminal(COLOR_YELLOW "CONDUCTOR_SENSOR MESSENGER{%d/%d}:: requesting next sensor from Conductor\r\n", my_tid, train_num);
-            int retval = SEND(conductor_tid, (char *)&conductor_request, sizeof(ConductorRequest), (char *)&target_pair, sizeof(target_pair));
-            uassert(retval >= 0 && "PATH MESSENGER: Error sending SegmentRequest to Conductor");
-
-            IO_NS::PrintTerminal(COLOR_YELLOW "CONDUCTOR_SENSOR MESSENGER{%d/%d}:: received next sensor from Conductor: %s, %s, train: %d\r\n", my_tid, train_num, target_pair.first_sensor->name, (target_pair.second_sensor != nullptr) ? target_pair.second_sensor->name : "NULLPTR", target_pair.train_num);
-
-            MARKLIN_IO_SERVER::IO_REQUEST io_request(&target_pair);
-            IO_NS::PrintTerminal(COLOR_YELLOW "CONDUCTOR_SENSOR MESSENGER{%d/%d}:: Sending request to IO server: %d\r\n", my_tid, train_num, marklin_io_tid);
-            SEND(marklin_io_tid, (char *)&io_request, sizeof(MARKLIN_IO_SERVER::IO_REQUEST), nullptr, 0);
-            IO_NS::PrintTerminal(COLOR_YELLOW "CONDUCTOR_SENSOR MESSENGER{%d/%d}:: RECEIVED REPLY FROM IO SERVER\r\n", my_tid, train_num);
-        }
     }
 
     // returns true if fully reserved (no conflicts)
@@ -1377,31 +1239,6 @@ namespace Conductor_NS
         // uassert(false && "Conductor::ReleaseSegment -- Error getting last sensor address");
     }
 
-    void ticker()
-    {
-        int my_tid = MYTID();
-        int conductor_tid = MYPARENTTID();
-        uassert(conductor_tid > 0 && "CONDUCTOR TICKER:Error finding parent task");
-
-        int CLOCK_SERVER_TID = WHOIS("ClockServer");
-        uassert(CLOCK_SERVER_TID > 0 && "TRAIN TICKER:Error finding ClockServer");
-
-        ConductorRequest tick_message(RequestType::TICK);
-        uassert(tick_message.requestType == RequestType::TICK && "Conductor::ticker -- Error creating tick message");
-        // IO_NS::PrintTerminal(COLOR_YELLOW "TRAIN TICKER{%d}:: Sending TICK to Train task -- type: %d\r\n", my_tid, tick_message.requestType);
-        while (true)
-        {
-            // IO_NS::PrintTerminal(COLOR_YELLOW "TRAIN TICKER{%d}:: Sending TICK to Train task\r\n", my_tid);
-            int retval = SEND(conductor_tid, (char *)&tick_message, sizeof(tick_message), nullptr, 0);
-            DELAY(CLOCK_SERVER_TID, 100);
-        }
-    }
-
-    void start_conductor()
-    {
-        Conductor conductor;
-    }
-
     void Conductor::ProcessSensorTrigger(SensorTriggerResponse *trigger_response)
     {
         int triggered_idx = trigger_response->sensor_idx;
@@ -1479,6 +1316,7 @@ namespace Conductor_NS
         // IO_NS::PrintTerminal(COLOR_GREEN "Conductor::ProcessSensorTrigger -- Press any key to continue\r\n");
         // unsigned char ch = uart_getc(CONSOLE);
 
+        // CALL THIS WHEN TRAIN RECEIVES NEW GO COMMAND!
         if (train->isMoving && train->last_sensor == train->destination_node)
         {
             IO_NS::PrintTerminal(COLOR_GREEN "Conductor::DispatchCommand -- Train %d reached destination %s -- STOPPING TRAIN\r\n", train->train_num, train->last_sensor->name);
@@ -1530,6 +1368,65 @@ namespace Conductor_NS
         // uassert(false && "FORCED ERROR");
         return length;
     }
-}
 
-// ADD IS_MOVING UPDATE
+    void start_conductor()
+    {
+        Conductor conductor;
+    }
+
+    // SENSOR/CONDUCTOR MESSENGER
+    void start_sensor_messenger()
+    {
+        int my_tid = MYTID();
+        // Train task should spawn its own messenger
+        int train_num;
+        int conductor_tid;
+        int param_init_retval = RECEIVE(&conductor_tid, (char *)&train_num, sizeof(int));
+        uassert(param_init_retval >= 0 && conductor_tid > 0 && train_num > 0 && "PATH MESSENGER: Error receiving train_num from parent task");
+        REPLY(conductor_tid, nullptr, 0);
+
+        IO_NS::PrintTerminal(COLOR_YELLOW "CONDUCTOR_SENSOR MESSENGER{%d/%d}  spawned with TID %d\r\n", my_tid, train_num, my_tid);
+
+        ListenToSensors target_pair;
+        ConductorRequest conductor_request(train_num, RequestType::GET_SENSOR);
+        int marklin_io_tid = WHOIS("MarklinIOServer");
+        uassert(marklin_io_tid > 0 && "CONDUCTOR_SENSOR MESSENGER: Error finding MarklinIOServer");
+        while (true)
+        {
+            // IO_NS::PrintTerminal(COLOR_RED "ENTER KEY TO CONTINUE");
+            // char c = uart_getc(CONSOLE);
+            // SEND SEGMENT REQUEST TO CONDUCTOR
+            IO_NS::PrintTerminal(COLOR_YELLOW "CONDUCTOR_SENSOR MESSENGER{%d/%d}:: requesting next sensor from Conductor\r\n", my_tid, train_num);
+            int retval = SEND(conductor_tid, (char *)&conductor_request, sizeof(ConductorRequest), (char *)&target_pair, sizeof(target_pair));
+            uassert(retval >= 0 && "PATH MESSENGER: Error sending SegmentRequest to Conductor");
+
+            IO_NS::PrintTerminal(COLOR_YELLOW "CONDUCTOR_SENSOR MESSENGER{%d/%d}:: received next sensor from Conductor: %s, %s, train: %d\r\n", my_tid, train_num, target_pair.first_sensor->name, (target_pair.second_sensor != nullptr) ? target_pair.second_sensor->name : "NULLPTR", target_pair.train_num);
+
+            MARKLIN_IO_SERVER::IO_REQUEST io_request(&target_pair);
+            IO_NS::PrintTerminal(COLOR_YELLOW "CONDUCTOR_SENSOR MESSENGER{%d/%d}:: Sending request to IO server: %d\r\n", my_tid, train_num, marklin_io_tid);
+            SEND(marklin_io_tid, (char *)&io_request, sizeof(MARKLIN_IO_SERVER::IO_REQUEST), nullptr, 0);
+            IO_NS::PrintTerminal(COLOR_YELLOW "CONDUCTOR_SENSOR MESSENGER{%d/%d}:: RECEIVED REPLY FROM IO SERVER\r\n", my_tid, train_num);
+        }
+    }
+
+    void ticker()
+    {
+        int my_tid = MYTID();
+        int conductor_tid = MYPARENTTID();
+        uassert(conductor_tid > 0 && "CONDUCTOR TICKER:Error finding parent task");
+
+        int CLOCK_SERVER_TID = WHOIS("ClockServer");
+        uassert(CLOCK_SERVER_TID > 0 && "TRAIN TICKER:Error finding ClockServer");
+
+        ConductorRequest tick_message(RequestType::TICK);
+        uassert(tick_message.requestType == RequestType::TICK && "Conductor::ticker -- Error creating tick message");
+        // IO_NS::PrintTerminal(COLOR_YELLOW "TRAIN TICKER{%d}:: Sending TICK to Train task -- type: %d\r\n", my_tid, tick_message.requestType);
+        while (true)
+        {
+            // IO_NS::PrintTerminal(COLOR_YELLOW "TRAIN TICKER{%d}:: Sending TICK to Train task\r\n", my_tid);
+            int retval = SEND(conductor_tid, (char *)&tick_message, sizeof(tick_message), nullptr, 0);
+            DELAY(CLOCK_SERVER_TID, 100);
+        }
+    }
+
+} // namespace CONDUCTOR_NS

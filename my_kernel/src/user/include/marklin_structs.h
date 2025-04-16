@@ -23,6 +23,7 @@ enum class COMMAND
     SENSOR_TRIGGER,
     STOP_ALL,
     AUTO,
+    UPDATE_RESERVED_PATH,
     INVALID,
 };
 
@@ -54,6 +55,7 @@ enum class TRAIN_COMMAND
     REVERSE,
     STOP,
     TICK,
+    UPDATE_RESERVED,
 };
 
 enum class TrainMessageType
@@ -62,7 +64,7 @@ enum class TrainMessageType
     PATH_MESSENGER,
     SENSOR_MESSENGER,
     TRAIN_TICKER,
-    TRAIN_STOPPED,
+    STOP_MESSENGER,
 };
 
 // USE THIS FOR SENDING SENSOR HIT BACK TO TRAIN
@@ -185,12 +187,19 @@ struct ConductorRequest
         : requestType(RequestType::CMD)
     {
         data.cmdRequest = {command, id, requestData};
-        if (src)
-            data.cmdRequest = {command, id, requestData, src};
-        if (src && dest)
-            data.cmdRequest = {command, id, requestData, src, dest};
         if (src && dest && offset)
             data.cmdRequest = {command, id, requestData, src, dest, offset};
+        else if (src && dest)
+            data.cmdRequest = {command, id, requestData, src, dest};
+        else if (src)
+            data.cmdRequest = {command, id, requestData, src};
+    }
+
+    // Constructor for CMDRequest for upadte reserved path
+    ConductorRequest(COMMAND command, int train_num)
+        : requestType(RequestType::CMD)
+    {
+        data.cmdRequest = {command, train_num};
     }
 
     ConductorRequest(int train_num)

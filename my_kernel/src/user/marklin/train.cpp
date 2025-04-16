@@ -173,9 +173,7 @@ namespace Trains_NS
         {
         case TRAIN_COMMAND::ACCELERATE:
         {
-            is_destination_within_reach = message->data.train_command.is_destination_within_reserved;
-            int reserved_path_distance = message->data.train_command.reserved_distance;
-            IO_NS::PrintTerminal(COLOR_GREEN "Train %d: Received command to accelerate to speed %d, reserved distance %d\r\n", train_num, message->data.train_command.speed, reserved_path_distance);
+            IO_NS::PrintTerminal(COLOR_GREEN "Train %d: Received command to accelerate to speed %d\r\n", train_num, message->data.train_command.speed);
             Accelerate(message->data.train_command.speed);
             break;
         }
@@ -198,6 +196,19 @@ namespace Trains_NS
         }
         // SENSOR_TRIGGERED
         // update train position (first stack element)
+        case TRAIN_COMMAND::UPDATE_RESERVED:
+        {
+            // THIS IS THE CONDUCTOR MESSAGE THAT TELLS US HOW FAR WE CAN TRAVEL
+            Accelerate(message->data.train_command.speed); // could determine speed from speed table to find suitable speed
+            // is_destination_within_reach = message->data.train_command.is_destination_within_reserved;
+
+            StoppingStruct stopping_struct;
+            stopping_struct.destination_within_reach = is_destination_within_reach;
+            // stopping_struct.delay_until_time = 0; // DETERMINE WHEN THIS IS, USING CONSTANT VELOCITY OR SHORT STOP
+            // use message->data.train_command.reserved_distance
+
+            REPLY(stop_messenger_tid, (char *)&stopping_struct, sizeof(StoppingStruct));
+        }
         default:
             break;
         }
@@ -277,19 +288,17 @@ namespace Trains_NS
                 break;
             }
             case TrainMessageType::TRAIN_TICKER:
+            {
                 // update train position
                 send_reply = true;
                 break;
-            case TrainMessageType::TRAIN_STOPPED:
+            }
+            case TrainMessageType::STOP_MESSENGER:
             {
-                // if we have the distance until the stop, we can calculate the delay until time
-                // int delay_until_time ;
+                send_reply = false;
 
-                if (is_destination_within_reach)
-                {
-                    // WE NEED TO REPLY TO THE STOP MECHANISM
-                }
-                // OTHERWISE, NORMAL STOP UNTIL CONDUCTOR RESERVES MORE
+                // HANG ON TO THIS UNTIL THE TRAIN RECEIVES UPDATE_RESERVED COMMAND
+                break;
             }
             default:
                 break;
@@ -381,25 +390,42 @@ namespace Trains_NS
         int MARKLIN_IO_SERVER_TID = WHOIS("MarklinIOServer");
         uassert(MARKLIN_IO_SERVER_TID > 0 && "STOP MESSENGER: Error finding MarklinIOServer");
 
-        TrainMessage message(TrainMessageType::TRAIN_STOPPED);
+        int CONDUCTOR_TID = WHOIS("Conductor");
+        uassert(CONDUCTOR_TID > 0 && "STOP MESSENGER: Error finding Conductor");
+
+        TrainMessage message(TrainMessageType::STOP_MESSENGER);
 
         while (true)
         {
-            int delay_until_time = 0;
+            StoppingStruct stopping_struct;
             // SEND TO TRAIN TASK TO WAIT FOR STOP REPLY
-            int retval = SEND(train_task_tid, (char *)&message, sizeof(TrainMessage), (char *)&delay_until_time, sizeof(int));
+            int retval = SEND(train_task_tid, (char *)&message, sizeof(TrainMessage), (char *)&stopping_struct, sizeof(StoppingStruct));
             uassert(retval >= 0 && "STOP MESSENGER: Error sending TrainMessage to Train task");
             // RESPONSE NEEDS TO CONTAIN THE TICK TO DELAY UNTIL
 
-            DELAY_UNTIL(CLOCK_SERVER_TID, delay_until_time);
+            DELAY_UNTIL(CLOCK_SERVER_TID, stopping_struct.delay_until_time);
 
             // SEND STOP COMMAND
             STOP(train_num, MARKLIN_IO_SERVER_TID);
             // THIS RUNS WHEN MARKLIN ACCEPTS THE STOP COMMAND
 
-            DELAY(CLOCK_SERVER_TID, 400); // wait for 2 seconds
+            DELAY(CLOCK_SERVER_TID, 200); // wait for 2 seconds
 
-            // SEND TO CONDUCTOR TO NOTFIY TRAIN STOPPED
+            if (stopping_struct.destination_within_reach)
+            {
+                // SEND GO COMMAND TO CONDUCTOR
+                // ConductorRequest request(COMMAND::GOTO, train_num, 7, node_name, node_name, offset);
+                // send node name to conductor
+                // IO_NS::PrintTerminal("Attempting to find path for Train %d to go to %s %d with speed %d, sending to Conductor tid: %d\r\n", train_num, node_name, offset, speed, CONDUCTOR_TID);
+                // SEND(CONDUCTOR_TID, (char *)&request, sizeof(request), nullptr, 0);
+            }
+            else
+            {
+                // SEND RESERVE PATH COMMAND TO CONDUCTOR
+                ConductorRequest conductor_request(COMMAND::UPDATE_RESERVED_PATH, train_num);
+                int retval = SEND(CONDUCTOR_TID, (char *)&conductor_request, sizeof(ConductorRequest), nullptr, 0);
+                uassert(retval >= 0 && "STOP MESSENGER: Error sending TrainCommandNotification to Conductor");
+            }
         }
     }
 

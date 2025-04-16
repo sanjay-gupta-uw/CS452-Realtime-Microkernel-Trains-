@@ -82,7 +82,14 @@ namespace Trains_NS
         int speed;
     };
 
-    void spawn_train(); // individual train tasks
+    struct StoppingStruct
+    {
+        bool destination_within_reach;
+        int delay_until_time;
+    };
+
+    void
+    spawn_train(); // individual train tasks
     void train_ticker();
 
     void command_messenger();

@@ -33,7 +33,6 @@ namespace Conductor_NS
         int SWITCH_SERVER_TID;
         int SENSOR_SERVER_TID;
         int CLOCK_SERVER_TID;
-        // Switch_NS::Switches switches;
 
         int get_train_index(int train_num);
         void SetSwitches(Queue<PathNode, NUM_SWITCHES> *switch_nodes);
@@ -45,7 +44,6 @@ namespace Conductor_NS
         int GetSegmentLength(int train_num); // deprecate this
 
         // Queue<TrainResponse, 8> train_messages;
-        Queue<PathNode, NUM_SWITCHES> loop_switch_config;
         struct MessengerUnit
         {
             int messenger_id;
@@ -86,7 +84,7 @@ namespace Conductor_NS
             bool check_if_blocked;
             bool isTrainBlocked;
 
-            bool auto_mode;
+            bool update_reserved_path;
 
             Queue<TrainCommandNotification, 5> train_commands;
             Stack<PathNode, TRACK_MAX> path;
@@ -100,13 +98,8 @@ namespace Conductor_NS
 
         void GenerateAndSendNewCommand(train_task_mapping *train);
 
-        void update_position(train_task_mapping *train);
-
         void SwitchNextSegment(Stack<PathNode, TRACK_MAX> *path);
 
-        void SendSegmentToMessenger(int messenger_tid, train_task_mapping *train);
-        void CalibrateTrain(train_task_mapping *train);
-        void UpdateCalibrationStage(train_task_mapping *train);
         void setSwitch(int addr, SwitchState state);
         void PopSegment(train_task_mapping *train);
 
@@ -129,9 +122,9 @@ namespace Conductor_NS
         int command_index;
     };
 
+    void start_conductor();
     void start_sensor_messenger();
     void ticker();
-    void start_conductor();
 
 }
 
