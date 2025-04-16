@@ -83,7 +83,7 @@ namespace Trains_NS
         train_ticker_tid = CREATE(PRIORITY::DEVICE_NOTIFIER, Trains_NS::train_ticker);
         uassert(train_ticker_tid > 0 && "Error creating train messenger");
 
-        stop_messenger_tid = CREATE(PRIORITY::DEVICE_NOTIFIER, Trains_NS::stop_messenger);
+        stop_messenger_tid = CREATE(PRIORITY::MARKLIN_NOTIFIER, Trains_NS::stop_messenger);
         uassert(stop_messenger_tid > 0 && "Error creating train messenger");
         int retval2 = SEND(stop_messenger_tid, (char *)&train_num, sizeof(int), nullptr, 0);
         uassert(retval2 >= 0 && "Error sending train number to stop messenger");
