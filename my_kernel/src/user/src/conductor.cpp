@@ -789,8 +789,8 @@ namespace Conductor_NS
     }
 
     int Conductor::custom_rand()
-    {
-        int custom_rand_seed = 20883952;
+    {       
+        int custom_rand_seed = TIME(CLOCK_SERVER_TID);
         // Simple Linear Congruential Generator
         custom_rand_seed = (214013 * custom_rand_seed + 2531011);
         return (custom_rand_seed >> 16) & 0x7FFF;
@@ -798,7 +798,7 @@ namespace Conductor_NS
 
     void Conductor::GenerateAndSendNewCommand(train_task_mapping *train)
     {
-        char *dest_sensor;
+        char dest_sensor[5] ={0};
         int offset;
         int speed;
 
@@ -830,11 +830,15 @@ namespace Conductor_NS
                 }
         */
 
+        /*
+        // random test
         for (int i = 0; i <= 10; i++)
         {
             // Generate random sensor components
+            dest_sensor[5] = {0};
             char bank = 'A' + (custom_rand() % 5);     // A-E
-            int sensor_num = (custom_rand() % 30) + 1; // 1-30
+            int sensor_num = (custom_rand() % 14) + 1; // 1-14
+            IO_NS::PrintTerminal(COLOR_YELLOW "Random generated bank: %c, Random generated sensor num: %d%\r\n", bank, sensor_num);
 
             // Manually construct sensor name
             dest_sensor[0] = bank;
@@ -842,20 +846,25 @@ namespace Conductor_NS
             {
                 dest_sensor[1] = '0' + (sensor_num / 10); // Tens digit
                 dest_sensor[2] = '0' + (sensor_num % 10); // Units digit
+                dest_sensor[3] = '\0';
             }
             else
             {
                 dest_sensor[1] = '0' + sensor_num; // Single digit
+                dest_sensor[2] = '\0';
             }
             IO_NS::PrintTerminal(COLOR_YELLOW "Random generated: %s\r\n", dest_sensor);
         }
+        */
 
         // Generate valid random sensor
         do
         {
+            dest_sensor[5] = {0};
+
             // Generate random sensor components
             char bank = 'A' + (custom_rand() % 5);     // A-E
-            int sensor_num = (custom_rand() % 30) + 1; // 1-30
+            int sensor_num = (custom_rand() % 14) + 1; // 1-14
 
             // Manually construct sensor name
             dest_sensor[0] = bank;
@@ -863,11 +872,15 @@ namespace Conductor_NS
             {
                 dest_sensor[1] = '0' + (sensor_num / 10); // Tens digit
                 dest_sensor[2] = '0' + (sensor_num % 10); // Units digit
+                dest_sensor[3] = '\0';
             }
             else
             {
                 dest_sensor[1] = '0' + sensor_num; // Single digit
+                dest_sensor[2] = '\0';
             }
+
+            IO_NS::PrintTerminal(COLOR_YELLOW "Random generated: %s\r\n", dest_sensor);
 
             // Check against forbidden list
             is_forbidden = false;
@@ -879,6 +892,8 @@ namespace Conductor_NS
                     break;
                 }
             }
+
+            IO_NS::PrintTerminal(COLOR_YELLOW "Is this sensor forbiden: %d\r\n", is_forbidden);
         } while (is_forbidden);
 
         offset = 0;
@@ -904,7 +919,7 @@ namespace Conductor_NS
         if (command_index >= list_size) {
             command_index = 0;
         }
-            */
+        */
     }
 
     void Conductor::update_position(train_task_mapping *train)
