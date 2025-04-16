@@ -392,14 +392,6 @@ namespace Conductor_NS
             }
             train_task_mapping *train = &train_arr[train_index];
 
-            // reset old path state if not cleared already
-            {
-                IO_NS::PrintTerminal(COLOR_GREEN "Conductor::ProcessRequest -- Train %d GOTO command -- clearing old path\r\n", train_num);
-                ReleasePath(train);
-                train->path.Clear();
-                train->train_commands.Clear();
-            }
-
             train->path.Clear();
             train->reserved_nodes.Clear();
             train->reserved_sensors_count = 0;
@@ -721,6 +713,22 @@ namespace Conductor_NS
             else if (req.requestType == RequestType::SENSOR_TRIGGER)
             {
                 ProcessSensorTrigger(&req.data.sensor_trigger_response);
+                sendReply = true;
+            }
+            else if (req.requestType == RequestType::TICK)
+            {
+                sendReply = true;
+            }
+            else if (req.requestType == RequestType::RELEASE_PATH)
+            {
+                int train_num = req.data.train_num;
+                int train_index = get_train_index(train_num);
+                uassert(train_index >= 0 && "Conductor::ConductorLoop -- Error getting train index");
+                train_task_mapping *train = train_arr + train_index;
+                IO_NS::PrintTerminal(COLOR_GREEN "Conductor::LOOP-RELEASE_PATH -- train {%d} clearing old path\r\n", train_num);
+                ReleasePath(train);
+                train->path.Clear();
+                train->train_commands.Clear();
                 sendReply = true;
             }
 
@@ -1212,6 +1220,8 @@ namespace Conductor_NS
 
     void Conductor::ReleasePath(train_task_mapping *train)
     {
+        // save destination node
+        track_node *dest_node = train->destination_node;
         while (!train->reserved_nodes.IsEmpty())
         {
             PathNode pnode;
@@ -1223,6 +1233,9 @@ namespace Conductor_NS
             }
             releaseNode(pnode.node);
         }
+
+        reserveNode(dest_node, train->train_num);
+        train->reserved_nodes.Push({dest_node, SwitchState::UNINITIALIZED});
     }
 
     void Conductor::ReleaseSegment(train_task_mapping *train)
@@ -1430,7 +1443,7 @@ namespace Conductor_NS
         {
             // IO_NS::PrintTerminal(COLOR_YELLOW "TRAIN TICKER{%d}:: Sending TICK to Train task\r\n", my_tid);
             int retval = SEND(conductor_tid, (char *)&tick_message, sizeof(tick_message), nullptr, 0);
-            DELAY(CLOCK_SERVER_TID, 100);
+            DELAY(CLOCK_SERVER_TID, 20);
         }
     }
 

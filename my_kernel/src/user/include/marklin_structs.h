@@ -148,6 +148,7 @@ enum class RequestType
     GET_SENSOR,     // GET SENSOR (sensor messenger to marklin)
     SENSOR_TRIGGER, // NOTICE OF SENSOR TRIGGER
     TICK,
+    RELEASE_PATH,
 };
 struct SensorTriggerResponse
 {

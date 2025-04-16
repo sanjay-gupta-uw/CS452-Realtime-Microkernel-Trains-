@@ -409,11 +409,19 @@ namespace Trains_NS
             STOP(train_num, MARKLIN_IO_SERVER_TID);
             // THIS RUNS WHEN MARKLIN ACCEPTS THE STOP COMMAND
 
-            DELAY(CLOCK_SERVER_TID, 200); // wait for 2 seconds
-
             if (stopping_struct.destination_within_reach)
             {
-                // SEND GO COMMAND TO CONDUCTOR
+                // SEND TWO MESSAGES TO CONDUCTOR::
+                // 1. RELEASE PATH
+                // 1.a) DELAY FOR 2 SECONDS TO ALLOW OTHER TRAINS TO RESERVE PATH/MAKE PROGRESS
+                ConductorRequest release_request(train_num, RequestType::RELEASE_PATH);
+                int retval = SEND(CONDUCTOR_TID, (char *)&release_request, sizeof(ConductorRequest), nullptr, 0);
+                uassert(retval >= 0 && "STOP MESSENGER: Error sending TrainCommandNotification to Conductor");
+
+                // PATH IS RELEASED -- ONLY RESERVED NODE SHOULD BE DESTINATION!
+
+                DELAY(CLOCK_SERVER_TID, 200); // wait for 2 seconds
+                // 2. SEND GO COMMAND TO CONDUCTOR
                 // ConductorRequest request(COMMAND::GOTO, train_num, 7, node_name, node_name, offset);
                 // send node name to conductor
                 // IO_NS::PrintTerminal("Attempting to find path for Train %d to go to %s %d with speed %d, sending to Conductor tid: %d\r\n", train_num, node_name, offset, speed, CONDUCTOR_TID);
