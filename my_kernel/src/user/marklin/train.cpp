@@ -422,6 +422,8 @@ namespace Trains_NS
             else
             {
                 // SEND RESERVE PATH COMMAND TO CONDUCTOR
+                // THIS ENABLES THE update_reserved_path FLAG IN CONDUCTOR (for specified train)
+                // CONDUCTOR THEN TRIES TO FIND A PATH ON EACH REFRESH TICK FROM CONDUCTOR TICKER
                 ConductorRequest conductor_request(COMMAND::UPDATE_RESERVED_PATH, train_num);
                 int retval = SEND(CONDUCTOR_TID, (char *)&conductor_request, sizeof(ConductorRequest), nullptr, 0);
                 uassert(retval >= 0 && "STOP MESSENGER: Error sending TrainCommandNotification to Conductor");
