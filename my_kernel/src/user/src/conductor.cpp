@@ -40,6 +40,14 @@ static constexpr int SPEEDS_1[] = {
 
 namespace Conductor_NS
 {
+
+    static void STOP(int train_num, int MARKLIN_IO_SERVER_TID)
+    {
+        int train_speed = 0;
+        MARKLIN_IO_SERVER::MarklinRequest request = {false, train_speed + 16, train_num};
+        MARKLIN_IO_SERVER::SendCmd(MARKLIN_IO_SERVER_TID, &request);
+    }
+
     static void releaseNode(track_node *node)
     {
         node->who_reserved_me = -1;
@@ -155,9 +163,17 @@ namespace Conductor_NS
 
         // LOOP_START_SENSOR_DATA = {'B', 5};
 
+        int train_nums[NUM_TRAINS] = {1, 54, 55, 58, 77};
+        // stop all trains
+        int MARKLIN_IO_SERVER_TID = WHOIS("MarklinIOServer");
+        for (int i = 0; i < NUM_TRAINS; ++i)
+        {
+            IO_NS::PrintTerminal("Conductor::Conductor init -- stopping train %d\r\n", train_nums[i]);
+            STOP(train_nums[i], MARKLIN_IO_SERVER_TID);
+        }
+
         InitializeTrainDisplay();
 
-        StopAllTrains();
         ConductorLoop();
     }
     Conductor::~Conductor()
@@ -375,6 +391,14 @@ namespace Conductor_NS
                 return;
             }
             train_task_mapping *train = &train_arr[train_index];
+
+            // reset old path state if not cleared already
+            {
+                IO_NS::PrintTerminal(COLOR_GREEN "Conductor::ProcessRequest -- Train %d GOTO command -- clearing old path\r\n", train_num);
+                ReleasePath(train);
+                train->path.Clear();
+                train->train_commands.Clear();
+            }
 
             train->path.Clear();
             train->reserved_nodes.Clear();
@@ -1311,25 +1335,6 @@ namespace Conductor_NS
         IO_NS::PrintTerminal(COLOR_GREEN "Conductor::ProcessSensorTrigger -- Train %d -- Popped segment from path:\r\n", train->train_num);
         train->path.Print();
         train->reserved_nodes.Print();
-
-        // get key to continue
-        // IO_NS::PrintTerminal(COLOR_GREEN "Conductor::ProcessSensorTrigger -- Press any key to continue\r\n");
-        // unsigned char ch = uart_getc(CONSOLE);
-
-        // CALL THIS WHEN TRAIN RECEIVES NEW GO COMMAND!
-        if (train->isMoving && train->last_sensor == train->destination_node)
-        {
-            IO_NS::PrintTerminal(COLOR_GREEN "Conductor::DispatchCommand -- Train %d reached destination %s -- STOPPING TRAIN\r\n", train->train_num, train->last_sensor->name);
-            ReleasePath(train);
-            train->path.Clear();
-
-            train->train_commands.Clear();
-            train->train_commands.Push({TRAIN_COMMAND::STOP, 0});
-        }
-
-        // IO_NS::PrintTerminal(COLOR_GREEN "POPPED SEGMENT FROM PATH; REMAINING PATH:");
-        // train->path.Print();
-        // IO_NS::PrintTerminal(COLOR_GREEN "Conductor::ProcessSensorTrigger -- HANDLED %s TRIGGER\r\n", (triggered_idx == expected_idx) ? train->last_sent_sensor->name : train->last_sent_sensor_safety->name);
     }
 
     void Conductor::StopTrainConflict(train_task_mapping *train)
