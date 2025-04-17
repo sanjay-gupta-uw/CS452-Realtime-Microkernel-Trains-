@@ -618,20 +618,20 @@ namespace UI_CMD_NS
         IO_NS::PrintTerminal("Command Prompt started\r\n");
 
         // track A
-        // char *initial_commands_list[] = {
-        //     "SPAWN 77 B11 0",
-        //     "SPAWN 58 B9 0",
-        //     "GO 77 10 A15 0",
-        //     "GO 58 10 A14 0",
-        //     // "AUTO",
-        // };
         char *initial_commands_list[] = {
-            "SPAWN 77 A16 0",
-            "SPAWN 58 A13 0",
-            "GO 77 10 A2 0",
-            "GO 58 10 B13 0",
+            "SPAWN 77 B11 0",
+            "SPAWN 58 B9 0",
+            "GO 77 10 A15 0",
+            "GO 58 10 A14 0",
             // "AUTO",
         };
+        // char *initial_commands_list[] = {
+        //     "SPAWN 77 A16 0",
+        //     "SPAWN 58 A13 0",
+        //     "GO 77 10 A2 0",
+        //     "GO 58 10 B13 0",
+        //     // "AUTO",
+        // };
 
         IO_NS::PrintTerminal("Parsing Initial commands:\r\n");
         for (int i = 0; i < sizeof(initial_commands_list) / sizeof(initial_commands_list[0]); i++)
