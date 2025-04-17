@@ -739,7 +739,7 @@ namespace Conductor_NS
             // receive request from terminal
             retval = RECEIVE(&sender_tid, (char *)&req, sizeof(ConductorRequest));
             uassert(retval >= 0 && "Error receiving request from terminal");
-            IO_NS::PrintTerminal("Conductor received %s from %d\r\n", req.requestType == RequestType::CMD ? "CMD" : (req.requestType == RequestType::GET_SEGMENT ? "GET_SEGMENT" : (req.requestType == RequestType::GET_CMD ? "GET_CMD" : (req.requestType == RequestType::GET_SENSOR ? "GET_SENSOR" : (req.requestType == RequestType::SENSOR_TRIGGER ? "SENSOR_TRIGGER" : "TICK")))), sender_tid);
+            // IO_NS::PrintTerminal("Conductor received %s from %d\r\n", req.requestType == RequestType::CMD ? "CMD" : (req.requestType == RequestType::GET_SEGMENT ? "GET_SEGMENT" : (req.requestType == RequestType::GET_CMD ? "GET_CMD" : (req.requestType == RequestType::GET_SENSOR ? "GET_SENSOR" : (req.requestType == RequestType::SENSOR_TRIGGER ? "SENSOR_TRIGGER" : "TICK")))), sender_tid);
 
             bool sendReply = false;
             if (req.requestType == RequestType::CMD)
@@ -977,7 +977,8 @@ namespace Conductor_NS
 
                 track_node *first_sensor;
                 track_node *second_sensor;
-                get_sensors_to_listen_to(train, first_sensor, second_sensor);
+                track_node *third_sensor;
+                get_sensors_to_listen_to(train, first_sensor, second_sensor, third_sensor);
 
                 // NEED TO CHECK THE FOLLOWING:
                 // 1. If the first sensor is the same as the last sent sensor, dont send again
@@ -1002,16 +1003,9 @@ namespace Conductor_NS
                         int reserved_path_distance = GetReservedPathLength(train);
                         // SEND ACCELERATE COMMAND
                         IO_NS::PrintTerminal(COLOR_GREEN "Conductor::DispatchCommand -- Making Train %d move with reserved path distance: %d\r\n", train->train_num, reserved_path_distance);
-                        TrainCommandNotification command = {TRAIN_COMMAND::ACCELERATE, 7, reserved_path_distance};
+                        TrainCommandNotification command = {TRAIN_COMMAND::ACCELERATE, 8, reserved_path_distance};
                         train->train_commands.Push(command);
                         train->isMoving = true;
-                    }
-
-                    if (second_sensor && second_sensor == train->destination_node)
-                    {
-                        // SLOW DOWN TRAIN
-                        IO_NS::PrintTerminal(COLOR_GREEN "Conductor::DispatchCommand -- Train %d is approaching destination, sending SLOW command\r\n", train->train_num);
-                        TrainCommandNotification command = {TRAIN_COMMAND::ACCELERATE, 4, 0};
                     }
                 }
                 else if (!second_sensor && (first_sensor != train->destination_node) && train->isMoving)
@@ -1050,13 +1044,14 @@ namespace Conductor_NS
             // IO_NS::PrintTerminal(COLOR_GREEN "Conductor::DispatchCommand -- Not all trains are blocked\r\n");
         }
     }
-    void Conductor::get_sensors_to_listen_to(train_task_mapping *train, track_node *&first_sensor, track_node *&second_sensor)
+    void Conductor::get_sensors_to_listen_to(train_task_mapping *train, track_node *&first_sensor, track_node *&second_sensor, track_node *&third_sensor)
     {
         Queue<PathNode, TRACK_MAX> *reserved_nodes = &train->reserved_nodes;
         Stack<PathNode, 20> temp_queue;
         // extract the first two nodes on the path
         first_sensor = nullptr;
         second_sensor = nullptr;
+        third_sensor = nullptr;
         if (reserved_nodes->IsEmpty())
         {
             return;
@@ -1094,6 +1089,12 @@ namespace Conductor_NS
                     second_sensor = this->track.get_node_by_name(node->name);
                     break;
                 }
+                else if (third_sensor == nullptr)
+                {
+                    // IO_NS::PrintTerminal(COLOR_RED "Setting third sensor to %s\r\n", node->name);
+                    third_sensor = this->track.get_node_by_name(node->name);
+                    break;
+                }
                 else
                 {
                     // IO_NS::PrintTerminal("Conductor::get_sensors_to_listen_to -- both not null\r\n");
@@ -1110,16 +1111,6 @@ namespace Conductor_NS
             temp_queue.Pop(&node);
             reserved_nodes->PushFront(node);
         }
-        // IO_NS::PrintTerminal(COLOR_BLUE "VERIFYING RESERVED NODES: ");
-        // reserved_nodes->Print();
-        // if (first_sensor != nullptr)
-        // {
-        //     IO_NS::PrintTerminal(COLOR_RED "Conductor::get_sensors_to_listen_to -- first sensor: %s\r\n", first_sensor->name);
-        // }
-        // if (second_sensor != nullptr)
-        // {
-        //     IO_NS::PrintTerminal(COLOR_RED "Conductor::get_sensors_to_listen_to -- second sensor: %s\r\n", second_sensor->name);
-        // }
     }
 
     // SENSOR/CONDUCTOR MESSENGER
@@ -1516,6 +1507,23 @@ namespace Conductor_NS
         IO_NS::PrintTerminal(COLOR_GREEN "Conductor::ProcessSensorTrigger -- Train %d -- Popped segment from path:\r\n", train->train_num);
         train->path.Print();
         train->reserved_nodes.Print();
+
+        // IF THE FIRST NODE IN THE PATH IS THE DEST -- SLOW DOWN
+        PathNode temp_node;
+
+        if (!train->path.IsEmpty())
+        {
+            train->path.Pop(&temp_node);
+            if (temp_node.node == train->destination_node)
+            {
+                // SLOW DOWN TRAIN
+                IO_NS::PrintTerminal(COLOR_GREEN "Conductor::DispatchCommand -- Train %d is approaching destination, sending SLOW command\r\n", train->train_num);
+                TrainCommandNotification command = {TRAIN_COMMAND::ACCELERATE, 5, 0};
+                train->train_commands.Push(command);
+                train->isMoving = true;
+            }
+            train->path.Push(temp_node);
+        }
 
         // get key to continue
         // IO_NS::PrintTerminal(COLOR_GREEN "Conductor::ProcessSensorTrigger -- Press any key to continue\r\n");

@@ -114,7 +114,7 @@ namespace Conductor_NS
         void ReleaseSegment(train_task_mapping *train);
         int GetReservedPathLength(train_task_mapping *train);
 
-        void get_sensors_to_listen_to(train_task_mapping *train, track_node *&first_sensor, track_node *&second_sensor);
+        void get_sensors_to_listen_to(train_task_mapping *train, track_node *&first_sensor, track_node *&second_sensor, track_node *&third_sensor);
         void ProcessSensorTrigger(SensorTriggerResponse *trigger_response);
 
         void StopTrainConflict(train_task_mapping *train);
