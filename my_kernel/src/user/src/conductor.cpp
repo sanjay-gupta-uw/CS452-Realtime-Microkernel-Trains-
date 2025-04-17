@@ -1002,7 +1002,7 @@ namespace Conductor_NS
                         int reserved_path_distance = GetReservedPathLength(train);
                         // SEND ACCELERATE COMMAND
                         IO_NS::PrintTerminal(COLOR_GREEN "Conductor::DispatchCommand -- Making Train %d move with reserved path distance: %d\r\n", train->train_num, reserved_path_distance);
-                        TrainCommandNotification command = {TRAIN_COMMAND::ACCELERATE, 8, reserved_path_distance};
+                        TrainCommandNotification command = {TRAIN_COMMAND::ACCELERATE, 7, reserved_path_distance};
                         train->train_commands.Push(command);
                         train->isMoving = true;
                     }
