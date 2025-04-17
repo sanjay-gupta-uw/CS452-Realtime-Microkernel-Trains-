@@ -40,6 +40,14 @@ static constexpr int SPEEDS_1[] = {
 
 namespace Conductor_NS
 {
+
+    static void STOP(int train_num, int MARKLIN_IO_SERVER_TID)
+    {
+        int train_speed = 0;
+        MARKLIN_IO_SERVER::MarklinRequest request = {false, train_speed + 16, train_num};
+        MARKLIN_IO_SERVER::SendCmd(MARKLIN_IO_SERVER_TID, &request);
+    }
+
     static void releaseNode(track_node *node)
     {
         node->who_reserved_me = -1;
@@ -153,7 +161,14 @@ namespace Conductor_NS
         uassert(ticker_tid > 0 && "Conductor::Error creating ticker");
         IO_NS::PrintTerminal("Conductor ticker created with TID %d\r\n", ticker_tid);
 
-        LOOP_START_SENSOR_DATA = {'B', 5};
+        int train_nums[NUM_TRAINS] = {1, 54, 55, 58, 77};
+        // stop all trains
+        int MARKLIN_IO_SERVER_TID = WHOIS("MarklinIOServer");
+        for (int i = 0; i < NUM_TRAINS; ++i)
+        {
+            IO_NS::PrintTerminal("Conductor::Conductor init -- stopping train %d\r\n", train_nums[i]);
+            STOP(train_nums[i], MARKLIN_IO_SERVER_TID);
+        }
 
         InitializeTrainDisplay();
 
@@ -987,9 +1002,16 @@ namespace Conductor_NS
                         int reserved_path_distance = GetReservedPathLength(train);
                         // SEND ACCELERATE COMMAND
                         IO_NS::PrintTerminal(COLOR_GREEN "Conductor::DispatchCommand -- Making Train %d move with reserved path distance: %d\r\n", train->train_num, reserved_path_distance);
-                        TrainCommandNotification command = {TRAIN_COMMAND::ACCELERATE, train->speed_level, reserved_path_distance};
+                        TrainCommandNotification command = {TRAIN_COMMAND::ACCELERATE, 8, reserved_path_distance};
                         train->train_commands.Push(command);
                         train->isMoving = true;
+                    }
+
+                    if (second_sensor && second_sensor == train->destination_node)
+                    {
+                        // SLOW DOWN TRAIN
+                        IO_NS::PrintTerminal(COLOR_GREEN "Conductor::DispatchCommand -- Train %d is approaching destination, sending SLOW command\r\n", train->train_num);
+                        TrainCommandNotification command = {TRAIN_COMMAND::ACCELERATE, 4, 0};
                     }
                 }
                 else if (!second_sensor && (first_sensor != train->destination_node) && train->isMoving)
@@ -1323,6 +1345,34 @@ namespace Conductor_NS
         train->reserved_nodes.Push({dest_node, SwitchState::UNINITIALIZED});
     }
 
+    static bool isReverseInPath(track_node *node, Queue<PathNode, TRACK_MAX> *reserved_path)
+    {
+        Queue<PathNode, TRACK_MAX> temp_queue;
+        bool found_reverse_node = false;
+
+        while (!reserved_path->IsEmpty())
+        {
+            PathNode pnode;
+            reserved_path->Pop(&pnode);
+            temp_queue.Push(pnode);
+            if (pnode.node == node->reverse)
+            {
+                found_reverse_node = true;
+                // uassert(false && "Conductor::isReverseInPath -- found reverse node in path");
+            }
+        }
+
+        // restore the path
+        while (!temp_queue.IsEmpty())
+        {
+            PathNode pnode;
+            temp_queue.Pop(&pnode);
+            reserved_path->Push(pnode);
+        }
+
+        return found_reverse_node;
+    }
+
     void Conductor::ReleaseSegment(train_task_mapping *train)
     {
         IO_NS::PrintTerminal(COLOR_RED "Conductor::ReleaseSegment -- releasing segment for train %d -- last sensor: %s\r\n", train->train_num, train->last_sensor->name);
@@ -1347,7 +1397,13 @@ namespace Conductor_NS
 
             IO_NS::PrintTerminal("Conductor::ReleaseSegment -- releasing %s for train %d\r\n", pnode.node->name, train->train_num);
             train->reserved_nodes.Pop(&pnode);
-            releaseNode(pnode.node);
+            // CHECK IF REVERSE OF THE PNODE IS IN THE RESERVED NODES
+            bool is_reverse_saved = isReverseInPath(pnode.node, &train->reserved_nodes);
+            if (!is_reverse_saved)
+            {
+                releaseNode(pnode.node);
+            }
+
             if (pnode.node->type == NODE_SENSOR)
             {
                 train->reserved_sensors_count--;

@@ -29,7 +29,6 @@ namespace Conductor_NS
 
     private:
         void DispatchCommand();
-        SensorStruct LOOP_START_SENSOR_DATA;
         int SWITCH_SERVER_TID;
         int SENSOR_SERVER_TID;
         int CLOCK_SERVER_TID;

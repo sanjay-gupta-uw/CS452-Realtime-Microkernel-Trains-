@@ -411,7 +411,7 @@ namespace Trains_NS
             int retval = SEND(train_task_tid, (char *)&message, sizeof(TrainMessage), nullptr, 0);
             uassert(retval >= 0 && "STOP MESSENGER: Error sending TrainMessage to Train task");
 
-            DELAY(CLOCK_SERVER_TID, 400); // wait for 4 seconds and then send go command to conductor
+            DELAY(CLOCK_SERVER_TID, 1000); // wait for 10 seconds and then send go command to conductor
 
             // 1. SEND GO_AGAIN COMMAND TO CONDUCTOR
             ConductorRequest request(train_num, RequestType::CMD);
