@@ -30,6 +30,7 @@ namespace Trains_NS
         int path_messenger_tid;
         int sensor_messenger_tid;
         int train_ticker_tid;
+        int go_messenger_tid;
 
         int train_speed; // between 0 and 14
         bool isReversed;
@@ -84,6 +85,7 @@ namespace Trains_NS
     void train_ticker();
 
     void command_messenger();
+    void go_messenger();
     // void sensor_messenger();
 
 };

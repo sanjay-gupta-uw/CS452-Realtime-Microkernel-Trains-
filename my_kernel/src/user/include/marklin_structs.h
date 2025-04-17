@@ -23,6 +23,7 @@ enum class COMMAND
     SENSOR_TRIGGER,
     STOP_ALL,
     AUTO,
+    GO_AGAIN,
     INVALID,
 };
 
@@ -62,6 +63,7 @@ enum class TrainMessageType
     PATH_MESSENGER,
     SENSOR_MESSENGER,
     TRAIN_TICKER,
+    GO_MESSENGER,
 };
 
 // USE THIS FOR SENDING SENSOR HIT BACK TO TRAIN
@@ -201,6 +203,7 @@ struct ConductorRequest
         : requestType(requestType)
     {
         data.train_num = train_num;
+        data.cmdRequest.id = train_num;
         // IO_NS::PrintTerminal("ConductorRequest::ConductorRequest CONSTRUCTOR -- %d\r\n", requestType);
     }
     ConductorRequest(SensorTriggerResponse *sensor_trigger_response)

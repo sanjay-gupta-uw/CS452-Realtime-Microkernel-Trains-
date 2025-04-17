@@ -79,8 +79,13 @@ namespace Trains_NS
         // uassert(sensor_messenger_tid > 0 && "Error creating train messenger");
         // retval = SEND(sensor_messenger_tid, (char *)&train_num, sizeof(int), nullptr, 0);
 
-        train_ticker_tid = CREATE(PRIORITY::DEVICE_NOTIFIER, Trains_NS::train_ticker);
-        uassert(train_ticker_tid > 0 && "Error creating train messenger");
+        // train_ticker_tid = CREATE(PRIORITY::DEVICE_NOTIFIER, Trains_NS::train_ticker);
+        // uassert(train_ticker_tid > 0 && "Error creating train messenger");
+
+        go_messenger_tid = CREATE(PRIORITY::DEVICE_NOTIFIER, Trains_NS::go_messenger);
+        uassert(go_messenger_tid > 0 && "Error creating train messenger");
+        retval = SEND(go_messenger_tid, (char *)&train_num, sizeof(int), nullptr, 0);
+        uassert(retval >= 0 && "Error sending train number to train messenger");
 
         TrainLoop();
     }
@@ -173,7 +178,14 @@ namespace Trains_NS
             break;
         case TRAIN_COMMAND::STOP:
             IO_NS::PrintTerminal(COLOR_GREEN "Received command from conductor to stop train %d -- sending command at tick %d\r\n", train_num, cur_tick);
+
+            // check if destination stop
             Stop();
+            if (message->data.train_command.speed > 0)
+            {
+                IO_NS::PrintTerminal(COLOR_GREEN "Train %d: SENT COMMAND TO STOP AT DESTINATION\r\n", train_num);
+                REPLY(go_messenger_tid, nullptr, 0);
+            }
             // uassert(false && "TRAIN STOPPED -- FORCED ERROR");
             break;
             // move this to the train ticker switch case
@@ -265,7 +277,11 @@ namespace Trains_NS
                 // update train position
                 send_reply = true;
                 break;
-
+            case TrainMessageType::GO_MESSENGER:
+            {
+                send_reply = false; // hang on until we stop at dest
+                break;
+            }
             default:
                 break;
             }
@@ -366,6 +382,42 @@ namespace Trains_NS
             // uassert(false && "HERE");
 
             IO_NS::PrintTerminal(COLOR_YELLOW "COMMAND MESSENGER{%d}:: Train accepted command %d\r\n", my_tid, command_struct.command);
+        }
+    }
+
+    void go_messenger()
+    {
+        int my_tid = MYTID();
+        IO_NS::PrintTerminal(COLOR_YELLOW "STOP MESSENGER spawned with TID %d\r\n", my_tid);
+        int train_num;
+        int train_task_tid;
+        int param_init_retval = RECEIVE(&train_task_tid, (char *)&train_num, sizeof(int));
+        uassert(param_init_retval >= 0 && train_task_tid >= 0 && "STOP MESSENGER: Error receiving train_num from parent task");
+        REPLY(train_task_tid, nullptr, 0);
+
+        int CLOCK_SERVER_TID = WHOIS("ClockServer");
+        uassert(CLOCK_SERVER_TID > 0 && "STOP MESSENGER: Error finding ClockServer");
+
+        int CONDUCTOR_TID = WHOIS("Conductor");
+        uassert(CONDUCTOR_TID > 0 && "STOP MESSENGER: Error finding Conductor");
+
+        TrainMessage message(TrainMessageType::GO_MESSENGER);
+
+        ConductorRequest request(train_num, RequestType::CMD);
+        request.data.cmdRequest.command = COMMAND::GO_AGAIN;
+
+        while (true)
+        {
+            int retval = SEND(train_task_tid, (char *)&message, sizeof(TrainMessage), nullptr, 0);
+            uassert(retval >= 0 && "STOP MESSENGER: Error sending TrainMessage to Train task");
+
+            DELAY(CLOCK_SERVER_TID, 400); // wait for 4 seconds and then send go command to conductor
+
+            // 1. SEND GO_AGAIN COMMAND TO CONDUCTOR
+            ConductorRequest request(train_num, RequestType::CMD);
+            request.data.cmdRequest.command = COMMAND::GO_AGAIN;
+            retval = SEND(CONDUCTOR_TID, (char *)&request, sizeof(ConductorRequest), nullptr, 0);
+            uassert(retval >= 0 && "STOP MESSENGER: Error sending GO_AGAIN command to Conductor");
         }
     }
 

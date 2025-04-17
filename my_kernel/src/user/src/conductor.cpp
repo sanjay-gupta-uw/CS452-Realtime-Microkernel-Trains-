@@ -296,6 +296,7 @@ namespace Conductor_NS
                 }
                 Conductor::UpdateTrainDisplay();
                 train_arr[train_index].train_commands.Push({TRAIN_COMMAND::ACCELERATE, speed});
+                train_arr[train_index].isMoving = true;
             }
             break;
         }
@@ -419,7 +420,13 @@ namespace Conductor_NS
             train_task_mapping *train = &train_arr[train_index];
 
             train->path.Clear();
-            train->reserved_nodes.Clear();
+            while (!train->reserved_nodes.IsEmpty())
+            {
+                PathNode node;
+                train->reserved_nodes.Pop(&node);
+                releaseNode(node.node);
+            }
+            // train->reserved_nodes.Clear();
             train->reserved_sensors_count = 0;
 
             memcpy(train->destination, dest, 4);
@@ -513,14 +520,7 @@ namespace Conductor_NS
             train->stopping_targets.Peek(destination_node, &stopping_target);
             IO_NS::PrintTerminal(COLOR_GREEN "Conductor::GOTO -- Stopping target: %s in %d mm\r\n", destination_node->name, stopping_target);
             train->middle_distance = 0;
-
-            // train->isMoving = true;
-
             train->reach_first_sensor = false;
-
-            // SwitchNextSegment(&train->path);
-            // Accelerates the train
-            // train->train_commands.Push({TRAIN_COMMAND::ACCELERATE, speed});
 
             int cur_tick = TIME(CLOCK_SERVER_TID);
 
@@ -549,6 +549,15 @@ namespace Conductor_NS
             IO_NS::PrintTerminal("Auto mode enabled for all trains\r\n");
             break;
         }
+        case COMMAND::GO_AGAIN:
+        {
+            int train_num = req->id;
+            IO_NS::PrintTerminal(COLOR_GREEN "CONDUCTOR::PROCESSREQUEST -- GO AGAIN -- train num: %d\r\n", train_num);
+            int train_index = get_train_index(train_num);
+            GenerateAndSendNewCommand(&train_arr[train_index]);
+            IO_NS::PrintTerminal(COLOR_GREEN "CONDUCTOR::PROCESSREQUEST -- GO AGAIN EXECUTED FOR train num: %d\r\n", train_num);
+            break;
+        }
         default:
             IO_NS::PrintTerminal("Conductor received INVALID request\r\n");
             break;
@@ -561,7 +570,7 @@ namespace Conductor_NS
         {
             if (train_arr[i].train_num != -1)
             {
-                IO_NS::PrintTerminal("Sending STOP command to Train %d\r\n", train_arr[i].train_num);
+                IO_NS::PrintTerminal(COLOR_RED "Sending STOP command to Train %d\r\n", train_arr[i].train_num);
                 train_arr[i].speed_level = 0;
                 train_arr[i].actual_speed_x100 = 0;
                 train_arr[i].train_commands.Push({TRAIN_COMMAND::STOP, 0});
@@ -789,7 +798,7 @@ namespace Conductor_NS
     }
 
     int Conductor::custom_rand()
-    {       
+    {
         int custom_rand_seed = TIME(CLOCK_SERVER_TID);
         // Simple Linear Congruential Generator
         custom_rand_seed = (214013 * custom_rand_seed + 2531011);
@@ -798,7 +807,7 @@ namespace Conductor_NS
 
     void Conductor::GenerateAndSendNewCommand(train_task_mapping *train)
     {
-        char dest_sensor[5] ={0};
+        char dest_sensor[5] = {0};
         int offset;
         int speed;
 
@@ -939,26 +948,9 @@ namespace Conductor_NS
             MessengerUnit *command_messenger = &train->command_messenger;
             MessengerUnit *sensor_messenger = &train->sensor_messenger;
 
-            // check if the path is still reserved
-            if (train->check_if_blocked && !train->path.IsEmpty())
+            if (train->isTrainBlocked)
             {
-                // IO_NS::PrintTerminal(COLOR_RED "Conductor::DispatchCommand -- TRAIN %d is blocked, trying to reserve path\r\n", train->train_num);
                 train->isTrainBlocked = !ReservePath(train);
-                // IO_NS::PrintTerminal("Conductor::DispatchCommand -- finished reserving path -- STATUS BELOW:\r\n");
-                // IO_NS::PrintTerminal("Conductor::DispatchCommand -- TRAIN %d is blocked: %d\r\n", train->train_num, train->isTrainBlocked);
-                train->check_if_blocked = train->isTrainBlocked;
-                // if (!train->isTrainBlocked)
-                {
-                    // IO_NS::PrintTerminal(COLOR_GREEN "Conductor::DispatchCommand -- Train %d is unblocked\r\n", train->train_num);
-                    // train->check_if_blocked = false;
-                    //         // train->conflict_exists = false;
-                    //         // train->isMoving = true;
-                    //         // train->train_commands.Push({TRAIN_COMMAND::ACCELERATE, train->speed_level});
-                }
-            }
-            else
-            {
-                // IO_NS::PrintTerminal(COLOR_BLUE "Conductor::DispatchCommand -- Train %d is not blocked -- not checking\r\n", train->train_num);
             }
 
             if (sensor_messenger->messenger_id > 0 && !sensor_messenger->sent_reply && !train->path.IsEmpty())
@@ -997,12 +989,15 @@ namespace Conductor_NS
                         IO_NS::PrintTerminal(COLOR_GREEN "Conductor::DispatchCommand -- Making Train %d move with reserved path distance: %d\r\n", train->train_num, reserved_path_distance);
                         TrainCommandNotification command = {TRAIN_COMMAND::ACCELERATE, train->speed_level, reserved_path_distance};
                         train->train_commands.Push(command);
+                        train->isMoving = true;
                     }
                 }
-                else if (second_sensor == nullptr)
+                else if (!second_sensor && (first_sensor != train->destination_node) && train->isMoving)
                 {
-                    // IO_NS::PrintTerminal("Conductor::DispatchCommand -- train %d: getting stopped due to unreserved path\r\n", train->train_num);
-                    // train->train_commands.Push({TRAIN_COMMAND::STOP, 0});
+                    // SEND STOP COMMAND
+                    IO_NS::PrintTerminal(COLOR_RED "Conductor::DispatchCommand -- Train %d is moving, sending STOP command\r\n", train->train_num);
+                    train->train_commands.Push({TRAIN_COMMAND::STOP, 0});
+                    train->isMoving = false;
                 }
             }
 
@@ -1012,15 +1007,7 @@ namespace Conductor_NS
                 TrainCommandNotification command;
                 train->train_commands.Pop(&command);
                 // check for accelerate command
-                if (command.command == TRAIN_COMMAND::ACCELERATE)
-                {
-                    train->isMoving = true;
-                    train->last_sensor_trigger_tick = TIME(CLOCK_SERVER_TID);
-                }
-                else if (command.command == TRAIN_COMMAND::STOP)
-                {
-                    train->isMoving = false;
-                }
+                train->last_sensor_trigger_tick = TIME(CLOCK_SERVER_TID);
 
                 REPLY(command_messenger->messenger_id, (char *)&command, sizeof(TrainCommandNotification));
                 command_messenger->sent_reply = true;
@@ -1057,7 +1044,7 @@ namespace Conductor_NS
         reserved_nodes->Pop(&last_hit_sensor);
         temp_queue.Push(last_hit_sensor);
 
-        uassert(last_hit_sensor.node->type == NODE_SENSOR && "Conductor::get_sensors_to_listen_to -- first node is not a sensor");
+        // uassert(last_hit_sensor.node->type == NODE_SENSOR && "Conductor::get_sensors_to_listen_to -- first node is not a sensor");
 
         while (!reserved_nodes->IsEmpty())
         {
@@ -1230,8 +1217,11 @@ namespace Conductor_NS
         temp_queue.Clear();
         temp_stack.Clear();
 
-        IO_NS::PrintTerminal(COLOR_BLUE "Conductor::RESERVE_PATH -- Reserved nodes:\r\n");
+        IO_NS::PrintTerminal(COLOR_CYAN "Conductor::RESERVE_PATH -- Reserved nodes for train %d:\r\n", train->train_num);
         train->reserved_nodes.Print();
+
+        IO_NS::PrintTerminal(COLOR_CYAN "Conductor::RESERVE_PATH -- PATH nodes for train %d:\r\n", train->train_num);
+        path->Print();
 
         if (reservation_conflict) // if we have a reservation conflict, PUSH NEW STOPPING TARGET
         {
@@ -1282,14 +1272,6 @@ namespace Conductor_NS
 
         int DIR = 0;
 
-        // if (strncmp(curnode.node->name, train->destination, 4) == 0)
-        // {
-        //     IO_NS::PrintTerminal(COLOR_MAGENTA "Conductor::PopSegment -- popped destination node: %s\r\n", curnode.node->name);
-        //     train->current_segment_length = 0;
-        //     train->train_commands.Push({TRAIN_COMMAND::STOP, 0});
-        //     return;
-        // }
-
         while (!path->IsEmpty())
         {
             train->current_segment_length += curnode.node->edge[DIR].dist;
@@ -1323,6 +1305,8 @@ namespace Conductor_NS
 
     void Conductor::ReleasePath(train_task_mapping *train)
     {
+        track_node *dest_node = train->destination_node;
+
         while (!train->reserved_nodes.IsEmpty())
         {
             PathNode pnode;
@@ -1334,6 +1318,9 @@ namespace Conductor_NS
             }
             releaseNode(pnode.node);
         }
+
+        reserveNode(dest_node, train->train_num);
+        train->reserved_nodes.Push({dest_node, SwitchState::UNINITIALIZED});
     }
 
     void Conductor::ReleaseSegment(train_task_mapping *train)
@@ -1342,7 +1329,9 @@ namespace Conductor_NS
         // use last hit sensor to compare the name
 
         // print reserved nodes
-        IO_NS::PrintTerminal("Conductor::ReleaseSegment -- reserved nodes:\r\n");
+        IO_NS::PrintTerminal(COLOR_CYAN "Conductor::ReleaseSegment -- PATH:\r\n");
+        train->path.Print();
+        IO_NS::PrintTerminal(COLOR_CYAN "Conductor::ReleaseSegment -- reserved nodes:\r\n");
         train->reserved_nodes.Print();
 
         while (!train->reserved_nodes.IsEmpty())
@@ -1390,7 +1379,7 @@ namespace Conductor_NS
         {
             // IO_NS::PrintTerminal(COLOR_YELLOW "TRAIN TICKER{%d}:: Sending TICK to Train task\r\n", my_tid);
             int retval = SEND(conductor_tid, (char *)&tick_message, sizeof(tick_message), nullptr, 0);
-            DELAY(CLOCK_SERVER_TID, 100);
+            DELAY(CLOCK_SERVER_TID, 50);
         }
     }
 
@@ -1483,7 +1472,9 @@ namespace Conductor_NS
             train->path.Clear();
 
             train->train_commands.Clear();
-            train->train_commands.Push({TRAIN_COMMAND::STOP, 0});
+            IO_NS::PrintTerminal(COLOR_RED "Conductor::ProcessSensorTrigger -- Train %d reached destination %s -- STOPPING TRAIN\r\n", train->train_num, train->last_sensor->name);
+            train->train_commands.Push({TRAIN_COMMAND::STOP, 5}); // NON ZERO SINCE DESTINATION STOP
+            train->isMoving = false;
         }
 
         // IO_NS::PrintTerminal(COLOR_GREEN "POPPED SEGMENT FROM PATH; REMAINING PATH:");
