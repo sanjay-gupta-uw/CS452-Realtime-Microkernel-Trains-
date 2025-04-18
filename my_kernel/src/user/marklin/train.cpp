@@ -71,17 +71,6 @@ namespace Trains_NS
         uassert(cmd_messenger_tid > 0 && "Error creating train messenger");
         int retval = SEND(cmd_messenger_tid, (char *)&train_num, sizeof(int), nullptr, 0);
 
-        // path_messenger_tid = CREATE(PRIORITY::DEVICE_NOTIFIER, Trains_NS::path_messenger);
-        // uassert(path_messenger_tid > 0 && "Error creating train messenger");
-        // retval = SEND(path_messenger_tid, (char *)&train_num, sizeof(int), nullptr, 0);
-
-        // sensor_messenger_tid = CREATE(PRIORITY::DEVICE_NOTIFIER, Trains_NS::sensor_messenger);
-        // uassert(sensor_messenger_tid > 0 && "Error creating train messenger");
-        // retval = SEND(sensor_messenger_tid, (char *)&train_num, sizeof(int), nullptr, 0);
-
-        // train_ticker_tid = CREATE(PRIORITY::DEVICE_NOTIFIER, Trains_NS::train_ticker);
-        // uassert(train_ticker_tid > 0 && "Error creating train messenger");
-
         go_messenger_tid = CREATE(PRIORITY::DEVICE_NOTIFIER, Trains_NS::go_messenger);
         uassert(go_messenger_tid > 0 && "Error creating train messenger");
         retval = SEND(go_messenger_tid, (char *)&train_num, sizeof(int), nullptr, 0);
@@ -153,11 +142,6 @@ namespace Trains_NS
         return false;
     }
 
-    void Train::update_position()
-    {
-        // IO_NS::PrintTerminal("Train %d: Updating position -- tick: %d\r\n", train_num, cur_tick);
-    }
-
     void Train::process_train_command(TrainMessage *message)
     {
         // process train command
@@ -188,14 +172,6 @@ namespace Trains_NS
             }
             // uassert(false && "TRAIN STOPPED -- FORCED ERROR");
             break;
-            // move this to the train ticker switch case
-        case TRAIN_COMMAND::TICK:
-        {
-            // update train position
-            update_position();
-        }
-        // SENSOR_TRIGGERED
-        // update train position (first stack element)
         default:
             break;
         }
@@ -273,10 +249,6 @@ namespace Trains_NS
                 send_reply = true;
                 break;
             }
-            case TrainMessageType::TRAIN_TICKER:
-                // update train position
-                send_reply = true;
-                break;
             case TrainMessageType::GO_MESSENGER:
             {
                 send_reply = false; // hang on until we stop at dest
@@ -285,14 +257,6 @@ namespace Trains_NS
             default:
                 break;
             }
-
-            // update_position();
-
-            // if (is_sensor_messenger_ready && !has_read_target_sensor)
-            // {
-            //     // REPLY TO SENSOR MESSENGER
-            //     ReleaseSensorMessenger();
-            // }
 
             // process sensor
             if (send_reply)
@@ -334,25 +298,6 @@ namespace Trains_NS
         // initialize train: get location of train
         // DETERMINE PATH TO NAVIGATE LOOP
         Train train(train_num, MARKLIN_IO_SERVER_TID, CLOCK_SERVER_TID);
-    }
-
-    // DELAY and resends message to parent train task
-    void train_ticker()
-    {
-        int my_tid = MYTID();
-        int train_tid = MYPARENTTID();
-        uassert(train_tid > 0 && "TRAIN TICKKER:Error finding parent task");
-
-        int CLOCK_SERVER_TID = WHOIS("ClockServer");
-        uassert(CLOCK_SERVER_TID > 0 && "TRAIN TICKER:Error finding ClockServer");
-
-        TrainMessage message(TrainMessageType::TRAIN_TICKER);
-        while (true)
-        {
-            // IO_NS::PrintTerminal(COLOR_YELLOW "TRAIN TICKER{%d}:: Sending TICK to Train task\r\n", my_tid);
-            int retval = SEND(train_tid, (char *)&message, sizeof(TrainMessage), nullptr, 0);
-            DELAY(CLOCK_SERVER_TID, 20);
-        }
     }
 
     void command_messenger()

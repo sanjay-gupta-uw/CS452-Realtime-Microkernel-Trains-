@@ -109,7 +109,7 @@ namespace Conductor_NS
     Conductor::Conductor()
     {
         IO_NS::PrintTerminal("Starting Conductor\r\n");
-        // Track track;
+
         REGISTERAS("Conductor");
         IO_NS::PrintTerminal("Conductor started\r\n");
 
@@ -157,12 +157,13 @@ namespace Conductor_NS
         IO_NS::PrintTerminal("Switch server created with TID %d\r\n", SWITCH_SERVER_TID);
         SEND(SWITCH_SERVER_TID, (char *)&track_id, sizeof(track_id), nullptr, 0); // send track id to switch server
 
-        int ticker_tid = CREATE(PRIORITY::DEVICE, ticker);
-        uassert(ticker_tid > 0 && "Conductor::Error creating ticker");
-        IO_NS::PrintTerminal("Conductor ticker created with TID %d\r\n", ticker_tid);
+        //int ticker_tid = CREATE(PRIORITY::DEVICE, ticker);
+        //uassert(ticker_tid > 0 && "Conductor::Error creating ticker");
+        //IO_NS::PrintTerminal("Conductor ticker created with TID %d\r\n", ticker_tid);
 
         int train_nums[NUM_TRAINS] = {1, 54, 55, 58, 77};
-        // stop all trains
+
+        // Stop all trains at initialization
         int MARKLIN_IO_SERVER_TID = WHOIS("MarklinIOServer");
         for (int i = 0; i < NUM_TRAINS; ++i)
         {
@@ -373,7 +374,6 @@ namespace Conductor_NS
 
                     int total_path_distance = 0;
                     int remaining_distance = 0;
-                    int middle_distance = 0;
 
                     train->isTrainBlocked = false;
 
@@ -399,17 +399,7 @@ namespace Conductor_NS
 
             IO_NS::PrintTerminal("Train %d spawned successfully!\r\n", req->id);
 
-            // IO_NS::PrintTerminal("Train %d spawned successfully, beginning calibration!\r\n", req->id);
-
-            // train->calibration_stage = CALIBRATION_STAGE::CALIBRATE_NAV_TO_LOOP;
-            // IO_NS::PrintTerminal("Train %d, TID: %d calibrating -- start: %s", train->train_num, train->train_task_tid, train->target_sensor_name);
-
-            // CalibrateTrain(train);
             UpdateTrainDisplay();
-
-            // PUT TRACK IN LOOP
-            // track.find_path("C10", "C10", &train->path, false, 0, &train->total_path_distance, false, train->train_num);
-            // uassert(false && "FORCED ERROR");
             break;
         }
         // based off of Jack's code
@@ -534,7 +524,6 @@ namespace Conductor_NS
             int stopping_target;
             train->stopping_targets.Peek(destination_node, &stopping_target);
             IO_NS::PrintTerminal(COLOR_GREEN "Conductor::GOTO -- Stopping target: %s in %d mm\r\n", destination_node->name, stopping_target);
-            train->middle_distance = 0;
             train->reach_first_sensor = false;
 
             int cur_tick = TIME(CLOCK_SERVER_TID);
@@ -625,11 +614,6 @@ namespace Conductor_NS
                          TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 21, train_arr[i].actual_speed_x100 / 100, train_arr[i].actual_speed_x100 % 100);
             IO_NS::Print(MOVE_CURSOR "%s ",
                          TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 36, train_arr[i].last_sensor->name);
-            if (train_arr[i].middle_distance != 0)
-            {
-                IO_NS::Print(MOVE_CURSOR "%d ",
-                             TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 40, train_arr[i].middle_distance);
-            }
             IO_NS::Print(MOVE_CURSOR "%s ",
                          TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 50, next_sensor_name);
             if (train_arr[i].destination[0] == '-')
@@ -651,9 +635,6 @@ namespace Conductor_NS
                 IO_NS::Print(MOVE_CURSOR "%d ",
                              TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 80, train_arr[i].total_path_distance);
             }
-
-            IO_NS::Print(MOVE_CURSOR "%d ",
-                         TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 93, train_arr[i].middle_distance + train_arr[i].middle_distance);
             // int approx_dist_travelled_in_segment = 0;
             // int known_dist_travelled = 0;
             // train_arr[i].total_dist_travelled.Pop(&approx_dist_travelled_in_segment);
@@ -786,19 +767,6 @@ namespace Conductor_NS
                 ProcessSensorTrigger(&req.data.sensor_trigger_response);
                 sendReply = true;
             }
-            else if (req.requestType == RequestType::TICK)
-            {
-                // IO_NS::PrintTerminal(COLOR_YELLOW "Conductor::ConductorLoop -- Received TICK request from %d\r\n", sender_tid);
-                for (int i = 0; i < NUM_TRAINS; ++i)
-                {
-                    if (train_arr[i].train_num == -1 || train_arr[i].speed_level <= 0)
-                    {
-                        continue;
-                    }
-                    update_position(train_arr + i);
-                }
-                sendReply = true;
-            }
 
             DispatchCommand();
 
@@ -921,7 +889,26 @@ namespace Conductor_NS
         } while (is_forbidden);
 
         offset = 0;
-        speed = 7;
+        if(train->train_num == 77) 
+        {
+            speed = 7;
+        }
+        if(train->train_num == 54) 
+        {
+            speed = 7;
+        }
+        if(train->train_num == 55) 
+        {
+            speed = 8;
+        }
+        if(train->train_num == 58) 
+        {
+            speed = 8;
+        }
+        else
+        {
+            speed = 7;
+        }
 
         // Create command
         ConductorRequest req(COMMAND::GOTO,
@@ -944,10 +931,6 @@ namespace Conductor_NS
             command_index = 0;
         }
         */
-    }
-
-    void Conductor::update_position(train_task_mapping *train)
-    {
     }
 
     void Conductor::DispatchCommand()
@@ -1239,25 +1222,6 @@ namespace Conductor_NS
         if (reservation_conflict) // if we have a reservation conflict, PUSH NEW STOPPING TARGET
         {
             IO_NS::PrintTerminal("CONFLICT ENCOUNTERED -- LAST RESERVED NODE: %s\r\n", last_reserved_node.node->name);
-            // PEEK INTO STOPPING_TARGETS TO SEE IF THIS NODE IS ALREADY REGISTERED
-            // track_node *next_proposed_target;
-            // train->stopping_targets.Peek(next_proposed_target, nullptr);
-            // if (next_proposed_target && next_proposed_target == last_reserved_node.node)
-            // {
-            //     IO_NS::PrintTerminal("Conductor::ReservePath -- already registered as stopping target\r\n");
-            //     uassert(false && "FORCED ERROR -- CONFLICT ENCOUNTERED (THIS IS GOOD!)");
-            // }
-            // else
-            // {
-            //     IO_NS::PrintTerminal("Train %d OFFSET: %d\r\n", train->train_num, train->offset);
-            //     int stopping_target = train->total_dist_travelled + distance_to_conflict - train->stopping_distance - train->offset;
-            //     // add to stopping targets
-            //     train->stopping_targets.Push(*last_reserved_node.node, stopping_target);
-            //     IO_NS::PrintTerminal(COLOR_RED "Conductor::ReservePath -- added %s to stopping targets in %d mm\r\n", last_reserved_node.node->name, stopping_target);
-            //     IO_NS::PrintTerminal(COLOR_RED "Conductor::ReservePath -- WITHOUT OFFSET: %s to stopping targets in %d mm\r\n", last_reserved_node.node->name, distance_to_conflict - train->stopping_distance);
-            //     // uassert(false && "FORCED ERROR -- CONFLICT ENCOUNTERED");
-            //     train->offset = 0;
-            // }
             IO_NS::PrintTerminal(COLOR_RED "Conductor::ReservePath -- CONFLICT ENCOUNTERED -- Train %d -- distance to conflict: %d\r\n", train->train_num, distance_to_conflict);
         }
         IO_NS::PrintTerminal("RETURNING FROM RESERVE PATH -- CONFLICT: %d\r\n", reservation_conflict);
@@ -1410,26 +1374,6 @@ namespace Conductor_NS
         // uassert(false && "Conductor::ReleaseSegment -- Error getting last sensor address");
     }
 
-    void ticker()
-    {
-        int my_tid = MYTID();
-        int conductor_tid = MYPARENTTID();
-        uassert(conductor_tid > 0 && "CONDUCTOR TICKER:Error finding parent task");
-
-        int CLOCK_SERVER_TID = WHOIS("ClockServer");
-        uassert(CLOCK_SERVER_TID > 0 && "TRAIN TICKER:Error finding ClockServer");
-
-        ConductorRequest tick_message(RequestType::TICK);
-        uassert(tick_message.requestType == RequestType::TICK && "Conductor::ticker -- Error creating tick message");
-        // IO_NS::PrintTerminal(COLOR_YELLOW "TRAIN TICKER{%d}:: Sending TICK to Train task -- type: %d\r\n", my_tid, tick_message.requestType);
-        while (true)
-        {
-            // IO_NS::PrintTerminal(COLOR_YELLOW "TRAIN TICKER{%d}:: Sending TICK to Train task\r\n", my_tid);
-            int retval = SEND(conductor_tid, (char *)&tick_message, sizeof(tick_message), nullptr, 0);
-            DELAY(CLOCK_SERVER_TID, 50);
-        }
-    }
-
     void start_conductor()
     {
         Conductor conductor;
@@ -1492,16 +1436,12 @@ namespace Conductor_NS
 
         // new distance calculation logic
         train->total_dist_travelled += train->current_segment_length + missed_segment_length;
-        train->middle_distance = 0; // Reset between-sensors distance
 
         train->last_sensor_trigger_tick = triggered_tick;
         // UpdateTrainDisplay();
 
         PopSegment(train);
         SwitchNextSegment(&train->path);
-        // IO_NS::PrintTerminal(COLOR_GREEN "Conductor::ProcessSensorTrigger -- Reserved QUEUE:");
-        // train->reserved_nodes.Print();
-        // IO_NS::PrintTerminal(COLOR_GREEN "Conductor::ProcessSensorTrigger -- RELEASING SEGMENT:");
         ReleaseSegment(train);
 
         IO_NS::PrintTerminal(COLOR_GREEN "Conductor::ProcessSensorTrigger -- Train %d -- Popped segment from path:\r\n", train->train_num);
@@ -1537,7 +1477,10 @@ namespace Conductor_NS
 
             train->train_commands.Clear();
             IO_NS::PrintTerminal(COLOR_RED "Conductor::ProcessSensorTrigger -- Train %d reached destination %s -- STOPPING TRAIN\r\n", train->train_num, train->last_sensor->name);
+            // TODO: if (train->auto_mode)
             train->train_commands.Push({TRAIN_COMMAND::STOP, 5}); // NON ZERO SINCE DESTINATION STOP
+            // else:
+            // train->train_commands.Push({TRAIN_COMMAND::STOP, 0});
             train->isMoving = false;
         }
 

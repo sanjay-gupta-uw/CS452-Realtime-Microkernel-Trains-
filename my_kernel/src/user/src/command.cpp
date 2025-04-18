@@ -619,10 +619,12 @@ namespace UI_CMD_NS
 
         // track A
         char *initial_commands_list[] = {
-            "SPAWN 77 B11 0",
+            "SPAWN 77 B7 0",
+            "SPAWN 55 B11 0",
             "SPAWN 58 B9 0",
-            "GO 77 10 A15 0",
-            "GO 58 10 A14 0",
+            "GO 77 7 A2 0",
+            "GO 55 8 A15 0",
+            "GO 58 8 A14 0",
             // "AUTO",
         };
         // char *initial_commands_list[] = {

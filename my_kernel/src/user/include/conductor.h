@@ -76,7 +76,6 @@ namespace Conductor_NS
             int offset;
 
             int total_path_distance; // Total distance of current path
-            int middle_distance;     // Distance traveled since last sensor
             PQueue<track_node, 3> stopping_targets;
             bool conflict_exists;
 
@@ -98,8 +97,6 @@ namespace Conductor_NS
         int custom_rand();
 
         void GenerateAndSendNewCommand(train_task_mapping *train);
-
-        void update_position(train_task_mapping *train);
 
         void SwitchNextSegment(Stack<PathNode, TRACK_MAX> *path);
 
@@ -129,7 +126,6 @@ namespace Conductor_NS
     };
 
     void start_sensor_messenger();
-    void ticker();
     void start_conductor();
 
 }
