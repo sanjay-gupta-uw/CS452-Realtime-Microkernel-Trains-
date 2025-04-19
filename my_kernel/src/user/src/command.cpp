@@ -497,6 +497,21 @@ namespace UI_CMD_NS
                 SEND(CONDUCTOR_TID, (char *)&request, sizeof(ConductorRequest), nullptr, 0);
             }
         }
+        else if ((first == 'D' || first == 'd') &&
+                 (second == 'E' || second == 'e'))
+        {
+            // read next two characters
+            char third = str[2];
+            char fourth = str[3];
+
+            if ((third == 'M' || third == 'm') &&
+                (fourth == 'O' || fourth == 'o'))
+            {
+                IO_NS::PrintTerminal("Attempting to perform a 3 minutes Demo\r\n");
+                ConductorRequest request(COMMAND::DEMO, 0, 0);
+                SEND(CONDUCTOR_TID, (char *)&request, sizeof(ConductorRequest), nullptr, 0);
+            }
+        }
         else
         {
             IO_NS::PrintTerminal("Invalid Command\r\n");
@@ -620,11 +635,11 @@ namespace UI_CMD_NS
         // track A
         char *initial_commands_list[] = {
             "SPAWN 77 B7 0",
-            "SPAWN 55 B11 0",
-            "SPAWN 58 B9 0",
-            "GO 77 7 A2 0",
-            "GO 55 8 A15 0",
-            "GO 58 8 A14 0",
+            "SPAWN 58 B11 0",
+            "SPAWN 55 B9 0",
+            //"GO 77 7 A2 0",
+            //"GO 55 8 A15 0",
+            //"GO 58 8 A14 0",
             // "AUTO",
         };
         // char *initial_commands_list[] = {

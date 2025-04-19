@@ -75,6 +75,9 @@ namespace Conductor_NS
             char destination[5];
             int offset;
 
+            int go_speed;
+            int slow_down_speed;
+
             int total_path_distance; // Total distance of current path
             PQueue<track_node, 3> stopping_targets;
             bool conflict_exists;
@@ -85,6 +88,7 @@ namespace Conductor_NS
             bool isTrainBlocked;
 
             bool auto_mode;
+            bool demo_mode;
 
             Queue<TrainCommandNotification, 5> train_commands;
             Stack<PathNode, TRACK_MAX> path;
@@ -97,6 +101,7 @@ namespace Conductor_NS
         int custom_rand();
 
         void GenerateAndSendNewCommand(train_task_mapping *train);
+        void GenerateAndSendDemoCommand(train_task_mapping *train);
 
         void SwitchNextSegment(Stack<PathNode, TRACK_MAX> *path);
 
@@ -122,7 +127,9 @@ namespace Conductor_NS
         Track track;
         SpeedData speed_data;
 
-        int command_index;
+        int command_index_0;
+        int command_index_1;
+        int command_index_2;
     };
 
     void start_sensor_messenger();

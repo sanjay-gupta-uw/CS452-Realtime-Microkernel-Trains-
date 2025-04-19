@@ -21,22 +21,13 @@ static constexpr char *FORBIDDEN_SENSORS[] = {
     "A3", "B16", "D6", "D7"};
 
 static constexpr char *SENSOR_IDS_0[] = {
-    "A15", "E5", "E2", "B16", "D12", "A3", "E9", "B15"};
-
-static constexpr int OFFSETS_0[] = {
-    0, 0, 0, 0, 0, 0, 0, 0};
-
-static constexpr int SPEEDS_0[] = {
-    7, 7, 7, 7, 7, 7, 7, 7};
+    "A2", "E2"};
 
 static constexpr char *SENSOR_IDS_1[] = {
-    "A14", "C14", "A3", "E5", "E2", "B16", "D12", "A3"};
+    "A15", "D12"};
 
-static constexpr int OFFSETS_1[] = {
-    0, 0, 0, 0, 0, 0, 0, 0};
-
-static constexpr int SPEEDS_1[] = {
-    7, 7, 7, 7, 7, 7, 7, 7};
+static constexpr char *SENSOR_IDS_2[] = {
+    "A14", "A12"};    
 
 namespace Conductor_NS
 {
@@ -137,7 +128,9 @@ namespace Conductor_NS
         IO_NS::PrintTerminal("Conductor received request for track %c\r\n", track_id);
         uassert(track_id == 'A' || track_id == 'B' || track_id == 'a' || track_id == 'b');
         track.init(track_id);
-        command_index = 0;
+        command_index_0 = 0;
+        command_index_1 = 0;
+        command_index_2 = 0;
 
         if (track_id == 'A' || track_id == 'a')
         {
@@ -307,8 +300,8 @@ namespace Conductor_NS
                     train_arr[train_index].actual_speed_x100 = calibrated_speed_x100;
 
                     // Get stopping distance
-                    int stopping_dist = speed_data.GetStoppingDistance(train_num, speed);
-                    train_arr[train_index].stopping_distance = stopping_dist;
+                    // int stopping_dist = speed_data.GetStoppingDistance(train_num, speed);
+                    // train_arr[train_index].stopping_distance = stopping_dist;
                 }
                 Conductor::UpdateTrainDisplay();
                 train_arr[train_index].train_commands.Push({TRAIN_COMMAND::ACCELERATE, speed});
@@ -372,8 +365,10 @@ namespace Conductor_NS
                     IO_NS::PrintTerminal(COLOR_RED "OFFSET: %d\r\n", req->offset);
                     memset(train->destination, '-', 5);
 
-                    int total_path_distance = 0;
-                    int remaining_distance = 0;
+                    train->total_path_distance = 0;
+
+                    train->auto_mode = false;
+                    train->demo_mode = false;
 
                     train->isTrainBlocked = false;
 
@@ -383,6 +378,22 @@ namespace Conductor_NS
                     train->train_commands.Clear();
                     train->path.Clear();
                     train->reserved_nodes.Clear();
+
+                    if(train->train_num == 77 ) 
+                    {
+                        train->go_speed = 7;
+                        train->slow_down_speed = 4;
+                    }
+                    else if(train->train_num == 54) 
+                    {
+                        train->go_speed = 7;
+                        train->slow_down_speed = 5;
+                    }
+                    else 
+                    {
+                        train->go_speed = 8;
+                        train->slow_down_speed = 5;
+                    }
 
                     IO_NS::PrintTerminal("Index: %d, Train %d spawned with last Sensor %s\r\n", i, train->train_num, train->last_sensor->name);
                     break;
@@ -473,9 +484,6 @@ namespace Conductor_NS
             {
                 int dist_to_conflict;
                 track_node conflict_node;
-                // train->stopping_targets.Peek(&conflict_node, &dist_to_conflict);
-                // IO_NS::PrintTerminal("Conductor::GOTO -- PATH NOT FULLY RESERVED for TRAIN %d -- STOP NEEDED IN %d mm AT %s\r\n", train_num, dist_to_conflict, conflict_node.name);
-                // uassert(false && "Conductor::GOTO -- PATH NOT FULLY RESERVED -- STOP NEEDED");
             }
             // uassert(false && "Conductor::GOTO -- FORCED ERROR ");
 
@@ -545,6 +553,7 @@ namespace Conductor_NS
                 if (train_arr[i].train_num != -1)
                 {
                     train_arr[i].auto_mode = true;
+                    train_arr[i].demo_mode = false;
 
                     // Generate random parameters
                     GenerateAndSendNewCommand(&train_arr[i]);
@@ -553,13 +562,37 @@ namespace Conductor_NS
             IO_NS::PrintTerminal("Auto mode enabled for all trains\r\n");
             break;
         }
+        case COMMAND::DEMO:
+        {
+            for (int i = 0; i < NUM_TRAINS; ++i)
+            {
+                if (train_arr[i].train_num != -1)
+                {
+                    train_arr[i].demo_mode = true;
+                    train_arr[i].auto_mode = false;
+
+                    // Generate random parameters
+                    GenerateAndSendDemoCommand(&train_arr[i]);
+                }
+            }
+            IO_NS::PrintTerminal("Demo mode enabled for all trains\r\n");
+            break;
+        }
         case COMMAND::GO_AGAIN:
         {
             int train_num = req->id;
             IO_NS::PrintTerminal(COLOR_GREEN "CONDUCTOR::PROCESSREQUEST -- GO AGAIN -- train num: %d\r\n", train_num);
             int train_index = get_train_index(train_num);
-            GenerateAndSendNewCommand(&train_arr[train_index]);
-            IO_NS::PrintTerminal(COLOR_GREEN "CONDUCTOR::PROCESSREQUEST -- GO AGAIN EXECUTED FOR train num: %d\r\n", train_num);
+            if(train_arr[train_index].auto_mode)
+            {
+                GenerateAndSendNewCommand(&train_arr[train_index]);
+                IO_NS::PrintTerminal(COLOR_GREEN "CONDUCTOR::PROCESSREQUEST -- AUTO: GO AGAIN EXECUTED FOR train num: %d\r\n", train_num);
+            }
+            else if(train_arr[train_index].demo_mode)
+            {
+                GenerateAndSendDemoCommand(&train_arr[train_index]);
+                IO_NS::PrintTerminal(COLOR_GREEN "CONDUCTOR::PROCESSREQUEST -- DEMO: GO AGAIN EXECUTED FOR train num: %d\r\n", train_num);
+            }
             break;
         }
         default:
@@ -889,26 +922,7 @@ namespace Conductor_NS
         } while (is_forbidden);
 
         offset = 0;
-        if(train->train_num == 77) 
-        {
-            speed = 7;
-        }
-        if(train->train_num == 54) 
-        {
-            speed = 7;
-        }
-        if(train->train_num == 55) 
-        {
-            speed = 8;
-        }
-        if(train->train_num == 58) 
-        {
-            speed = 8;
-        }
-        else
-        {
-            speed = 7;
-        }
+        speed = train->go_speed;
 
         // Create command
         ConductorRequest req(COMMAND::GOTO,
@@ -931,6 +945,77 @@ namespace Conductor_NS
             command_index = 0;
         }
         */
+    }
+
+    
+    void Conductor::GenerateAndSendDemoCommand(train_task_mapping *train)
+    {
+        int list_size = sizeof(SENSOR_IDS_0)/sizeof(SENSOR_IDS_0[0]);
+        int offset = 0;
+        int speed = train->go_speed;
+
+
+        // Get sensor from list for testing
+        if (train->train_num == 77)
+        {
+            if (command_index_0 >= list_size) {
+                // command_index_0 = 0; // reset to start of list
+    
+                return; // End Demo
+            }
+            char * dest_sensor = SENSOR_IDS_0[command_index_0];        
+            // Create command
+            ConductorRequest req(COMMAND::GOTO,
+                                 train->train_num,
+                                 speed,
+                                 dest_sensor,
+                                 dest_sensor,
+                                 offset);
+            ProcessRequest(&req.data.cmdRequest);
+            IO_NS::PrintTerminal(COLOR_YELLOW "Automated GOTO: train %d go to %s %d with speed %d\r\n", train->train_num, dest_sensor, offset, speed);
+            // Move to next index
+            command_index_0++;
+        }
+        else if(train->train_num == 58)
+        {
+            if (command_index_1 >= list_size) {
+                // command_index_1 = 0; // reset to start of list
+    
+                return; // End Demo
+            }            
+            char * dest_sensor = SENSOR_IDS_1[command_index_1];       
+            // Create command
+            ConductorRequest req(COMMAND::GOTO,
+                                 train->train_num,
+                                 speed,
+                                 dest_sensor,
+                                 dest_sensor,
+                                 offset);
+            ProcessRequest(&req.data.cmdRequest);
+            IO_NS::PrintTerminal(COLOR_YELLOW "Automated GOTO: train %d go to %s %d with speed %d\r\n", train->train_num, dest_sensor, offset, speed);
+            // Move to next index
+            command_index_1++;           
+        }
+        else // train->train_num == 55
+        {
+            if (command_index_2 >= list_size) {
+                // command_index_2 = 0; // reset to start of list
+    
+                return; // End Demo
+            }
+            char * dest_sensor = SENSOR_IDS_2[command_index_2];        
+            // Create command
+            ConductorRequest req(COMMAND::GOTO,
+                                 train->train_num,
+                                 speed,
+                                 dest_sensor,
+                                 dest_sensor,
+                                 offset);
+            ProcessRequest(&req.data.cmdRequest);
+            IO_NS::PrintTerminal(COLOR_YELLOW "Automated GOTO: train %d go to %s %d with speed %d\r\n", train->train_num, dest_sensor, offset, speed);
+            // Move to next index
+            command_index_2++;            
+        }  
     }
 
     void Conductor::DispatchCommand()
@@ -986,7 +1071,7 @@ namespace Conductor_NS
                         int reserved_path_distance = GetReservedPathLength(train);
                         // SEND ACCELERATE COMMAND
                         IO_NS::PrintTerminal(COLOR_GREEN "Conductor::DispatchCommand -- Making Train %d move with reserved path distance: %d\r\n", train->train_num, reserved_path_distance);
-                        TrainCommandNotification command = {TRAIN_COMMAND::ACCELERATE, 8, reserved_path_distance};
+                        TrainCommandNotification command = {TRAIN_COMMAND::ACCELERATE, train->go_speed, reserved_path_distance};
                         train->train_commands.Push(command);
                         train->isMoving = true;
                     }
@@ -1458,7 +1543,7 @@ namespace Conductor_NS
             {
                 // SLOW DOWN TRAIN
                 IO_NS::PrintTerminal(COLOR_GREEN "Conductor::DispatchCommand -- Train %d is approaching destination, sending SLOW command\r\n", train->train_num);
-                TrainCommandNotification command = {TRAIN_COMMAND::ACCELERATE, 5, 0};
+                TrainCommandNotification command = {TRAIN_COMMAND::ACCELERATE, train->slow_down_speed, 0};
                 train->train_commands.Push(command);
                 train->isMoving = true;
             }
@@ -1477,11 +1562,22 @@ namespace Conductor_NS
 
             train->train_commands.Clear();
             IO_NS::PrintTerminal(COLOR_RED "Conductor::ProcessSensorTrigger -- Train %d reached destination %s -- STOPPING TRAIN\r\n", train->train_num, train->last_sensor->name);
-            // TODO: if (train->auto_mode)
-            train->train_commands.Push({TRAIN_COMMAND::STOP, 5}); // NON ZERO SINCE DESTINATION STOP
-            // else:
-            // train->train_commands.Push({TRAIN_COMMAND::STOP, 0});
+            if (train->auto_mode || train->demo_mode )
+            {
+                IO_NS::PrintTerminal(COLOR_RED "Conductor::ProcessSensorTrigger -- AUTO mode or DEMO mode, delay the train and send another go command\r\n", train->train_num, train->last_sensor->name);
+                train->train_commands.Push({TRAIN_COMMAND::STOP, 5}); 
+            }
+            else
+            {
+                train->train_commands.Push({TRAIN_COMMAND::STOP, 0});
+            }
+            train->speed_level = 0;
+            train->actual_speed_x100 = 0;
+            train->stopping_distance = 0;
+            memset(train->destination, '-', 5);
+            train->total_path_distance = 0;
             train->isMoving = false;
+            UpdateTrainDisplay();
         }
 
         // IO_NS::PrintTerminal(COLOR_GREEN "POPPED SEGMENT FROM PATH; REMAINING PATH:");

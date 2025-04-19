@@ -23,6 +23,7 @@ enum class COMMAND
     SENSOR_TRIGGER,
     STOP_ALL,
     AUTO,
+    DEMO,
     GO_AGAIN,
     INVALID,
 };
