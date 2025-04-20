@@ -18,16 +18,17 @@ typedef struct IO_REQUEST
 };
 
 static constexpr char *FORBIDDEN_SENSORS[] = {
-    "A3", "B16", "D6", "D7"};
+    "A11", "A12", "B7", "B8", "B11", "B12", "B9", "B10", "A10", "A8", "A5", "C8", "C4", "A16", 
+    "A14", "A1", "E13", "C10", "B16", "A3", "C14", "E12", "C5", "E6", "C11"};
 
 static constexpr char *SENSOR_IDS_0[] = {
-    "A2", "E2"};
+    "B6", "D2", "A7", "E3", "D5", "D11"};
 
 static constexpr char *SENSOR_IDS_1[] = {
-    "A15", "D12"};
+    "A15", "A6", "A14", "E7"};
 
 static constexpr char *SENSOR_IDS_2[] = {
-    "A14", "A12"};    
+    "A14", "B5", "C3", "E16"};    
 
 namespace Conductor_NS
 {
@@ -387,6 +388,11 @@ namespace Conductor_NS
                     else if(train->train_num == 54) 
                     {
                         train->go_speed = 7;
+                        train->slow_down_speed = 4;
+                    }
+                    else if(train->train_num == 58) 
+                    {
+                        train->go_speed = 8;
                         train->slow_down_speed = 5;
                     }
                     else 
@@ -466,6 +472,14 @@ namespace Conductor_NS
                 if (total_path_length == -1)
                 {
                     IO_NS::PrintTerminal("Conductor::GOTO -- No path found from %s to %s for train %d\r\n", start_sensor->name, dest, train_num);
+                    if(train->auto_mode)
+                    {
+                        GenerateAndSendNewCommand(&train_arr[train_index]);
+                    }
+                    else if(train->demo_mode)
+                    {
+                        GenerateAndSendDemoCommand(&train_arr[train_index]);
+                    }
                     return;
                 }
             }
@@ -473,6 +487,14 @@ namespace Conductor_NS
             if (train->path.IsEmpty() || total_path_length == -1)
             {
                 IO_NS::PrintTerminal("Conductor::GOTO -- No path found from %s to %s\r\n", start_sensor->name, dest);
+                if(train->auto_mode)
+                {
+                    GenerateAndSendNewCommand(&train_arr[train_index]);
+                }
+                else if(train->demo_mode)
+                {
+                    GenerateAndSendDemoCommand(&train_arr[train_index]);
+                }
                 return;
             }
             train->isTrainBlocked = !ReservePath(train);
@@ -610,6 +632,8 @@ namespace Conductor_NS
                 IO_NS::PrintTerminal(COLOR_RED "Sending STOP command to Train %d\r\n", train_arr[i].train_num);
                 train_arr[i].speed_level = 0;
                 train_arr[i].actual_speed_x100 = 0;
+                train_arr[i].auto_mode = false;
+                train_arr[i].demo_mode = false;
                 train_arr[i].train_commands.Push({TRAIN_COMMAND::STOP, 0});
                 train_arr[i].isMoving = false;
             }
@@ -950,7 +974,9 @@ namespace Conductor_NS
     
     void Conductor::GenerateAndSendDemoCommand(train_task_mapping *train)
     {
-        int list_size = sizeof(SENSOR_IDS_0)/sizeof(SENSOR_IDS_0[0]);
+        int list_size_0 = sizeof(SENSOR_IDS_0)/sizeof(SENSOR_IDS_0[0]);
+        int list_size_1 = sizeof(SENSOR_IDS_1)/sizeof(SENSOR_IDS_1[0]);
+        int list_size_2 = sizeof(SENSOR_IDS_2)/sizeof(SENSOR_IDS_2[0]);
         int offset = 0;
         int speed = train->go_speed;
 
@@ -958,7 +984,7 @@ namespace Conductor_NS
         // Get sensor from list for testing
         if (train->train_num == 77)
         {
-            if (command_index_0 >= list_size) {
+            if (command_index_0 >= list_size_0) {
                 // command_index_0 = 0; // reset to start of list
     
                 return; // End Demo
@@ -978,7 +1004,7 @@ namespace Conductor_NS
         }
         else if(train->train_num == 58)
         {
-            if (command_index_1 >= list_size) {
+            if (command_index_1 >= list_size_1) {
                 // command_index_1 = 0; // reset to start of list
     
                 return; // End Demo
@@ -998,7 +1024,7 @@ namespace Conductor_NS
         }
         else // train->train_num == 55
         {
-            if (command_index_2 >= list_size) {
+            if (command_index_2 >= list_size_2) {
                 // command_index_2 = 0; // reset to start of list
     
                 return; // End Demo
