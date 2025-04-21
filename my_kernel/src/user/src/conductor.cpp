@@ -22,7 +22,7 @@ static constexpr char *FORBIDDEN_SENSORS[] = {
     "A14", "A1", "E13", "C10", "B16", "A3", "C14", "E12", "C5", "E6", "C11"};
 
 static constexpr char *SENSOR_IDS_0[] = {
-    "B6", "D2", "A7", "E3", "D5", "D11"};
+    "B6", "D2", "A7", "E3", "D5", "E12"}; //D11
 
 static constexpr char *SENSOR_IDS_1[] = {
     "A15", "A6", "A14", "E7"};
@@ -371,14 +371,13 @@ namespace Conductor_NS
                     train->auto_mode = false;
                     train->demo_mode = false;
 
-                    train->isTrainBlocked = false;
-
                     train->isMoving = false;
+                    train->isTrainBlocked = false;
                     train->reach_first_sensor = false;
 
                     train->train_commands.Clear();
-                    train->path.Clear();
                     train->reserved_nodes.Clear();
+                    train->path.Clear();
 
                     if(train->train_num == 77 ) 
                     {
@@ -393,7 +392,7 @@ namespace Conductor_NS
                     else if(train->train_num == 58) 
                     {
                         train->go_speed = 8;
-                        train->slow_down_speed = 5;
+                        train->slow_down_speed = 6;
                     }
                     else 
                     {
@@ -632,6 +631,7 @@ namespace Conductor_NS
                 IO_NS::PrintTerminal(COLOR_RED "Sending STOP command to Train %d\r\n", train_arr[i].train_num);
                 train_arr[i].speed_level = 0;
                 train_arr[i].actual_speed_x100 = 0;
+                train_arr[i].total_path_distance = 0;
                 train_arr[i].auto_mode = false;
                 train_arr[i].demo_mode = false;
                 train_arr[i].train_commands.Push({TRAIN_COMMAND::STOP, 0});
@@ -1587,6 +1587,13 @@ namespace Conductor_NS
             train->path.Clear();
 
             train->train_commands.Clear();
+            train->speed_level = 0;
+            train->actual_speed_x100 = 0;
+            train->stopping_distance = 0;
+            memset(train->destination, '-', 5);
+            train->total_path_distance = 0;
+            train->isMoving = false;
+            UpdateTrainDisplay();
             IO_NS::PrintTerminal(COLOR_RED "Conductor::ProcessSensorTrigger -- Train %d reached destination %s -- STOPPING TRAIN\r\n", train->train_num, train->last_sensor->name);
             if (train->auto_mode || train->demo_mode )
             {
@@ -1597,13 +1604,6 @@ namespace Conductor_NS
             {
                 train->train_commands.Push({TRAIN_COMMAND::STOP, 0});
             }
-            train->speed_level = 0;
-            train->actual_speed_x100 = 0;
-            train->stopping_distance = 0;
-            memset(train->destination, '-', 5);
-            train->total_path_distance = 0;
-            train->isMoving = false;
-            UpdateTrainDisplay();
         }
 
         // IO_NS::PrintTerminal(COLOR_GREEN "POPPED SEGMENT FROM PATH; REMAINING PATH:");
