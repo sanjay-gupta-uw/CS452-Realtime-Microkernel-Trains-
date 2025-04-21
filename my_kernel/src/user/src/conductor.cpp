@@ -19,10 +19,10 @@ typedef struct IO_REQUEST
 
 static constexpr char *FORBIDDEN_SENSORS[] = {
     "A11", "A12", "B7", "B8", "B11", "B12", "B9", "B10", "A10", "A8", "A5", "C8", "C4", "A16", 
-    "A14", "A1", "E13", "C10", "B16", "A3", "C14", "E12", "C5", "E6", "C11"};
+    "A14", "A1", "E13", "C10", "B16", "A3", "C14", "E12", "C5", "E6", "C11", "D11", "D12"};
 
 static constexpr char *SENSOR_IDS_0[] = {
-    "B6", "D2", "A7", "E3", "D5", "E12"}; //D11
+    "B6", "D2", "A7", "E3", "D4", "D9"}; //D11
 
 static constexpr char *SENSOR_IDS_1[] = {
     "A15", "A6", "A14", "E7"};
@@ -85,17 +85,17 @@ namespace Conductor_NS
     static void InitializeTrainDisplay()
     {
         // Header
-        IO_NS::Print(COLOR_WHITE MOVE_CURSOR "+----------------------------------------------------------------------------------------------------------+\r\n", TRAIN_TABLE_Y + 0, TRAIN_TABLE_X);
-        IO_NS::Print(COLOR_WHITE MOVE_CURSOR "|                                Active Trains:                                                            |\r\n", TRAIN_TABLE_Y + 1, TRAIN_TABLE_X);
-        IO_NS::Print(COLOR_WHITE MOVE_CURSOR "-----------------------------------------------------------------------------------------------------------+\r\n", TRAIN_TABLE_Y + 2, TRAIN_TABLE_X);
-        IO_NS::Print(COLOR_WHITE MOVE_CURSOR "| ID | Speed Level | Actual Speed | Current Loc | Next Sensor | Dest | Offset | Total Dist | Dist Travelled|\r\n", TRAIN_TABLE_Y + 3, TRAIN_TABLE_X);
-        IO_NS::Print(COLOR_WHITE MOVE_CURSOR "-----------------------------------------------------------------------------------------------------------+\r\n", TRAIN_TABLE_Y + 4, TRAIN_TABLE_X);
+        IO_NS::Print(COLOR_WHITE MOVE_CURSOR "+------------------------------------------------------------------------------------------+\r\n", TRAIN_TABLE_Y + 0, TRAIN_TABLE_X);
+        IO_NS::Print(COLOR_WHITE MOVE_CURSOR "|                                       Active Trains:                                     |\r\n", TRAIN_TABLE_Y + 1, TRAIN_TABLE_X);
+        IO_NS::Print(COLOR_WHITE MOVE_CURSOR "-------------------------------------------------------------------------------------------+\r\n", TRAIN_TABLE_Y + 2, TRAIN_TABLE_X);
+        IO_NS::Print(COLOR_WHITE MOVE_CURSOR "| ID | Speed Level | Actual Speed | Current Loc | Next Sensor | Dest | Offset | Total Dist |\r\n", TRAIN_TABLE_Y + 3, TRAIN_TABLE_X);
+        IO_NS::Print(COLOR_WHITE MOVE_CURSOR "-------------------------------------------------------------------------------------------+\r\n", TRAIN_TABLE_Y + 4, TRAIN_TABLE_X);
         for (int i = 0; i < NUM_TRAINS; ++i)
         {
             int location_y = TRAIN_TABLE_Y + 5 + i;
-            IO_NS::Print(COLOR_WHITE MOVE_CURSOR "|    |             |              |             |             |      |        |            |               |", location_y, TRAIN_TABLE_X);
+            IO_NS::Print(COLOR_WHITE MOVE_CURSOR "|    |             |              |             |             |      |        |            |", location_y, TRAIN_TABLE_X);
         }
-        IO_NS::Print(COLOR_WHITE MOVE_CURSOR "+----------------------------------------------------------------------------------------------------------+\r\n", TRAIN_TABLE_Y + 5 + NUM_TRAINS, TRAIN_TABLE_X);
+        IO_NS::Print(COLOR_WHITE MOVE_CURSOR "+-------------------------------------------------------------------------------------------+\r\n", TRAIN_TABLE_Y + 5 + NUM_TRAINS, TRAIN_TABLE_X);
     }
 
     Conductor::Conductor()
@@ -299,10 +299,6 @@ namespace Conductor_NS
                     // Get calibrated speed
                     int calibrated_speed_x100 = speed_data.GetSpeed(train_num, speed);
                     train_arr[train_index].actual_speed_x100 = calibrated_speed_x100;
-
-                    // Get stopping distance
-                    // int stopping_dist = speed_data.GetStoppingDistance(train_num, speed);
-                    // train_arr[train_index].stopping_distance = stopping_dist;
                 }
                 Conductor::UpdateTrainDisplay();
                 train_arr[train_index].train_commands.Push({TRAIN_COMMAND::ACCELERATE, speed});
@@ -661,37 +657,41 @@ namespace Conductor_NS
                 continue;
 
             train_task_mapping *train = &train_arr[i];
-            const char *next_sensor_name = (train->last_sent_sensor && train->last_sensor != train->last_sent_sensor) ? train_arr[i].last_sent_sensor->name : "N/A";
+            const char *next_sensor_name = (train->last_sent_sensor && train->last_sensor != train->last_sent_sensor) ? train_arr[i].last_sent_sensor->name : "-   ";
             // IO_NS::PrintTerminal("Conductor::UpdateTrainDisplay -- Train %d: next sensor -> {%s}\r\n", train_arr[i].train_num, next_sensor_name);
-            IO_NS::Print(MOVE_CURSOR "%d",
+            IO_NS::Print(MOVE_CURSOR "%d ",
                          TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 2, train_arr[i].train_num);
             IO_NS::Print(MOVE_CURSOR "%d ",
                          TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 7, train_arr[i].speed_level);
-            IO_NS::Print(MOVE_CURSOR "%d.%d",
+            IO_NS::Print(MOVE_CURSOR "%d.%d ",
                          TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 21, train_arr[i].actual_speed_x100 / 100, train_arr[i].actual_speed_x100 % 100);
-            IO_NS::Print(MOVE_CURSOR "%s ",
+            IO_NS::Print(MOVE_CURSOR "%s  ",
                          TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 36, train_arr[i].last_sensor->name);
-            IO_NS::Print(MOVE_CURSOR "%s ",
+            IO_NS::Print(MOVE_CURSOR "%s  ",
                          TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 50, next_sensor_name);
             if (train_arr[i].destination[0] == '-')
             {
-                IO_NS::Print(MOVE_CURSOR "-  ",
+                IO_NS::Print(MOVE_CURSOR "-   ",
                              TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 64);
                 IO_NS::Print(MOVE_CURSOR "-    ",
                              TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 71);
+                IO_NS::Print(MOVE_CURSOR "-     ",
+                             TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 80);                             
             }
             else
             {
-                IO_NS::Print(MOVE_CURSOR "%s",
+                IO_NS::Print(MOVE_CURSOR "%s  ",
                              TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 64, train_arr[i].destination);
-                IO_NS::Print(MOVE_CURSOR "%d",
+                IO_NS::Print(MOVE_CURSOR "%d  ",
                              TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 71, train_arr[i].offset);
-            }
-            if (train_arr[i].total_path_distance != 0)
-            {
-                IO_NS::Print(MOVE_CURSOR "%d ",
+                IO_NS::Print(MOVE_CURSOR "%d  ",
                              TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 80, train_arr[i].total_path_distance);
             }
+            //if (train_arr[i].total_path_distance != 0)
+            //{
+            //    IO_NS::Print(MOVE_CURSOR "%d  ",
+            //                 TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 80, train_arr[i].total_path_distance);
+            //}
             // int approx_dist_travelled_in_segment = 0;
             // int known_dist_travelled = 0;
             // train_arr[i].total_dist_travelled.Pop(&approx_dist_travelled_in_segment);
@@ -826,7 +826,6 @@ namespace Conductor_NS
             }
 
             DispatchCommand();
-
             UpdateTrainDisplay();
 
             if (sendReply)
@@ -1549,7 +1548,7 @@ namespace Conductor_NS
         train->total_dist_travelled += train->current_segment_length + missed_segment_length;
 
         train->last_sensor_trigger_tick = triggered_tick;
-        // UpdateTrainDisplay();
+        //Conductor::UpdateTrainDisplay();
 
         PopSegment(train);
         SwitchNextSegment(&train->path);
@@ -1576,16 +1575,11 @@ namespace Conductor_NS
             train->path.Push(temp_node);
         }
 
-        // get key to continue
-        // IO_NS::PrintTerminal(COLOR_GREEN "Conductor::ProcessSensorTrigger -- Press any key to continue\r\n");
-        // unsigned char ch = uart_getc(CONSOLE);
-
         if (train->isMoving && train->last_sensor == train->destination_node)
         {
             IO_NS::PrintTerminal(COLOR_GREEN "Conductor::DispatchCommand -- Train %d reached destination %s -- STOPPING TRAIN\r\n", train->train_num, train->last_sensor->name);
             ReleasePath(train);
             train->path.Clear();
-
             train->train_commands.Clear();
             train->speed_level = 0;
             train->actual_speed_x100 = 0;
@@ -1593,7 +1587,7 @@ namespace Conductor_NS
             memset(train->destination, '-', 5);
             train->total_path_distance = 0;
             train->isMoving = false;
-            UpdateTrainDisplay();
+            Conductor::UpdateTrainDisplay();
             IO_NS::PrintTerminal(COLOR_RED "Conductor::ProcessSensorTrigger -- Train %d reached destination %s -- STOPPING TRAIN\r\n", train->train_num, train->last_sensor->name);
             if (train->auto_mode || train->demo_mode )
             {
@@ -1605,14 +1599,6 @@ namespace Conductor_NS
                 train->train_commands.Push({TRAIN_COMMAND::STOP, 0});
             }
         }
-
-        // IO_NS::PrintTerminal(COLOR_GREEN "POPPED SEGMENT FROM PATH; REMAINING PATH:");
-        // train->path.Print();
-        // IO_NS::PrintTerminal(COLOR_GREEN "Conductor::ProcessSensorTrigger -- HANDLED %s TRIGGER\r\n", (triggered_idx == expected_idx) ? train->last_sent_sensor->name : train->last_sent_sensor_safety->name);
-    }
-
-    void Conductor::StopTrainConflict(train_task_mapping *train)
-    {
     }
 
     int Conductor::GetReservedPathLength(train_task_mapping *train)
@@ -1642,11 +1628,6 @@ namespace Conductor_NS
             temp_stack.Pop(&node);
             reserved_nodes->Push(node);
         }
-
-        // IO_NS::PrintTerminal("LENGTH: %d\r\n", length);
-        // uassert(false && "FORCED ERROR");
         return length;
     }
 }
-
-// ADD IS_MOVING UPDATE
