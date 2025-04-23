@@ -64,7 +64,7 @@ namespace UI_CMD_NS
 
     CommandPrompt::CommandPrompt()
     {
-        IO_NS::PrintTerminal("Starting Command Prompt\r\n");
+        // IO_NS::PrintTerminal("Starting Command Prompt\r\n");
         REGISTERAS("CommandPrompt");
         IO_SERVER_TID = WHOIS("IOServer");
         CONDUCTOR_TID = WHOIS("Conductor");
@@ -87,7 +87,7 @@ namespace UI_CMD_NS
         if (first == 'q')
         {
             // quit command
-            // IO_NS::PrintTerminal(RESET_FORMATTING CLEAR_SCREEN "Quitting...\r\n");
+            // // IO_NS::PrintTerminal(RESET_FORMATTING CLEAR_SCREEN "Quitting...\r\n");
             _reboot();
         }
 
@@ -138,12 +138,12 @@ namespace UI_CMD_NS
 
             if (!set_switch_num || switch_state == ' ' || switch_index == -1)
             {
-                IO_NS::PrintTerminal("Invalid Switch Command\r\n");
+                // IO_NS::PrintTerminal("Invalid Switch Command\r\n");
                 return;
             }
 
             // create marklin request
-            IO_NS::PrintTerminal("Attempting to set Switch %d to %c\r\n", switch_num, switch_state);
+            // IO_NS::PrintTerminal("Attempting to set Switch %d to %c\r\n", switch_num, switch_state);
             ConductorRequest request(COMMAND::SET_SWITCH, switch_num, switch_state);
 
             SEND(CONDUCTOR_TID, (char *)&request, sizeof(ConductorRequest), nullptr, 0);
@@ -186,12 +186,12 @@ namespace UI_CMD_NS
 
             if (!num_set || !speed_set || train_speed > 15 || train_speed < 0)
             {
-                IO_NS::PrintTerminal("Invalid Train Command\r\n");
+                // IO_NS::PrintTerminal("Invalid Train Command\r\n");
                 return;
             }
 
             // create marklin request
-            IO_NS::PrintTerminal("Attempting to accelerate Train %d to %d\r\n", train_num, train_speed);
+            // IO_NS::PrintTerminal("Attempting to accelerate Train %d to %d\r\n", train_num, train_speed);
             ConductorRequest request(COMMAND::ACCELERATE_TRAIN, train_num, train_speed);
             SEND(CONDUCTOR_TID, (char *)&request, sizeof(ConductorRequest), (char *)command_received, sizeof(int));
         }
@@ -217,12 +217,12 @@ namespace UI_CMD_NS
 
             if (!num_set)
             {
-                IO_NS::PrintTerminal("Invalid Train Reverse Command\r\n");
+                // IO_NS::PrintTerminal("Invalid Train Reverse Command\r\n");
                 return;
             }
 
             // create marklin request
-            IO_NS::PrintTerminal("Attempting to reverse Train %d\r\n", train_num);
+            // IO_NS::PrintTerminal("Attempting to reverse Train %d\r\n", train_num);
             ConductorRequest request(COMMAND::REVERSE_TRAIN, train_num, 0);
             SEND(CONDUCTOR_TID, (char *)&request, sizeof(ConductorRequest), (char *)command_received, sizeof(int));
         }
@@ -262,7 +262,7 @@ namespace UI_CMD_NS
                 // try to spawn train
                 if (train_num < 0 || train_num > 80)
                 {
-                    IO_NS::PrintTerminal("Invalid Train Number\r\n");
+                    // IO_NS::PrintTerminal("Invalid Train Number\r\n");
                     return;
                 }
 
@@ -288,7 +288,7 @@ namespace UI_CMD_NS
                 {
                     char *sensor_num_ptr = sensor_id + 1;
                     uint32_t sensor_num = a2ui(&sensor_num_ptr, 10);
-                    // IO_NS::PrintTerminal("Parsed sensor: bank=%c, number=%d (from '%s')\r\n",  sensor_bank, sensor_num, sensor_id);
+                    // // IO_NS::PrintTerminal("Parsed sensor: bank=%c, number=%d (from '%s')\r\n",  sensor_bank, sensor_num, sensor_id);
                     if (sensor_num >= 1 && sensor_num <= 16)
                     {
                         is_valid_sensor_id = true;
@@ -328,21 +328,21 @@ namespace UI_CMD_NS
 
                 if (!num_set || !sensor_set || !is_valid_sensor_id || !offset_set)
                 {
-                    IO_NS::PrintTerminal("Invalid Train SPAWN command\r\n");
-                    // IO_NS::PrintTerminal("Input: %s\r\n", str);
-                    // IO_NS::PrintTerminal("Train Number: %d, Sensor ID: %s\r\n", train_num, sensor_id);
+                    // IO_NS::PrintTerminal("Invalid Train SPAWN command\r\n");
+                    // // IO_NS::PrintTerminal("Input: %s\r\n", str);
+                    // // IO_NS::PrintTerminal("Train Number: %d, Sensor ID: %s\r\n", train_num, sensor_id);
                     return;
                 }
                 */
                 if (!num_set || !sensor_set || !is_valid_sensor_id)
                 {
-                    IO_NS::PrintTerminal("Invalid Train SPAWN command\r\n");
-                    // IO_NS::PrintTerminal("Input: %s\r\n", str);
-                    // IO_NS::PrintTerminal("Train Number: %d, Sensor ID: %s\r\n", train_num, sensor_id);
+                    // IO_NS::PrintTerminal("Invalid Train SPAWN command\r\n");
+                    // // IO_NS::PrintTerminal("Input: %s\r\n", str);
+                    // // IO_NS::PrintTerminal("Train Number: %d, Sensor ID: %s\r\n", train_num, sensor_id);
                     return;
                 }
 
-                IO_NS::PrintTerminal("Attempting to spawn Train %d in front of sensor %s with offset %d\r\n", train_num, sensor_id, offset);
+                // IO_NS::PrintTerminal("Attempting to spawn Train %d in front of sensor %s with offset %d\r\n", train_num, sensor_id, offset);
 
                 // Create request with sensor ID
                 ConductorRequest request(COMMAND::SPAWN_TRAIN, train_num, 0, sensor_id, nullptr, offset);
@@ -419,7 +419,7 @@ namespace UI_CMD_NS
 
             ConductorRequest request(COMMAND::GOTO, train_num, speed, node_name, node_name, offset);
             // send node name to conductor
-            IO_NS::PrintTerminal("Attempting to find path for Train %d to go to %s %d with speed %d, sending to Conductor tid: %d\r\n", train_num, node_name, offset, speed, CONDUCTOR_TID);
+            // IO_NS::PrintTerminal("Attempting to find path for Train %d to go to %s %d with speed %d, sending to Conductor tid: %d\r\n", train_num, node_name, offset, speed, CONDUCTOR_TID);
             SEND(CONDUCTOR_TID, (char *)&request, sizeof(request), nullptr, 0);
         }
 
@@ -448,13 +448,13 @@ namespace UI_CMD_NS
 
                 if (!num_set)
                 {
-                    IO_NS::PrintTerminal("Invalid Train Calibrate Command\r\n");
+                    // IO_NS::PrintTerminal("Invalid Train Calibrate Command\r\n");
                     return;
                 }
 
                 // create conductor request
-                // IO_NS::PrintTerminal(CLEAR_SCREEN);
-                IO_NS::PrintTerminal("Attempting to calibrate Train %d\r\n", train_num);
+                // // IO_NS::PrintTerminal(CLEAR_SCREEN);
+                // IO_NS::PrintTerminal("Attempting to calibrate Train %d\r\n", train_num);
                 ConductorRequest request(COMMAND::CALIBRATE, train_num, 0);
                 int retval = SEND(CONDUCTOR_TID, (char *)&request, sizeof(ConductorRequest), (char *)command_received, sizeof(int));
                 uassert(retval >= 0 && "Error sending calibrate request to Conductor");
@@ -476,7 +476,7 @@ namespace UI_CMD_NS
                 (sixth == 'L' || sixth == 'l') &&
                 (seventh == 'L' || seventh == 'l'))
             {
-                IO_NS::PrintTerminal("Attempting to stop all trains");
+                // IO_NS::PrintTerminal("Attempting to stop all trains");
                 ConductorRequest request(COMMAND::STOP_ALL, 0, 0);
                 int retval = SEND(CONDUCTOR_TID, (char *)&request, sizeof(request), nullptr, 0);
                 uassert(retval >= 0 && "Error sending stopall to Conductor");
@@ -492,7 +492,7 @@ namespace UI_CMD_NS
             if ((third == 'T' || third == 't') &&
                 (fourth == 'O' || fourth == 'o'))
             {
-                IO_NS::PrintTerminal("Attempting to enable auto mode for all trains\r\n");
+                // IO_NS::PrintTerminal("Attempting to enable auto mode for all trains\r\n");
                 ConductorRequest request(COMMAND::AUTO, 0, 0);
                 SEND(CONDUCTOR_TID, (char *)&request, sizeof(ConductorRequest), nullptr, 0);
             }
@@ -507,14 +507,14 @@ namespace UI_CMD_NS
             if ((third == 'M' || third == 'm') &&
                 (fourth == 'O' || fourth == 'o'))
             {
-                IO_NS::PrintTerminal("Attempting to perform a 3 minutes Demo\r\n");
+                // IO_NS::PrintTerminal("Attempting to perform a 3 minutes Demo\r\n");
                 ConductorRequest request(COMMAND::DEMO, 0, 0);
                 SEND(CONDUCTOR_TID, (char *)&request, sizeof(ConductorRequest), nullptr, 0);
             }
         }
         else
         {
-            IO_NS::PrintTerminal("Invalid Command\r\n");
+            // IO_NS::PrintTerminal("Invalid Command\r\n");
             // invalid command
             // UNIMPLEMENTED
         }
@@ -545,11 +545,11 @@ namespace UI_CMD_NS
 
     void CommandPrompt::getInput()
     {
-        // IO_NS::PrintTerminal("GETTING INPUT\r\n");
+        // // IO_NS::PrintTerminal("GETTING INPUT\r\n");
         // const int CONSOLE = 1;
 
         unsigned char c = (unsigned char)(IO_SERVER::Getc(IO_SERVER_TID));
-        // IO_NS::PrintTerminal("GOT INPUT: %c\r\n", c);
+        // // IO_NS::PrintTerminal("GOT INPUT: %c\r\n", c);
 
         // IO_NS::Print(MOVE_CURSOR, CMD_LOCATION, BUFFER_INDEX + CMD_PREFIX_LENGTH);
         switch (c)
@@ -561,7 +561,7 @@ namespace UI_CMD_NS
             if (BUFFER_INDEX > 0)
             {
                 // PROCESS COMMAND
-                IO_NS::PrintTerminal("Command: %s\r\n", inputBuffer);
+                // IO_NS::PrintTerminal("Command: %s\r\n", inputBuffer);
 
                 Commandify(inputBuffer);
                 clearInputBuffer();
@@ -596,11 +596,11 @@ namespace UI_CMD_NS
     {
         CommandPrompt commandPrompt;
 
-        IO_NS::PrintTerminal("Please enter the Track ID: ");
+        // IO_NS::PrintTerminal("Please enter the Track ID: ");
         while (true)
         {
             unsigned char track_id = (unsigned char)(IO_SERVER::Getc(commandPrompt.IO_SERVER_TID));
-            IO_NS::PrintTerminal("%c\r\n", track_id);
+            // IO_NS::PrintTerminal("%c\r\n", track_id);
             uart_printf(CONSOLE, "Received Track ID: %c\r\n", track_id);
             if (track_id == 'A' || track_id == 'a' || track_id == 'B' || track_id == 'b')
             {
@@ -616,7 +616,7 @@ namespace UI_CMD_NS
                 display_track(commandPrompt.current_track);
 
                 // create conductor
-                IO_NS::PrintTerminal("Attempting to start Conductor with track ID: %c, CONDUCTOR_TID: %d\r\n", track_id, commandPrompt.CONDUCTOR_TID);
+                // IO_NS::PrintTerminal("Attempting to start Conductor with track ID: %c, CONDUCTOR_TID: %d\r\n", track_id, commandPrompt.CONDUCTOR_TID);
                 SEND(commandPrompt.CONDUCTOR_TID, (char *)&track_id, sizeof(char), nullptr, 0);
                 commandPrompt.isTrackIDKnown = true;
                 commandPrompt.clearInputBuffer();
@@ -626,13 +626,13 @@ namespace UI_CMD_NS
             }
             else
             {
-                IO_NS::PrintTerminal("Invalid Track ID. Please enter A or B (case ignored)\r\n");
+                // IO_NS::PrintTerminal("Invalid Track ID. Please enter A or B (case ignored)\r\n");
             }
         }
 
-        IO_NS::PrintTerminal("Command Prompt started\r\n");
+        // IO_NS::PrintTerminal("Command Prompt started\r\n");
 
-        // track A
+        /* track A
         //char *initial_commands_list[] = {
             //"SPAWN 77 B7 0",
             //"SPAWN 58 B11 0",
@@ -641,24 +641,16 @@ namespace UI_CMD_NS
             //"GO 55 8 A15 0",
             //"GO 58 8 A14 0",
             // "AUTO",
-        //};
-        // char *initial_commands_list[] = {
-        //     "SPAWN 77 A16 0",
-        //     "SPAWN 58 A13 0",
-        //     "GO 77 10 A2 0",
-        //     "GO 58 10 B13 0",
-        //     // "AUTO",
-        // };
+        };
 
-        IO_NS::PrintTerminal("Parsing Initial commands:\r\n");
-        /*for (int i = 0; i < sizeof(initial_commands_list) / sizeof(initial_commands_list[0]); i++)
+        // IO_NS::PrintTerminal("Parsing Initial commands:\r\n");
+        for (int i = 0; i < sizeof(initial_commands_list) / sizeof(initial_commands_list[0]); i++)
         {
-            IO_NS::PrintTerminal("%s\r\n", initial_commands_list[i]);
-            IO_NS::PrintTerminal("Parsing command: %s -- press any key to proceed\r\n", initial_commands_list[i]);
+            // IO_NS::PrintTerminal("%s\r\n", initial_commands_list[i]);
+            // IO_NS::PrintTerminal("Parsing command: %s -- press any key to proceed\r\n", initial_commands_list[i]);
             unsigned char ch = uart_getc(CONSOLE);
             commandPrompt.Commandify(initial_commands_list[i]);
         }*/
-        // uassert(false && "FORCED ERROR -- this is for testing only");
 
         while (true)
         {

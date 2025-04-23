@@ -148,9 +148,9 @@ namespace MARKLIN_IO_SERVER
         }
         IO_REQUEST(ListenToSensors *listener) : type(IO_REQUEST_TYPE::SENSOR_LISTENER)
         {
-            // IO_NS::PrintTerminal("MarklinIO_server::SENSOR_LISTENER: Received request for sensor %s\r\n", listener->sensor_name);
+            // // IO_NS::PrintTerminal("MarklinIO_server::SENSOR_LISTENER: Received request for sensor %s\r\n", listener->sensor_name);
             data.sensor_listener = listener;
-            // IO_NS::PrintTerminal("MarklinIO_server::SENSOR_LISTENER: Received request for sensor %s\r\n", listener->sensor_name);
+            // // IO_NS::PrintTerminal("MarklinIO_server::SENSOR_LISTENER: Received request for sensor %s\r\n", listener->sensor_name);
         }
     };
 

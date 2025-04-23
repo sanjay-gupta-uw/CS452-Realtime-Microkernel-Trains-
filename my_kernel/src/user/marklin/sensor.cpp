@@ -19,7 +19,7 @@ namespace Sensors_NS
     {
         // test SENSOR_TRIGGERED
         {
-            IO_NS::PrintTerminal(COLOR_YELLOW "SensorManager: Testing SENSOR_TRIGGERED\r\n");
+            // IO_NS::PrintTerminal(COLOR_YELLOW "SensorManager: Testing SENSOR_TRIGGERED\r\n");
 
             uint8_t sensor_bytes[16] = {
                 0b10000000,
@@ -41,17 +41,17 @@ namespace Sensors_NS
 
             for (int i = 1; i <= 16; ++i)
             {
-                IO_NS::PrintTerminal(COLOR_YELLOW "SensorManager: Testing sensor %d\r\n", i);
+                // IO_NS::PrintTerminal(COLOR_YELLOW "SensorManager: Testing sensor %d\r\n", i);
                 uassert(SENSOR_TRIGGERED(sensor_bytes[i - 1], i) && "SensorManager: Error testing SENSOR_TRIGGERED");
             }
 
-            IO_NS::PrintTerminal(COLOR_YELLOW "SensorManager: Finished testing SENSOR_TRIGGERED\r\n");
+            // IO_NS::PrintTerminal(COLOR_YELLOW "SensorManager: Finished testing SENSOR_TRIGGERED\r\n");
         }
     }
 
     SensorManager::SensorManager()
     {
-        IO_NS::PrintTerminal(COLOR_YELLOW "SensorManager::SensorManager: Initializing SensorManager\r\n");
+        // IO_NS::PrintTerminal(COLOR_YELLOW "SensorManager::SensorManager: Initializing SensorManager\r\n");
         REGISTERAS("SensorManager");
         last_triggered_bank = '\0';
         last_triggered_id = 0;
@@ -80,7 +80,7 @@ namespace Sensors_NS
             waiting_trains[i] = {-1, train_nums[i], -1, -1};
             waiting_trains[i].messenger_tid = CREATE(PRIORITY::DEVICE_NOTIFIER, SensorMessenger);
             uassert(waiting_trains[i].messenger_tid > 0 && "SensorManager::SensorManager: Error creating SensorMessenger");
-            IO_NS::PrintTerminal(COLOR_YELLOW "SensorManager::SensorManager: Created SensorMessenger for train %d with TID %d\r\n", train_nums[i], waiting_trains[i].messenger_tid);
+            // IO_NS::PrintTerminal(COLOR_YELLOW "SensorManager::SensorManager: Created SensorMessenger for train %d with TID %d\r\n", train_nums[i], waiting_trains[i].messenger_tid);
         }
 
         SensorLoop();
@@ -101,20 +101,20 @@ namespace Sensors_NS
     {
         num_banks = VALIDATE_BANK(num_banks);
 
-        IO_NS::PrintTerminal(COLOR_YELLOW "SensorManager::ReadAll: Sending command to MarklinIOServer\r\n");
+        // IO_NS::PrintTerminal(COLOR_YELLOW "SensorManager::ReadAll: Sending command to MarklinIOServer\r\n");
         MARKLIN_IO_SERVER::MarklinRequest request = {true, READ_ALL_SENSOR_BASE + num_banks};
         int ret = MARKLIN_IO_SERVER::SendCmd(MARKLIN_IO_SERVER_TID, &request);
         uassert(ret >= 0 && "SensorManager::ReadAll: command sent to MarklinIOServer failed");
-        IO_NS::PrintTerminal(COLOR_YELLOW "SensorManager::ReadAll: Sent command to MarklinIOServer\r\n");
+        // IO_NS::PrintTerminal(COLOR_YELLOW "SensorManager::ReadAll: Sent command to MarklinIOServer\r\n");
 
         for (int bank = 1; bank <= num_banks; ++bank)
         {
             uint8_t byte1 = MARKLIN_IO_SERVER::Getc(MARKLIN_IO_SERVER_TID);
             uassert(byte1 >= 0 && "SensorManager::ReadAll: Getc failed");
-            IO_NS::PrintTerminal("SensorManager::ReadAll: Read byte1: %d\r\n", byte1);
+            // IO_NS::PrintTerminal("SensorManager::ReadAll: Read byte1: %d\r\n", byte1);
             uint8_t byte2 = MARKLIN_IO_SERVER::Getc(MARKLIN_IO_SERVER_TID);
             uassert(byte2 >= 0 && "SensorManager::ReadAll: Getc failed");
-            IO_NS::PrintTerminal("SensorManager::ReadAll: Read byte2: %d\r\n", byte2);
+            // IO_NS::PrintTerminal("SensorManager::ReadAll: Read byte2: %d\r\n", byte2);
 
             if (byte1 == 0 && byte2 == 0)
             {
@@ -122,7 +122,7 @@ namespace Sensors_NS
             }
             processSensorData(bank, byte1, byte2);
         }
-        IO_NS::PrintTerminal(COLOR_RED "SensorManager::ReadAll: Finished reading all banks\r\n");
+        // IO_NS::PrintTerminal(COLOR_RED "SensorManager::ReadAll: Finished reading all banks\r\n");
     }
 
     void SensorManager::processSensorData(int bank, uint8_t byte1, uint8_t byte2)
@@ -132,12 +132,12 @@ namespace Sensors_NS
             return;
         }
         // uassert(false && "PROCESSING SENSOR DATA -- THIS IS GETTING HIT");
-        IO_NS::PrintTerminal(COLOR_YELLOW "SensorManager::processSensorData: byte1: %d, byte2: %d\r\n", byte1, byte2);
+        // IO_NS::PrintTerminal(COLOR_YELLOW "SensorManager::processSensorData: byte1: %d, byte2: %d\r\n", byte1, byte2);
         for (int sensor = 1; sensor <= SENSORS_PER_BANK; ++sensor)
         {
             int idx = ((bank - 1) * SENSORS_PER_BANK) + (sensor - 1);
             int new_state = (sensor < 9) ? SENSOR_TRIGGERED(byte1, sensor) : SENSOR_TRIGGERED(byte2, sensor);
-            // IO_NS::PrintTerminal(COLOR_YELLOW "NEW STATE: %d\r\n", new_state);
+            // // IO_NS::PrintTerminal(COLOR_YELLOW "NEW STATE: %d\r\n", new_state);
 
             int old_state = sensor_data[idx].status;
             sensor_data[idx].status = new_state;
@@ -152,7 +152,7 @@ namespace Sensors_NS
                     {
                         int dummy;
                         recent_sensors.Pop(&dummy);
-                        IO_NS::PrintTerminal(COLOR_YELLOW "SensorManager::processSensorData: recent sensors is full -- making space\r\n");
+                        // IO_NS::PrintTerminal(COLOR_YELLOW "SensorManager::processSensorData: recent sensors is full -- making space\r\n");
                     }
                     recent_sensors.Push(idx);
 
@@ -201,7 +201,7 @@ namespace Sensors_NS
         if (IRQ_ENABLED)
         {
             SENSOR_TICKER_TID = CREATE(PRIORITY::DEVICE_NOTIFIER, SensorTicker);
-            IO_NS::PrintTerminal("SensorManager::SensorLoop: Created SensorTicker with TID %d\r\n", SENSOR_TICKER_TID);
+            // IO_NS::PrintTerminal("SensorManager::SensorLoop: Created SensorTicker with TID %d\r\n", SENSOR_TICKER_TID);
             uassert(SENSOR_TICKER_TID > 0 && "SensorManager::SensorLoop: Error creating SensorTicker");
         }
 
@@ -218,20 +218,20 @@ namespace Sensors_NS
             bool send_reply = false;
             int retval = RECEIVE(&sender_tid, (char *)&query, sizeof(query));
             uassert(retval >= 0 && "SensorManager: Error receiving SensorQuery");
-            IO_NS::PrintTerminal(COLOR_RED "SensorManager: Received SensorQuery from %d\r\n", sender_tid);
+            // IO_NS::PrintTerminal(COLOR_RED "SensorManager: Received SensorQuery from %d\r\n", sender_tid);
             cur_tick = TIME(CLOCK_SERVER_TID);
 
             switch (query.command)
             {
             case SENSOR_COMMAND::TICK:
             {
-                IO_NS::PrintTerminal(COLOR_RED "SensorManager: Received TICK request -- READING ALL BANKS\r\n");
+                // IO_NS::PrintTerminal(COLOR_RED "SensorManager: Received TICK request -- READING ALL BANKS\r\n");
                 send_reply = true;
                 break;
             }
             case SENSOR_COMMAND::RESET:
             {
-                // IO_NS::PrintTerminal(COLOR_YELLOW"SensorManager: Received RESET request\r\n");
+                // // IO_NS::PrintTerminal(COLOR_YELLOW"SensorManager: Received RESET request\r\n");
                 Reset(true);
                 send_reply = true;
                 break;
@@ -239,17 +239,17 @@ namespace Sensors_NS
             case SENSOR_COMMAND::TRAIN_SENSOR:
             {
 
-                IO_NS::PrintTerminal(COLOR_RED "SensorManager{%d}: Waiting for train to hit: %c%d\r\n", my_tid, query.sensor.bank, query.sensor.id);
+                // IO_NS::PrintTerminal(COLOR_RED "SensorManager{%d}: Waiting for train to hit: %c%d\r\n", my_tid, query.sensor.bank, query.sensor.id);
                 // train expects to hit a sensor in the near future
                 SensorStruct sensor = query.sensor;
                 for (int i = 0; i < NUM_TRAINS; ++i)
                 {
                     if (waiting_trains[i].train_num == query.train_num)
                     {
-                        IO_NS::PrintTerminal(COLOR_RED "found train %d at %d\r\n", query.train_num, i);
+                        // IO_NS::PrintTerminal(COLOR_RED "found train %d at %d\r\n", query.train_num, i);
                         waiting_trains[i].train_tid = query.train_tid;
                         waiting_trains[i].idx = (int(sensor.bank - 'A') * SENSORS_PER_BANK) + (sensor.id - 1); // convert sensor to bank and id to compute index
-                        IO_NS::PrintTerminal(COLOR_RED "SensorManager: Train %d expects to hit sensor index %d\r\n", waiting_trains[i].train_num, waiting_trains[i].idx);
+                        // IO_NS::PrintTerminal(COLOR_RED "SensorManager: Train %d expects to hit sensor index %d\r\n", waiting_trains[i].train_num, waiting_trains[i].idx);
                         break;
                     }
                 }
@@ -258,7 +258,7 @@ namespace Sensors_NS
             }
             case SENSOR_COMMAND::MESSENGER_READY:
             {
-                IO_NS::PrintTerminal(COLOR_RED "SensorManager: Received MESSENGER_READY request\r\n");
+                // IO_NS::PrintTerminal(COLOR_RED "SensorManager: Received MESSENGER_READY request\r\n");
                 // dont send reply immediately (only reply when sensor is hit)
                 break;
             }
@@ -268,17 +268,17 @@ namespace Sensors_NS
 
             if (IRQ_ENABLED)
             {
-                IO_NS::PrintTerminal(COLOR_RED "SensorManager: Reading all banks\r\n");
+                // IO_NS::PrintTerminal(COLOR_RED "SensorManager: Reading all banks\r\n");
                 ReadAll(NUM_BANKS);
             }
 
-            IO_NS::PrintTerminal(COLOR_RED "SensorManager: Handling waiting trains\r\n");
+            // IO_NS::PrintTerminal(COLOR_RED "SensorManager: Handling waiting trains\r\n");
             HandleWaitingTrains();
 
             Display(); // this can block the server until IO is ready
             if (send_reply)
             {
-                IO_NS::PrintTerminal(COLOR_RED "SensorManager: Sending reply to %d\r\n", sender_tid);
+                // IO_NS::PrintTerminal(COLOR_RED "SensorManager: Sending reply to %d\r\n", sender_tid);
                 REPLY(sender_tid, nullptr, 0);
             }
             // uassert(false && "SensorManager::SensorLoop: THIS MUST BE HIT");
@@ -291,7 +291,7 @@ namespace Sensors_NS
     {
         for (int i = 0; i < NUM_TRAINS; ++i)
         {
-            // IO_NS::PrintTerminal(COLOR_YELLOW "SensorManager::HandleWaitingTrains: Handling train %d, idx: %d\r\n", waiting_trains[i].train_num, waiting_trains[i].idx);
+            // // IO_NS::PrintTerminal(COLOR_YELLOW "SensorManager::HandleWaitingTrains: Handling train %d, idx: %d\r\n", waiting_trains[i].train_num, waiting_trains[i].idx);
             WaitingTrain *train = &waiting_trains[i];
             // UNCOMMENT SECOND CONDITION
             if ((train->idx >= 0) && (!IRQ_ENABLED || sensor_data[train->idx].status == SEN_ON))
@@ -302,7 +302,7 @@ namespace Sensors_NS
 
                 SensorResponse response = {true, cur_tick, train->train_tid, {bank, sensor_id}};
                 // REPLY TO SENSOR MESSENGER TO SEND TO TRAIN
-                IO_NS::PrintTerminal(COLOR_YELLOW "SensorManager::HandleWaitingTrains: Replying to sensor messenger for train %d (tid: %d)\r\n", train->train_num, train->messenger_tid);
+                // IO_NS::PrintTerminal(COLOR_YELLOW "SensorManager::HandleWaitingTrains: Replying to sensor messenger for train %d (tid: %d)\r\n", train->train_num, train->messenger_tid);
                 int retval = REPLY(train->messenger_tid, (char *)&response, sizeof(SensorResponse));
                 uassert(retval >= 0 && "SensorManager::HandleWaitingTrains: Error replying to train");
             }
@@ -328,7 +328,7 @@ namespace Sensors_NS
         {
             int retval = SEND(sensor_server_tid, (char *)&query, sizeof(query), nullptr, 0);
             uassert(retval >= 0 && "SensorTicker: Error sending SensorQuery to SensorServer");
-            IO_NS::PrintTerminal(COLOR_YELLOW "SensorTicker: DELAYING\r\n");
+            // IO_NS::PrintTerminal(COLOR_YELLOW "SensorTicker: DELAYING\r\n");
             DELAY(CLOCK_SERVER_TID, 20);
         }
     }
@@ -336,23 +336,23 @@ namespace Sensors_NS
     void SensorMessenger()
     {
         int my_tid = MYTID();
-        IO_NS::PrintTerminal(COLOR_GREEN "SensorMessenger: Initializing SensorMessenger with TID %d\r\n", my_tid);
+        // IO_NS::PrintTerminal(COLOR_GREEN "SensorMessenger: Initializing SensorMessenger with TID %d\r\n", my_tid);
         int sensor_server_tid = WHOIS("SensorManager");
         uassert(sensor_server_tid > 0 && "SensorMessenger: Error finding SensorServer");
 
         SensorQuery sensor_query = {SENSOR_COMMAND::MESSENGER_READY};
         while (true)
         {
-            IO_NS::PrintTerminal(COLOR_GREEN "SensorMessenger: MY TID: %d\r\n", my_tid);
+            // IO_NS::PrintTerminal(COLOR_GREEN "SensorMessenger: MY TID: %d\r\n", my_tid);
             SensorResponse response;
             int ret = SEND(sensor_server_tid, (char *)&sensor_query, sizeof(sensor_query), (char *)&response, sizeof(response));
             uassert(ret >= 0 && "SensorMessenger: Error sending to SensorServer");
 
-            IO_NS::PrintTerminal(COLOR_GREEN "SensorMessenger: Received response from SensorServer\r\n");
+            // IO_NS::PrintTerminal(COLOR_GREEN "SensorMessenger: Received response from SensorServer\r\n");
             // uassert(false && "FINALLY FREED~!");
 
             // send reply to train task
-            IO_NS::PrintTerminal(COLOR_GREEN "SensorMessenger: Sending reply to train tid %d\r\n", response.train_tid);
+            // IO_NS::PrintTerminal(COLOR_GREEN "SensorMessenger: Sending reply to train tid %d\r\n", response.train_tid);
             TrainMessage message(response.trigger_tick, response.sensor.bank, response.sensor.id);
             ret = SEND(response.train_tid, (char *)&message, sizeof(TrainMessage), nullptr, 0);
             uassert(ret >= 0 && "SensorMessenger: Error replying to train task");

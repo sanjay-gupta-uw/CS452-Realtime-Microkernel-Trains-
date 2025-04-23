@@ -61,7 +61,7 @@ namespace UI_NS
     void start_ui()
     {
         // uassert(false && "FORCED PANIC -- UI1 -- REMOVE THIS LINE");
-        IO_NS::PrintTerminal("UI TASK STARTED!\r\n");
+        // IO_NS::PrintTerminal("UI TASK STARTED!\r\n");
         // REGISTERAS("UI_TASK");
         // Clock clock;
 
@@ -77,7 +77,7 @@ namespace UI_NS
         IO_NS::Print(MOVE_CURSOR "IDLE: %d%%", IDLE_LOCATION, 1, 0);
         // clock.Display();
         init_sensor_display();
-        IO_NS::PrintTerminal("UI TASK INITIALIZED!\r\n");
+        // IO_NS::PrintTerminal("UI TASK INITIALIZED!\r\n");
         EXIT();
     }
 

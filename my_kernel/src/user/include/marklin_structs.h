@@ -105,7 +105,7 @@ struct TrainMessage
     TrainMessage(TrainMessageType type = TrainMessageType::TRAIN_TICKER)
         : type(type)
     {
-        // IO_NS::PrintTerminal("TrainMessage::TrainMessage CONSTRUCTOR -- %d\r\n", type);
+        // // IO_NS::PrintTerminal("TrainMessage::TrainMessage CONSTRUCTOR -- %d\r\n", type);
     }
 
     // Constructor for SegmentNotification
@@ -113,7 +113,7 @@ struct TrainMessage
         : type(TrainMessageType::PATH_MESSENGER)
     {
         data.segment = {SensorStruct{bank, id}, segment_length};
-        IO_NS::PrintTerminal("TrainMessage::SegmentNotification CONSTRUCTOR -- %c%d, %d\r\n", bank, id, segment_length);
+        // IO_NS::PrintTerminal("TrainMessage::SegmentNotification CONSTRUCTOR -- %c%d, %d\r\n", bank, id, segment_length);
     }
 
     // Constructor for TrainCommandNotification
@@ -121,7 +121,7 @@ struct TrainMessage
         : type(TrainMessageType::TRAIN_COMMAND)
     {
         data.train_command = {command, speed, reserved_distance};
-        // IO_NS::PrintTerminal("TrainMessage::TrainCommandNotification CONSTRUCTOR -- %d, %d\r\n", command, speed);
+        // // IO_NS::PrintTerminal("TrainMessage::TrainCommandNotification CONSTRUCTOR -- %d, %d\r\n", command, speed);
     }
 
     // Constructor for SensorPingNotification
@@ -129,7 +129,7 @@ struct TrainMessage
         : type(TrainMessageType::SENSOR_MESSENGER)
     {
         data.sensor_ping = {SensorStruct{bank, id}, trigger_tick};
-        // IO_NS::PrintTerminal("TrainMessage::SensorPingNotification CONSTRUCTOR -- %d, %c%d\r\n", trigger_tick, bank, id);
+        // // IO_NS::PrintTerminal("TrainMessage::SensorPingNotification CONSTRUCTOR -- %d, %c%d\r\n", trigger_tick, bank, id);
     }
 };
 
@@ -178,7 +178,7 @@ struct ConductorRequest
     ConductorRequest(RequestType requestType)
         : requestType(requestType)
     {
-        // IO_NS::PrintTerminal("ConductorRequest::ConductorRequest CONSTRUCTOR -- %d\r\n", requestType);
+        // // IO_NS::PrintTerminal("ConductorRequest::ConductorRequest CONSTRUCTOR -- %d\r\n", requestType);
     }
 
     // Constructor for CMDRequest
@@ -205,13 +205,13 @@ struct ConductorRequest
     {
         data.train_num = train_num;
         data.cmdRequest.id = train_num;
-        // IO_NS::PrintTerminal("ConductorRequest::ConductorRequest CONSTRUCTOR -- %d\r\n", requestType);
+        // // IO_NS::PrintTerminal("ConductorRequest::ConductorRequest CONSTRUCTOR -- %d\r\n", requestType);
     }
     ConductorRequest(SensorTriggerResponse *sensor_trigger_response)
         : requestType(RequestType::SENSOR_TRIGGER)
     {
         data.sensor_trigger_response = *sensor_trigger_response;
-        // IO_NS::PrintTerminal("ConductorRequest::ConductorRequest CONSTRUCTOR -- %d\r\n", requestType);
+        // // IO_NS::PrintTerminal("ConductorRequest::ConductorRequest CONSTRUCTOR -- %d\r\n", requestType);
     }
 };
 

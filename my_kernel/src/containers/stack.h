@@ -55,10 +55,10 @@ public:
 
     void Print()
     {
-        IO_NS::PrintTerminal(COLOR_MAGENTA "Stack contents: {size: %d, head: %d} ", size, head);
+        // IO_NS::PrintTerminal(COLOR_MAGENTA "Stack contents: {size: %d, head: %d} ", size, head);
         if (IsEmpty())
         {
-            IO_NS::PrintTerminal("\r\n");
+            // IO_NS::PrintTerminal("\r\n");
             return;
         }
         Stack<T, Capacity> temp;
@@ -70,7 +70,7 @@ public:
 
             // cast item to PathNode
             PathNode *node = &item; // No cast needed
-            IO_NS::PrintTerminal(COLOR_MAGENTA "%s ", node->node->name);
+            // IO_NS::PrintTerminal(COLOR_MAGENTA "%s ", node->node->name);
             temp.Push(item);
         }
         while (!temp.IsEmpty())
@@ -79,7 +79,7 @@ public:
             temp.Pop(&item);
             Push(item);
         }
-        IO_NS::PrintTerminal("\r\n");
+        // IO_NS::PrintTerminal("\r\n");
     }
 
     void

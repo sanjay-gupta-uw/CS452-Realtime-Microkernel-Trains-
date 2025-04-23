@@ -18,8 +18,8 @@ void kabort(const char *condition, int line, const char *file, int EL)
     UART_CLEAR_INTERRUPT(MARKLIN, (TX_INTERRUPT_MASK | RX_INTERRUPT_MASK | CTS_INTERRUPT_MASK));
 
     // print condition
-    // IO_NS::PrintTerminal(COLOR_GREEN "ASSERTION FAILURE {%s} (in EL%d): line %d, file %s\r\n", condition, EL, line, file);
-    // IO_NS::PrintTerminal(COLOR_RED "KERNEL PANIC: HALTING SYSTEM\r\n");
+    // // IO_NS::PrintTerminal(COLOR_GREEN "ASSERTION FAILURE {%s} (in EL%d): line %d, file %s\r\n", condition, EL, line, file);
+    // // IO_NS::PrintTerminal(COLOR_RED "KERNEL PANIC: HALTING SYSTEM\r\n");
     uart_printf(CONSOLE, RESTORE_CURSOR "ASSERTION FAILURE {%s} (in EL%d): line %d, file %s\r\n" SAVE_CURSOR, condition, EL, line, file);
     uart_printf(CONSOLE, RESTORE_CURSOR "KERNEL PANIC: HALTING SYSTEM\r\n" SAVE_CURSOR);
     for (;;)

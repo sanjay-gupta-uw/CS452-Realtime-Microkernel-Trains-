@@ -22,7 +22,7 @@ public:
     {
         CLOCK_SERVER_TID = MYTID();
         REGISTERAS("ClockServer");
-        IO_NS::PrintTerminal("ClockServer started with TID %d\r\n", CLOCK_SERVER_TID);
+        // IO_NS::PrintTerminal("ClockServer started with TID %d\r\n", CLOCK_SERVER_TID);
 
         if (IRQ_ENABLED)
         {
@@ -164,7 +164,7 @@ void ClockNotifier()
         clock.Delay(10);
 #endif
 
-        // IO_NS::PrintTerminal("ClockNotifier::Tick\r\n");
+        // // IO_NS::PrintTerminal("ClockNotifier::Tick\r\n");
         clock.Display();
 
         ClockRequest tickReq = {ClockRequestType::TICK, 0};                  // No ticks needed for a notification

@@ -30,12 +30,6 @@ static constexpr char *SENSOR_IDS_1[] = {
 static constexpr char *SENSOR_IDS_2[] = {
     "A15", "B5", "C3", "E16"};    
 
-static constexpr char *AUTO_0[] = {
-    "C3", "D12", "C15", "C5", "B16", "A2", "A14", "A15", "E8", "D8", "C15", "C16", "D11", "D12", "E11"};
-    
-static constexpr char *AUTO_1[] = {
-    "D5", "E3", "D1", "C1", "B4", "B15", "A3", "B5", "B6", "D3", "D4", "E5", "B1", "B2", "D13", "D14", "E14"};
-
 namespace Conductor_NS
 {
 
@@ -60,30 +54,30 @@ namespace Conductor_NS
 
     static void StackTest()
     {
-        IO_NS::PrintTerminal(CLEAR_SCREEN "StackTest -- testing stack\r\n");
+        // IO_NS::PrintTerminal(CLEAR_SCREEN "StackTest -- testing stack\r\n");
         Stack<int, 10> test_stack;
         for (int i = 0; i < 10; i++)
         {
             test_stack.Push(i);
-            IO_NS::PrintTerminal("StackTest -- pushed %d -- size: %d\r\n", i, test_stack.size);
+            // IO_NS::PrintTerminal("StackTest -- pushed %d -- size: %d\r\n", i, test_stack.size);
         }
         for (int i = 0; i < 10; i++)
         {
             int popped;
             test_stack.Pop(&popped);
-            IO_NS::PrintTerminal("StackTest -- popped %d -- size: %d\r\n", popped, test_stack.size);
+            // IO_NS::PrintTerminal("StackTest -- popped %d -- size: %d\r\n", popped, test_stack.size);
         }
         uassert(false && "Conductor::PopSegment -- end of test");
     }
 
     static void VerifyPath(Stack<PathNode, TRACK_MAX> *path)
     {
-        // IO_NS::PrintTerminal(CLEAR_SCREEN MOVE_CURSOR "Conductor::VerifyPath -- Verifying path\r\n", 1, 1);
+        // // IO_NS::PrintTerminal(CLEAR_SCREEN MOVE_CURSOR "Conductor::VerifyPath -- Verifying path\r\n", 1, 1);
         PathNode node;
         while (!path->IsEmpty())
         {
             path->Pop(&node);
-            IO_NS::PrintTerminal("Conductor::VerifyPath -- %s\r\n", node.node->name);
+            // IO_NS::PrintTerminal("Conductor::VerifyPath -- %s\r\n", node.node->name);
         }
         uassert(false && "Conductor::VerifyPath -- Test finished -- forced error");
     }
@@ -106,10 +100,10 @@ namespace Conductor_NS
 
     Conductor::Conductor()
     {
-        IO_NS::PrintTerminal("Starting Conductor\r\n");
+        // IO_NS::PrintTerminal("Starting Conductor\r\n");
 
         REGISTERAS("Conductor");
-        IO_NS::PrintTerminal("Conductor started\r\n");
+        // IO_NS::PrintTerminal("Conductor started\r\n");
 
         CLOCK_SERVER_TID = WHOIS("ClockServer");
         uassert(CLOCK_SERVER_TID > 0 && "Conductor::Error finding ClockServer");
@@ -132,15 +126,12 @@ namespace Conductor_NS
         int sender_tid;
         unsigned char track_id;
         int retval = RECEIVE(&sender_tid, (char *)&track_id, sizeof(track_id));
-        IO_NS::PrintTerminal("Conductor received request for track %c\r\n", track_id);
+        // IO_NS::PrintTerminal("Conductor received request for track %c\r\n", track_id);
         uassert(track_id == 'A' || track_id == 'B' || track_id == 'a' || track_id == 'b');
         track.init(track_id);
         command_index_0 = 0;
         command_index_1 = 0;
         command_index_2 = 0;
-
-        auto_command_idx_0 = 0;
-        auto_command_idx_0 = 0;
 
         if (track_id == 'A' || track_id == 'a')
         {
@@ -157,12 +148,12 @@ namespace Conductor_NS
         // create switch server
         SWITCH_SERVER_TID = CREATE(PRIORITY::DEVICE, Switch_NS::StartSwitchServer);
         uassert(SWITCH_SERVER_TID > 0 && "Conductor::Error creating switch server");
-        IO_NS::PrintTerminal("Switch server created with TID %d\r\n", SWITCH_SERVER_TID);
+        // IO_NS::PrintTerminal("Switch server created with TID %d\r\n", SWITCH_SERVER_TID);
         SEND(SWITCH_SERVER_TID, (char *)&track_id, sizeof(track_id), nullptr, 0); // send track id to switch server
 
         //int ticker_tid = CREATE(PRIORITY::DEVICE, ticker);
         //uassert(ticker_tid > 0 && "Conductor::Error creating ticker");
-        //IO_NS::PrintTerminal("Conductor ticker created with TID %d\r\n", ticker_tid);
+        //// IO_NS::PrintTerminal("Conductor ticker created with TID %d\r\n", ticker_tid);
 
         int train_nums[NUM_TRAINS] = {1, 54, 55, 58, 77};
 
@@ -170,7 +161,7 @@ namespace Conductor_NS
         int MARKLIN_IO_SERVER_TID = WHOIS("MarklinIOServer");
         for (int i = 0; i < NUM_TRAINS; ++i)
         {
-            IO_NS::PrintTerminal("Conductor::Conductor init -- stopping train %d\r\n", train_nums[i]);
+            // IO_NS::PrintTerminal("Conductor::Conductor init -- stopping train %d\r\n", train_nums[i]);
             STOP(train_nums[i], MARKLIN_IO_SERVER_TID);
         }
 
@@ -192,29 +183,29 @@ namespace Conductor_NS
         {
             return;
         }
-        // IO_NS::PrintTerminal(CLEAR_SCREEN MOVE_CURSOR "Conductor::SwitchNextSegment -- Processing next segment\r\n", 1, 1);
+        // // IO_NS::PrintTerminal(CLEAR_SCREEN MOVE_CURSOR "Conductor::SwitchNextSegment -- Processing next segment\r\n", 1, 1);
         Stack<PathNode, 10> temp_stack;
         temp_stack.Clear();
         PathNode node;
         path->Pop(&node);
-        // IO_NS::PrintTerminal("Conductor::SwitchNextSegment -- cur_node: %s\r\n", node.node->name);
+        // // IO_NS::PrintTerminal("Conductor::SwitchNextSegment -- cur_node: %s\r\n", node.node->name);
         temp_stack.Push(node);
-        // IO_NS::PrintTerminal("Conductor::SwitchNextSegment -- NODE AFTER: %s\r\n", cur_node.node->name);
+        // // IO_NS::PrintTerminal("Conductor::SwitchNextSegment -- NODE AFTER: %s\r\n", cur_node.node->name);
         while (!path->IsEmpty())
         {
             PathNode cur_node;
             path->Pop(&cur_node);
             if (cur_node.node->type == NODE_SENSOR)
             {
-                // IO_NS::PrintTerminal("Conductor::SwitchNextSegment -- cur_node: %s\r\n", cur_node.node->name);
+                // // IO_NS::PrintTerminal("Conductor::SwitchNextSegment -- cur_node: %s\r\n", cur_node.node->name);
                 temp_stack.Push(cur_node);
                 break;
             }
 
-            // IO_NS::PrintTerminal("Conductor::SwitchNextSegment -- %s\r\n", cur_node.node->name);
+            // // IO_NS::PrintTerminal("Conductor::SwitchNextSegment -- %s\r\n", cur_node.node->name);
             if (cur_node.node->type == NODE_BRANCH)
             {
-                IO_NS::PrintTerminal("Conductor::SwitchNextSegment -- SETTING Switch %s\r\n", cur_node.node->name);
+                // IO_NS::PrintTerminal("Conductor::SwitchNextSegment -- SETTING Switch %s\r\n", cur_node.node->name);
                 setSwitch(cur_node.node->num, cur_node.switch_state);
             }
             temp_stack.Push(cur_node);
@@ -232,7 +223,7 @@ namespace Conductor_NS
     {
 
         char state_char = (state == SwitchState::STRAIGHT) ? 'S' : 'C';
-        IO_NS::PrintTerminal("CONDUCTOR SET SWITCH:: %d->%c\r\n", addr, state_char);
+        // IO_NS::PrintTerminal("CONDUCTOR SET SWITCH:: %d->%c\r\n", addr, state_char);
 
         // upadte track-switch state
         track.set_switch_state(addr, state_char);
@@ -271,36 +262,36 @@ namespace Conductor_NS
         const char *sensor_name_ptr = sensor_name + 1;
         sensor.id = a2ui((char **)&sensor_name_ptr, 10);
 
-        IO_NS::PrintTerminal("name_to_sensor_struct:: for %c%d\r\n", sensor.bank, sensor.id);
+        // IO_NS::PrintTerminal("name_to_sensor_struct:: for %c%d\r\n", sensor.bank, sensor.id);
         return sensor;
     }
 
     void Conductor::ProcessRequest(CMDRequest *req)
     {
-        IO_NS::PrintTerminal("Conductor processing request\r\n");
+        // IO_NS::PrintTerminal("Conductor processing request\r\n");
         switch (req->command)
         {
         case COMMAND::SET_SWITCH:
         {
-            IO_NS::PrintTerminal("Conductor received SET_SWITCH request for switch addr %d\r\n", req->id);
+            // IO_NS::PrintTerminal("Conductor received SET_SWITCH request for switch addr %d\r\n", req->id);
             setSwitch(req->id, (req->data == 'S') ? SwitchState::STRAIGHT : SwitchState::CURVED);
             break;
         }
         case COMMAND::ACCELERATE_TRAIN:
         {
-            IO_NS::PrintTerminal("Conductor received ACCELERATE_TRAIN request for train %d\r\n", req->id);
+            // IO_NS::PrintTerminal("Conductor received ACCELERATE_TRAIN request for train %d\r\n", req->id);
             int train_num = req->id;
             int speed = req->data;
-            IO_NS::PrintTerminal("CONDUCTOR SEARCHING FOR TRAIN %d\r\n", train_num);
+            // IO_NS::PrintTerminal("CONDUCTOR SEARCHING FOR TRAIN %d\r\n", train_num);
             int train_index = get_train_index(train_num);
             if (train_index == -1)
             {
-                IO_NS::PrintTerminal("Train %d not found or initialized.\r\n", train_num);
+                // IO_NS::PrintTerminal("Train %d not found or initialized.\r\n", train_num);
                 return;
             }
             else
             {
-                IO_NS::PrintTerminal("Train %d found at index %d, pushing ACCELERATE command to train command queue\r\n", train_num, train_index);
+                // IO_NS::PrintTerminal("Train %d found at index %d, pushing ACCELERATE command to train command queue\r\n", train_num, train_index);
                 train_arr[train_index].speed_level = speed;
 
                 if (speed >= 7 && speed <= 14)
@@ -317,18 +308,18 @@ namespace Conductor_NS
         }
         case COMMAND::REVERSE_TRAIN:
         {
-            IO_NS::PrintTerminal("Conductor received REVERSE_TRAIN request for train %d\r\n", req->id);
+            // IO_NS::PrintTerminal("Conductor received REVERSE_TRAIN request for train %d\r\n", req->id);
             int train_num = req->id;
 
             int train_index = get_train_index(train_num);
             if (train_index == -1)
             {
-                IO_NS::PrintTerminal("Train %d not found or initialized.\r\n", train_num);
+                // IO_NS::PrintTerminal("Train %d not found or initialized.\r\n", train_num);
                 return;
             }
             else
             {
-                IO_NS::PrintTerminal("Train %d found, sending REVERSE command\r\n", train_num);
+                // IO_NS::PrintTerminal("Train %d found, sending REVERSE command\r\n", train_num);
             }
 
             train_arr[train_index].train_commands.Push({TRAIN_COMMAND::REVERSE, -1});
@@ -336,11 +327,11 @@ namespace Conductor_NS
         }
         case COMMAND::SPAWN_TRAIN:
         {
-            IO_NS::PrintTerminal("Conductor received SPAWN_TRAIN request for train %d\r\n", req->id);
+            // IO_NS::PrintTerminal("Conductor received SPAWN_TRAIN request for train %d\r\n", req->id);
 
             int spawned_train_tid = CREATE(PRIORITY::DEVICE, Trains_NS::spawn_train);
             uassert(spawned_train_tid > 0);
-            IO_NS::PrintTerminal("Train %d spawned with TID %d\r\n", req->id, spawned_train_tid);
+            // IO_NS::PrintTerminal("Train %d spawned with TID %d\r\n", req->id, spawned_train_tid);
             int trainSpawnedSuccess;
 
             Trains_NS::TrainParams train_params = {req->id, 0};
@@ -368,7 +359,7 @@ namespace Conductor_NS
                     // train->start_offset = req->data;
                     train->stopping_distance = 0;
                     train->offset = req->offset;
-                    IO_NS::PrintTerminal(COLOR_RED "OFFSET: %d\r\n", req->offset);
+                    // IO_NS::PrintTerminal(COLOR_RED "OFFSET: %d\r\n", req->offset);
                     memset(train->destination, '-', 5);
 
                     train->total_path_distance = 0;
@@ -405,12 +396,12 @@ namespace Conductor_NS
                         train->slow_down_speed = 5;
                     }
 
-                    IO_NS::PrintTerminal("Index: %d, Train %d spawned with last Sensor %s\r\n", i, train->train_num, train->last_sensor->name);
+                    // IO_NS::PrintTerminal("Index: %d, Train %d spawned with last Sensor %s\r\n", i, train->train_num, train->last_sensor->name);
                     break;
                 }
             }
 
-            IO_NS::PrintTerminal("Spawning sensor messenger for train %d\r\n", req->id);
+            // IO_NS::PrintTerminal("Spawning sensor messenger for train %d\r\n", req->id);
             int sensor_messenger_tid = CREATE(PRIORITY::CORE_NOTIFIER, start_sensor_messenger);
             uassert(sensor_messenger_tid > 0 && "Error creating sensor messenger");
             // send train number to sensor messenger
@@ -418,7 +409,7 @@ namespace Conductor_NS
             uassert(retval >= 0 && "Error sending train number to sensor messenger");
             train->sensor_messenger = {sensor_messenger_tid, false};
 
-            IO_NS::PrintTerminal("Train %d spawned successfully!\r\n", req->id);
+            // IO_NS::PrintTerminal("Train %d spawned successfully!\r\n", req->id);
 
             UpdateTrainDisplay();
             break;
@@ -435,12 +426,12 @@ namespace Conductor_NS
             int train_index = get_train_index(train_num);
             if (train_index == -1)
             {
-                IO_NS::PrintTerminal("Train %d not found or initialized.\r\n", train_num);
+                // IO_NS::PrintTerminal("Train %d not found or initialized.\r\n", train_num);
                 return;
             }
             if (speed < 7 || speed > 14)
             {
-                IO_NS::PrintTerminal("Go To command only go with speed 7 - 14.\r\n");
+                // IO_NS::PrintTerminal("Go To command only go with speed 7 - 14.\r\n");
                 return;
             }
             train_task_mapping *train = &train_arr[train_index];
@@ -461,21 +452,21 @@ namespace Conductor_NS
 
             // train->offset = offset;
 
-            IO_NS::PrintTerminal("Conductor::GOTO -- Train %d going to %s from %s\r\n", train_num, dest, train->last_sensor->name);
+            // IO_NS::PrintTerminal("Conductor::GOTO -- Train %d going to %s from %s\r\n", train_num, dest, train->last_sensor->name);
             track_node *start_sensor = train->last_sensor;
 
             // extract length of the path
-            IO_NS::PrintTerminal("Conductor::GOTO -- Finding conflict free path from %s to %s for train %d\r\n", start_sensor->name, dest, train_num);
+            // IO_NS::PrintTerminal("Conductor::GOTO -- Finding conflict free path from %s to %s for train %d\r\n", start_sensor->name, dest, train_num);
             int total_path_length = 0;
             track.find_path(start_sensor->name, dest, &train->path, false, offset, &total_path_length, true, train->train_num);
             if (total_path_length == -1)
             {
-                IO_NS::PrintTerminal("Conductor::GOTO -- No unreserved path found from %s to %s for train %d\r\n", start_sensor->name, dest, train_num);
-                IO_NS::PrintTerminal("Conductor::GOTO -- searching for alternative path (won't ignore reserved segments)\r\n");
+                // IO_NS::PrintTerminal("Conductor::GOTO -- No unreserved path found from %s to %s for train %d\r\n", start_sensor->name, dest, train_num);
+                // IO_NS::PrintTerminal("Conductor::GOTO -- searching for alternative path (won't ignore reserved segments)\r\n");
                 track.find_path(start_sensor->name, dest, &train->path, false, offset, &total_path_length);
                 if (total_path_length == -1)
                 {
-                    IO_NS::PrintTerminal("Conductor::GOTO -- No path found from %s to %s for train %d\r\n", start_sensor->name, dest, train_num);
+                    // IO_NS::PrintTerminal("Conductor::GOTO -- No path found from %s to %s for train %d\r\n", start_sensor->name, dest, train_num);
                     if(train->auto_mode)
                     {
                         GenerateAndSendNewCommand(&train_arr[train_index]);
@@ -490,7 +481,7 @@ namespace Conductor_NS
 
             if (train->path.IsEmpty() || total_path_length == -1)
             {
-                IO_NS::PrintTerminal("Conductor::GOTO -- No path found from %s to %s\r\n", start_sensor->name, dest);
+                // IO_NS::PrintTerminal("Conductor::GOTO -- No path found from %s to %s\r\n", start_sensor->name, dest);
                 if(train->auto_mode)
                 {
                     GenerateAndSendNewCommand(&train_arr[train_index]);
@@ -502,7 +493,7 @@ namespace Conductor_NS
                 return;
             }
             train->isTrainBlocked = !ReservePath(train);
-            IO_NS::PrintTerminal(COLOR_GREEN "Conductor::GOTO -- Reserved path for train %d\r\n", train_num);
+            // IO_NS::PrintTerminal(COLOR_GREEN "Conductor::GOTO -- Reserved path for train %d\r\n", train_num);
             train->check_if_blocked = train->isTrainBlocked;
 
             // print reserved nodes
@@ -514,12 +505,12 @@ namespace Conductor_NS
             // uassert(false && "Conductor::GOTO -- FORCED ERROR ");
 
             SwitchNextSegment(&train->path);
-            IO_NS::PrintTerminal("POPPING FIRST SEGMENT SINCE WE ALREADY PASSED OVER IT\r\n");
+            // IO_NS::PrintTerminal("POPPING FIRST SEGMENT SINCE WE ALREADY PASSED OVER IT\r\n");
             PopSegment(train);
-            IO_NS::PrintTerminal(COLOR_GREEN "Conductor::GOTO -- Reserved path after popping:\r\n");
+            // IO_NS::PrintTerminal(COLOR_GREEN "Conductor::GOTO -- Reserved path after popping:\r\n");
             train->reserved_nodes.Print();
 
-            IO_NS::PrintTerminal("VERIFYING PATH: ");
+            // IO_NS::PrintTerminal("VERIFYING PATH: ");
             train->path.Print();
 
             PathNode start_node;
@@ -528,15 +519,15 @@ namespace Conductor_NS
 
             if (train->last_sensor == start_node.node->reverse)
             {
-                // IO_NS::PrintTerminal("Last sensor: %s, start node: %s\r\n", train->last_sensor->name, start_node.node->name);
-                IO_NS::PrintTerminal("Conductor::GOTO -- Reversing train %d\r\n", train_num);
+                // // IO_NS::PrintTerminal("Last sensor: %s, start node: %s\r\n", train->last_sensor->name, start_node.node->name);
+                // IO_NS::PrintTerminal("Conductor::GOTO -- Reversing train %d\r\n", train_num);
                 train->train_commands.Push({TRAIN_COMMAND::REVERSE, speed});
             }
 
             // this should be done after the train is moving
             train_arr[train_index].speed_level = speed;
             SwitchNextSegment(&train->path);
-            IO_NS::PrintTerminal(COLOR_GREEN "Conductor::GOTO -- Reserved segment after:\r\n");
+            // IO_NS::PrintTerminal(COLOR_GREEN "Conductor::GOTO -- Reserved segment after:\r\n");
             train->reserved_nodes.Print();
 
             // Get calibrated speed
@@ -547,7 +538,7 @@ namespace Conductor_NS
             int stopping_dist = speed_data.GetStoppingDistance(train_num, speed);
             train_arr[train_index].stopping_distance = stopping_dist;
 
-            IO_NS::PrintTerminal(COLOR_RED "Jack------- Stopping distance for %d is %d\r\n", speed, train->stopping_distance);
+            // IO_NS::PrintTerminal(COLOR_RED "Jack------- Stopping distance for %d is %d\r\n", speed, train->stopping_distance);
 
             // Calculate total path distance
             train->total_path_distance = total_path_length;
@@ -557,7 +548,7 @@ namespace Conductor_NS
             train->stopping_targets.Push(*destination_node, total_path_length - train->stopping_distance - train->offset);
             int stopping_target;
             train->stopping_targets.Peek(destination_node, &stopping_target);
-            IO_NS::PrintTerminal(COLOR_GREEN "Conductor::GOTO -- Stopping target: %s in %d mm\r\n", destination_node->name, stopping_target);
+            // IO_NS::PrintTerminal(COLOR_GREEN "Conductor::GOTO -- Stopping target: %s in %d mm\r\n", destination_node->name, stopping_target);
             train->reach_first_sensor = false;
 
             int cur_tick = TIME(CLOCK_SERVER_TID);
@@ -590,7 +581,7 @@ namespace Conductor_NS
                     GenerateAndSendNewCommand(&train_arr[i]);
                 }
             }
-            IO_NS::PrintTerminal("Auto mode enabled for all trains\r\n");
+            // IO_NS::PrintTerminal("Auto mode enabled for all trains\r\n");
             break;
         }
         case COMMAND::DEMO:
@@ -606,28 +597,28 @@ namespace Conductor_NS
                     GenerateAndSendDemoCommand(&train_arr[i]);
                 }
             }
-            IO_NS::PrintTerminal("Demo mode enabled for all trains\r\n");
+            // IO_NS::PrintTerminal("Demo mode enabled for all trains\r\n");
             break;
         }
         case COMMAND::GO_AGAIN:
         {
             int train_num = req->id;
-            IO_NS::PrintTerminal(COLOR_GREEN "CONDUCTOR::PROCESSREQUEST -- GO AGAIN -- train num: %d\r\n", train_num);
+            // IO_NS::PrintTerminal(COLOR_GREEN "CONDUCTOR::PROCESSREQUEST -- GO AGAIN -- train num: %d\r\n", train_num);
             int train_index = get_train_index(train_num);
             if(train_arr[train_index].auto_mode)
             {
                 GenerateAndSendNewCommand(&train_arr[train_index]);
-                IO_NS::PrintTerminal(COLOR_GREEN "CONDUCTOR::PROCESSREQUEST -- AUTO: GO AGAIN EXECUTED FOR train num: %d\r\n", train_num);
+                // IO_NS::PrintTerminal(COLOR_GREEN "CONDUCTOR::PROCESSREQUEST -- AUTO: GO AGAIN EXECUTED FOR train num: %d\r\n", train_num);
             }
             else if(train_arr[train_index].demo_mode)
             {
                 GenerateAndSendDemoCommand(&train_arr[train_index]);
-                IO_NS::PrintTerminal(COLOR_GREEN "CONDUCTOR::PROCESSREQUEST -- DEMO: GO AGAIN EXECUTED FOR train num: %d\r\n", train_num);
+                // IO_NS::PrintTerminal(COLOR_GREEN "CONDUCTOR::PROCESSREQUEST -- DEMO: GO AGAIN EXECUTED FOR train num: %d\r\n", train_num);
             }
             break;
         }
         default:
-            IO_NS::PrintTerminal("Conductor received INVALID request\r\n");
+            // IO_NS::PrintTerminal("Conductor received INVALID request\r\n");
             break;
         }
     }
@@ -638,7 +629,7 @@ namespace Conductor_NS
         {
             if (train_arr[i].train_num != -1)
             {
-                IO_NS::PrintTerminal(COLOR_RED "Sending STOP command to Train %d\r\n", train_arr[i].train_num);
+                // IO_NS::PrintTerminal(COLOR_RED "Sending STOP command to Train %d\r\n", train_arr[i].train_num);
                 train_arr[i].speed_level = 0;
                 train_arr[i].actual_speed_x100 = 0;
                 train_arr[i].total_path_distance = 0;
@@ -672,7 +663,7 @@ namespace Conductor_NS
 
             train_task_mapping *train = &train_arr[i];
             const char *next_sensor_name = (train->last_sent_sensor && train->last_sensor != train->last_sent_sensor) ? train_arr[i].last_sent_sensor->name : "-   ";
-            // IO_NS::PrintTerminal("Conductor::UpdateTrainDisplay -- Train %d: next sensor -> {%s}\r\n", train_arr[i].train_num, next_sensor_name);
+            // // IO_NS::PrintTerminal("Conductor::UpdateTrainDisplay -- Train %d: next sensor -> {%s}\r\n", train_arr[i].train_num, next_sensor_name);
             IO_NS::Print(MOVE_CURSOR "%d ",
                          TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 2, train_arr[i].train_num);
             IO_NS::Print(MOVE_CURSOR "%d ",
@@ -710,7 +701,7 @@ namespace Conductor_NS
             // int known_dist_travelled = 0;
             // train_arr[i].total_dist_travelled.Pop(&approx_dist_travelled_in_segment);
             // train_arr[i].total_dist_travelled.Pop(&known_dist_travelled);
-            //  IO_NS::PrintTerminal("Conductor::UpdateTrainDisplay -- Train %d: approx_dist_travelled_in_segment: %d, known_dist_travelled: %d\r\n", train_arr[i].train_num, approx_dist_travelled_in_segment, known_dist_travelled);
+            //  // IO_NS::PrintTerminal("Conductor::UpdateTrainDisplay -- Train %d: approx_dist_travelled_in_segment: %d, known_dist_travelled: %d\r\n", train_arr[i].train_num, approx_dist_travelled_in_segment, known_dist_travelled);
 
             // IO_NS::Print(MOVE_CURSOR "%d", TRAIN_TABLE_Y + 5 + 0, TRAIN_TABLE_X + 80, known_dist_travelled + approx_dist_travelled_in_segment);
 
@@ -726,7 +717,7 @@ namespace Conductor_NS
         {
             PathNode node;
             switch_nodes->Pop(&node);
-            // IO_NS::PrintTerminal("CONDUCTOR::SettingSwitches -- NODE: %s\r\n", node.node->name);
+            // // IO_NS::PrintTerminal("CONDUCTOR::SettingSwitches -- NODE: %s\r\n", node.node->name);
 
             if (node.node->type == NODE_BRANCH)
             {
@@ -758,7 +749,7 @@ namespace Conductor_NS
         }
 
         // test path finding
-        IO_NS::PrintTerminal(CLEAR_SCREEN "Conductor testing path finding\r\n");
+        // IO_NS::PrintTerminal(CLEAR_SCREEN "Conductor testing path finding\r\n");
         Stack<PathNode, TRACK_MAX> path;
         track.find_path("E1", "E14", &path);
         clear_path(&path);
@@ -773,7 +764,7 @@ namespace Conductor_NS
         track.find_path(LOOP_START_NODE, LOOP_START_NODE, &path, false);
         clear_path(&path);
         // track.find_path(LOOP_START_NODE, "C11", &path);
-        IO_NS::PrintTerminal("Conductor finished testing path finding\r\n");
+        // IO_NS::PrintTerminal("Conductor finished testing path finding\r\n");
         uassert(false && "Conductor::ConductorLoop: Test finsihed -- forced error");
     }
 
@@ -787,11 +778,11 @@ namespace Conductor_NS
         while (true)
         {
             // track_node *BR2 = track.get_node_by_name("BR2");
-            // IO_NS::PrintTerminal(COLOR_CYAN "Conductor::ConductorLoop -- BR2: reserved by %d\r\n", BR2->who_reserved_me);
+            // // IO_NS::PrintTerminal(COLOR_CYAN "Conductor::ConductorLoop -- BR2: reserved by %d\r\n", BR2->who_reserved_me);
             // receive request from terminal
             retval = RECEIVE(&sender_tid, (char *)&req, sizeof(ConductorRequest));
             uassert(retval >= 0 && "Error receiving request from terminal");
-            // IO_NS::PrintTerminal("Conductor received %s from %d\r\n", req.requestType == RequestType::CMD ? "CMD" : (req.requestType == RequestType::GET_SEGMENT ? "GET_SEGMENT" : (req.requestType == RequestType::GET_CMD ? "GET_CMD" : (req.requestType == RequestType::GET_SENSOR ? "GET_SENSOR" : (req.requestType == RequestType::SENSOR_TRIGGER ? "SENSOR_TRIGGER" : "TICK")))), sender_tid);
+            // // IO_NS::PrintTerminal("Conductor received %s from %d\r\n", req.requestType == RequestType::CMD ? "CMD" : (req.requestType == RequestType::GET_SEGMENT ? "GET_SEGMENT" : (req.requestType == RequestType::GET_CMD ? "GET_CMD" : (req.requestType == RequestType::GET_SENSOR ? "GET_SENSOR" : (req.requestType == RequestType::SENSOR_TRIGGER ? "SENSOR_TRIGGER" : "TICK")))), sender_tid);
 
             bool sendReply = false;
             if (req.requestType == RequestType::CMD)
@@ -801,7 +792,7 @@ namespace Conductor_NS
             }
             else if (req.requestType == RequestType::GET_CMD)
             {
-                IO_NS::PrintTerminal("Conductor::ConductorLoop -- Received GET_CMD request from %d -- hanging on until a command is ready\r\n", sender_tid);
+                // IO_NS::PrintTerminal("Conductor::ConductorLoop -- Received GET_CMD request from %d -- hanging on until a command is ready\r\n", sender_tid);
 
                 // extract messenger TID
                 int train_idx = get_train_index(req.data.train_num);
@@ -817,7 +808,7 @@ namespace Conductor_NS
             else if (req.requestType == RequestType::GET_SENSOR)
             {
                 int train_num = req.data.train_num;
-                IO_NS::PrintTerminal("Conductor::ConductorLoop -- Received GET_SENSOR request from %d, for train %d\r\n", sender_tid, train_num);
+                // IO_NS::PrintTerminal("Conductor::ConductorLoop -- Received GET_SENSOR request from %d, for train %d\r\n", sender_tid, train_num);
 
                 int train_index = get_train_index(train_num);
                 uassert(train_index >= 0 && "Conductor::ConductorLoop -- Error getting train index");
@@ -832,7 +823,7 @@ namespace Conductor_NS
             // REPLACE WITH SENSOR_TRIGGER FUNCTION
             else if (req.requestType == RequestType::SENSOR_TRIGGER)
             {
-                IO_NS::PrintTerminal(COLOR_BLUE "TYPE CHARACTER TO CONTINUE RUNNING\r\n");
+                // IO_NS::PrintTerminal(COLOR_BLUE "TYPE CHARACTER TO CONTINUE RUNNING\r\n");
                 unsigned char ch = uart_getc(CONSOLE);
 
                 ProcessSensorTrigger(&req.data.sensor_trigger_response);
@@ -860,53 +851,6 @@ namespace Conductor_NS
 
     void Conductor::GenerateAndSendNewCommand(train_task_mapping *train)
     {
-        if (train->train_num == 77 && auto_command_idx_0 < 2)
-        {
-            int list_size = sizeof(AUTO_0)/sizeof(AUTO_0[0]);
-            int randon_idx = (custom_rand() % list_size); // 0 - (list_size-1)
-
-            int offset = 0;
-            int speed = train->go_speed;
-            char * dest_sensor = AUTO_0[randon_idx];   
-
-            // Create command
-            ConductorRequest req(COMMAND::GOTO,
-                                 train->train_num,
-                                 speed,
-                                 dest_sensor,
-                                 dest_sensor,
-                                 offset);
-            ProcessRequest(&req.data.cmdRequest);
-            IO_NS::PrintTerminal(COLOR_YELLOW "Automated GOTO: train %d go to %s %d with speed %d\r\n", train->train_num, dest_sensor, offset, speed);
-            
-            // Move to next index
-            auto_command_idx_0++;
-            return;
-        }
-        if (train->train_num == 55 && auto_command_idx_1 < 2)
-        {
-            int list_size = sizeof(AUTO_1)/sizeof(AUTO_1[0]);
-            int randon_idx = (custom_rand() % list_size); // 0 - (list_size-1)
-
-            int offset = 0;
-            int speed = train->go_speed;
-            char * dest_sensor = AUTO_1[randon_idx];    
-
-            // Create command
-            ConductorRequest req(COMMAND::GOTO,
-                                 train->train_num,
-                                 speed,
-                                 dest_sensor,
-                                 dest_sensor,
-                                 offset);
-            ProcessRequest(&req.data.cmdRequest);
-            IO_NS::PrintTerminal(COLOR_YELLOW "Automated GOTO: train %d go to %s %d with speed %d\r\n", train->train_num, dest_sensor, offset, speed);
-            
-            // Move to next index
-            auto_command_idx_1++;            
-            return;
-        }
-
         char dest_sensor[5] = {0};
         int offset;
         int speed;
@@ -936,7 +880,7 @@ namespace Conductor_NS
                 dest_sensor[2] = '\0';
             }
 
-            IO_NS::PrintTerminal(COLOR_YELLOW "Random generated: %s\r\n", dest_sensor);
+            // IO_NS::PrintTerminal(COLOR_YELLOW "Random generated: %s\r\n", dest_sensor);
 
             // Check against forbidden list
             is_forbidden = false;
@@ -949,7 +893,7 @@ namespace Conductor_NS
                 }
             }
 
-            IO_NS::PrintTerminal(COLOR_YELLOW "Is this sensor forbiden: %d\r\n", is_forbidden);
+            // IO_NS::PrintTerminal(COLOR_YELLOW "Is this sensor forbiden: %d\r\n", is_forbidden);
         } while (is_forbidden);
 
         offset = 0;
@@ -965,7 +909,7 @@ namespace Conductor_NS
 
         ProcessRequest(&req.data.cmdRequest);
 
-        IO_NS::PrintTerminal(COLOR_YELLOW "Automated GOTO: train %d go to %s %d with speed %d\r\n", train->train_num, dest_sensor, offset, speed);
+        // IO_NS::PrintTerminal(COLOR_YELLOW "Automated GOTO: train %d go to %s %d with speed %d\r\n", train->train_num, dest_sensor, offset, speed);
     }
 
     
@@ -995,7 +939,7 @@ namespace Conductor_NS
                                  dest_sensor,
                                  offset);
             ProcessRequest(&req.data.cmdRequest);
-            IO_NS::PrintTerminal(COLOR_YELLOW "Automated GOTO: train %d go to %s %d with speed %d\r\n", train->train_num, dest_sensor, offset, speed);
+            // IO_NS::PrintTerminal(COLOR_YELLOW "Automated GOTO: train %d go to %s %d with speed %d\r\n", train->train_num, dest_sensor, offset, speed);
             // Move to next index
             command_index_0++;
         }
@@ -1015,7 +959,7 @@ namespace Conductor_NS
                                  dest_sensor,
                                  offset);
             ProcessRequest(&req.data.cmdRequest);
-            IO_NS::PrintTerminal(COLOR_YELLOW "Automated GOTO: train %d go to %s %d with speed %d\r\n", train->train_num, dest_sensor, offset, speed);
+            // IO_NS::PrintTerminal(COLOR_YELLOW "Automated GOTO: train %d go to %s %d with speed %d\r\n", train->train_num, dest_sensor, offset, speed);
             // Move to next index
             command_index_1++;           
         }
@@ -1035,7 +979,7 @@ namespace Conductor_NS
                                  dest_sensor,
                                  offset);
             ProcessRequest(&req.data.cmdRequest);
-            IO_NS::PrintTerminal(COLOR_YELLOW "Automated GOTO: train %d go to %s %d with speed %d\r\n", train->train_num, dest_sensor, offset, speed);
+            // IO_NS::PrintTerminal(COLOR_YELLOW "Automated GOTO: train %d go to %s %d with speed %d\r\n", train->train_num, dest_sensor, offset, speed);
             // Move to next index
             command_index_2++;            
         }  
@@ -1079,7 +1023,7 @@ namespace Conductor_NS
                     (first_sensor != train->last_sent_sensor) &&
                     (second_sensor || ((second_sensor == nullptr) && (first_sensor == train->destination_node))))
                 {
-                    IO_NS::PrintTerminal(COLOR_MAGENTA "Conductor::DispatchCommand -- train %d: first: %s, safety: %s\r\n", train->train_num, (first_sensor != nullptr) ? first_sensor->name : "NULLPTR", (second_sensor != nullptr) ? second_sensor->name : "NULLPTR");
+                    // IO_NS::PrintTerminal(COLOR_MAGENTA "Conductor::DispatchCommand -- train %d: first: %s, safety: %s\r\n", train->train_num, (first_sensor != nullptr) ? first_sensor->name : "NULLPTR", (second_sensor != nullptr) ? second_sensor->name : "NULLPTR");
                     train->last_sent_sensor = first_sensor;
                     train->last_sent_sensor_safety = second_sensor;
 
@@ -1093,7 +1037,7 @@ namespace Conductor_NS
                         // get reserved path distance
                         int reserved_path_distance = GetReservedPathLength(train);
                         // SEND ACCELERATE COMMAND
-                        IO_NS::PrintTerminal(COLOR_GREEN "Conductor::DispatchCommand -- Making Train %d move with reserved path distance: %d\r\n", train->train_num, reserved_path_distance);
+                        // IO_NS::PrintTerminal(COLOR_GREEN "Conductor::DispatchCommand -- Making Train %d move with reserved path distance: %d\r\n", train->train_num, reserved_path_distance);
                         TrainCommandNotification command = {TRAIN_COMMAND::ACCELERATE, train->go_speed, reserved_path_distance};
                         train->train_commands.Push(command);
                         train->isMoving = true;
@@ -1102,7 +1046,7 @@ namespace Conductor_NS
                 else if (!second_sensor && (first_sensor != train->destination_node) && train->isMoving)
                 {
                     // SEND STOP COMMAND
-                    IO_NS::PrintTerminal(COLOR_RED "Conductor::DispatchCommand -- Train %d is moving, sending STOP command\r\n", train->train_num);
+                    // IO_NS::PrintTerminal(COLOR_RED "Conductor::DispatchCommand -- Train %d is moving, sending STOP command\r\n", train->train_num);
                     train->train_commands.Push({TRAIN_COMMAND::STOP, 0});
                     train->isMoving = false;
                 }
@@ -1110,7 +1054,7 @@ namespace Conductor_NS
 
             if (command_messenger->messenger_id > 0 && !command_messenger->sent_reply && !train->train_commands.IsEmpty())
             {
-                IO_NS::PrintTerminal(COLOR_CYAN "Conductor::DispatchCommand -- Sending Train Command to messenger %d (train %d)\r\n", command_messenger->messenger_id, train->train_num);
+                // IO_NS::PrintTerminal(COLOR_CYAN "Conductor::DispatchCommand -- Sending Train Command to messenger %d (train %d)\r\n", command_messenger->messenger_id, train->train_num);
                 TrainCommandNotification command;
                 train->train_commands.Pop(&command);
                 // check for accelerate command
@@ -1127,12 +1071,12 @@ namespace Conductor_NS
         }
         if (all_trains_blocked)
         {
-            // IO_NS::PrintTerminal(COLOR_RED "Conductor::DispatchCommand -- All trains are blocked\r\n");
+            // // IO_NS::PrintTerminal(COLOR_RED "Conductor::DispatchCommand -- All trains are blocked\r\n");
             // uassert(false && "Conductor::DispatchCommand -- All trains are blocked");
         }
         else
         {
-            // IO_NS::PrintTerminal(COLOR_GREEN "Conductor::DispatchCommand -- Not all trains are blocked\r\n");
+            // // IO_NS::PrintTerminal(COLOR_GREEN "Conductor::DispatchCommand -- Not all trains are blocked\r\n");
         }
     }
     void Conductor::get_sensors_to_listen_to(train_task_mapping *train, track_node *&first_sensor, track_node *&second_sensor, track_node *&third_sensor)
@@ -1162,38 +1106,38 @@ namespace Conductor_NS
             temp_queue.Push(pnode);
             track_node *node = pnode.node;
 
-            // IO_NS::PrintTerminal("Conductor::get_sensors_to_listen_to -- checking node: %s\r\n", node->name);
+            // // IO_NS::PrintTerminal("Conductor::get_sensors_to_listen_to -- checking node: %s\r\n", node->name);
 
             if (node->type == NODE_SENSOR)
             {
-                // IO_NS::PrintTerminal(COLOR_BLUE "Conductor::get_sensors_to_listen_to -- found sensor: %s\r\n", node.node->name);
+                // // IO_NS::PrintTerminal(COLOR_BLUE "Conductor::get_sensors_to_listen_to -- found sensor: %s\r\n", node.node->name);
                 if (first_sensor == nullptr)
                 {
-                    // IO_NS::PrintTerminal(COLOR_RED "Setting first sensor to %s\r\n", node->name);
+                    // // IO_NS::PrintTerminal(COLOR_RED "Setting first sensor to %s\r\n", node->name);
                     first_sensor = this->track.get_node_by_name(node->name);
-                    // IO_NS::PrintTerminal(COLOR_RED "Conductor::get_sensors_to_listen_to -- first sensor set to %s\r\n", first_sensor->name);
+                    // // IO_NS::PrintTerminal(COLOR_RED "Conductor::get_sensors_to_listen_to -- first sensor set to %s\r\n", first_sensor->name);
                 }
                 else if (second_sensor == nullptr)
                 {
-                    // IO_NS::PrintTerminal(COLOR_RED "Setting second sensor to %s\r\n", node->name);
-                    // IO_NS::PrintTerminal(COLOR_RED " FIRST SENSOR CHECKED: %s\r\n", first_sensor->name);
+                    // // IO_NS::PrintTerminal(COLOR_RED "Setting second sensor to %s\r\n", node->name);
+                    // // IO_NS::PrintTerminal(COLOR_RED " FIRST SENSOR CHECKED: %s\r\n", first_sensor->name);
                     second_sensor = this->track.get_node_by_name(node->name);
                     break;
                 }
                 else if (third_sensor == nullptr)
                 {
-                    // IO_NS::PrintTerminal(COLOR_RED "Setting third sensor to %s\r\n", node->name);
+                    // // IO_NS::PrintTerminal(COLOR_RED "Setting third sensor to %s\r\n", node->name);
                     third_sensor = this->track.get_node_by_name(node->name);
                     break;
                 }
                 else
                 {
-                    // IO_NS::PrintTerminal("Conductor::get_sensors_to_listen_to -- both not null\r\n");
+                    // // IO_NS::PrintTerminal("Conductor::get_sensors_to_listen_to -- both not null\r\n");
                     break;
                 }
             }
         }
-        // IO_NS::PrintTerminal(COLOR_MAGENTA "Conductor::get_sensors_to_listen_to -- train %d: first: %s, safety: %s\r\n", train->train_num, (first_sensor != nullptr) ? first_sensor->name : "NULLPTR", (second_sensor != nullptr) ? second_sensor->name : "NULLPTR");
+        // // IO_NS::PrintTerminal(COLOR_MAGENTA "Conductor::get_sensors_to_listen_to -- train %d: first: %s, safety: %s\r\n", train->train_num, (first_sensor != nullptr) ? first_sensor->name : "NULLPTR", (second_sensor != nullptr) ? second_sensor->name : "NULLPTR");
 
         // push the nodes back to the path
         while (!temp_queue.IsEmpty())
@@ -1215,7 +1159,7 @@ namespace Conductor_NS
         uassert(param_init_retval >= 0 && conductor_tid > 0 && train_num > 0 && "PATH MESSENGER: Error receiving train_num from parent task");
         REPLY(conductor_tid, nullptr, 0);
 
-        IO_NS::PrintTerminal(COLOR_YELLOW "CONDUCTOR_SENSOR MESSENGER{%d/%d}  spawned with TID %d\r\n", my_tid, train_num, my_tid);
+        // IO_NS::PrintTerminal(COLOR_YELLOW "CONDUCTOR_SENSOR MESSENGER{%d/%d}  spawned with TID %d\r\n", my_tid, train_num, my_tid);
 
         ListenToSensors target_pair;
         ConductorRequest conductor_request(train_num, RequestType::GET_SENSOR);
@@ -1223,19 +1167,19 @@ namespace Conductor_NS
         uassert(marklin_io_tid > 0 && "CONDUCTOR_SENSOR MESSENGER: Error finding MarklinIOServer");
         while (true)
         {
-            // IO_NS::PrintTerminal(COLOR_RED "ENTER KEY TO CONTINUE");
+            // // IO_NS::PrintTerminal(COLOR_RED "ENTER KEY TO CONTINUE");
             // char c = uart_getc(CONSOLE);
             // SEND SEGMENT REQUEST TO CONDUCTOR
-            IO_NS::PrintTerminal(COLOR_YELLOW "CONDUCTOR_SENSOR MESSENGER{%d/%d}:: requesting next sensor from Conductor\r\n", my_tid, train_num);
+            // IO_NS::PrintTerminal(COLOR_YELLOW "CONDUCTOR_SENSOR MESSENGER{%d/%d}:: requesting next sensor from Conductor\r\n", my_tid, train_num);
             int retval = SEND(conductor_tid, (char *)&conductor_request, sizeof(ConductorRequest), (char *)&target_pair, sizeof(target_pair));
             uassert(retval >= 0 && "PATH MESSENGER: Error sending SegmentRequest to Conductor");
 
-            IO_NS::PrintTerminal(COLOR_YELLOW "CONDUCTOR_SENSOR MESSENGER{%d/%d}:: received next sensor from Conductor: %s, %s, train: %d\r\n", my_tid, train_num, target_pair.first_sensor->name, (target_pair.second_sensor != nullptr) ? target_pair.second_sensor->name : "NULLPTR", target_pair.train_num);
+            // IO_NS::PrintTerminal(COLOR_YELLOW "CONDUCTOR_SENSOR MESSENGER{%d/%d}:: received next sensor from Conductor: %s, %s, train: %d\r\n", my_tid, train_num, target_pair.first_sensor->name, (target_pair.second_sensor != nullptr) ? target_pair.second_sensor->name : "NULLPTR", target_pair.train_num);
 
             MARKLIN_IO_SERVER::IO_REQUEST io_request(&target_pair);
-            IO_NS::PrintTerminal(COLOR_YELLOW "CONDUCTOR_SENSOR MESSENGER{%d/%d}:: Sending request to IO server: %d\r\n", my_tid, train_num, marklin_io_tid);
+            // IO_NS::PrintTerminal(COLOR_YELLOW "CONDUCTOR_SENSOR MESSENGER{%d/%d}:: Sending request to IO server: %d\r\n", my_tid, train_num, marklin_io_tid);
             SEND(marklin_io_tid, (char *)&io_request, sizeof(MARKLIN_IO_SERVER::IO_REQUEST), nullptr, 0);
-            IO_NS::PrintTerminal(COLOR_YELLOW "CONDUCTOR_SENSOR MESSENGER{%d/%d}:: RECEIVED REPLY FROM IO SERVER\r\n", my_tid, train_num);
+            // IO_NS::PrintTerminal(COLOR_YELLOW "CONDUCTOR_SENSOR MESSENGER{%d/%d}:: RECEIVED REPLY FROM IO SERVER\r\n", my_tid, train_num);
         }
     }
 
@@ -1259,7 +1203,7 @@ namespace Conductor_NS
             temp_stack.Push(node);
             if (node.node->who_reserved_me != -1 && node.node->who_reserved_me != train->train_num)
             {
-                IO_NS::PrintTerminal("Conductor::ReservePath -- reservation conflict on %s -- reserved by %d\r\n", node.node->name, node.node->who_reserved_me);
+                // IO_NS::PrintTerminal("Conductor::ReservePath -- reservation conflict on %s -- reserved by %d\r\n", node.node->name, node.node->who_reserved_me);
                 reservation_conflict = true;
                 break;
             }
@@ -1321,18 +1265,18 @@ namespace Conductor_NS
         temp_queue.Clear();
         temp_stack.Clear();
 
-        IO_NS::PrintTerminal(COLOR_CYAN "Conductor::RESERVE_PATH -- Reserved nodes for train %d:\r\n", train->train_num);
+        // IO_NS::PrintTerminal(COLOR_CYAN "Conductor::RESERVE_PATH -- Reserved nodes for train %d:\r\n", train->train_num);
         train->reserved_nodes.Print();
 
-        IO_NS::PrintTerminal(COLOR_CYAN "Conductor::RESERVE_PATH -- PATH nodes for train %d:\r\n", train->train_num);
+        // IO_NS::PrintTerminal(COLOR_CYAN "Conductor::RESERVE_PATH -- PATH nodes for train %d:\r\n", train->train_num);
         path->Print();
 
         if (reservation_conflict) // if we have a reservation conflict, PUSH NEW STOPPING TARGET
         {
-            IO_NS::PrintTerminal("CONFLICT ENCOUNTERED -- LAST RESERVED NODE: %s\r\n", last_reserved_node.node->name);
-            IO_NS::PrintTerminal(COLOR_RED "Conductor::ReservePath -- CONFLICT ENCOUNTERED -- Train %d -- distance to conflict: %d\r\n", train->train_num, distance_to_conflict);
+            // IO_NS::PrintTerminal("CONFLICT ENCOUNTERED -- LAST RESERVED NODE: %s\r\n", last_reserved_node.node->name);
+            // IO_NS::PrintTerminal(COLOR_RED "Conductor::ReservePath -- CONFLICT ENCOUNTERED -- Train %d -- distance to conflict: %d\r\n", train->train_num, distance_to_conflict);
         }
-        IO_NS::PrintTerminal("RETURNING FROM RESERVE PATH -- CONFLICT: %d\r\n", reservation_conflict);
+        // IO_NS::PrintTerminal("RETURNING FROM RESERVE PATH -- CONFLICT: %d\r\n", reservation_conflict);
 
         return (reservation_conflict ? false : true);
     }
@@ -1342,16 +1286,14 @@ namespace Conductor_NS
         // StackTest();
 
         Stack<PathNode, TRACK_MAX> *path = &train->path;
-        // IO_NS::PrintTerminal("PATH NODES LEFT: %d\r\n", path->size);
+        // // IO_NS::PrintTerminal("PATH NODES LEFT: %d\r\n", path->size);
         // uassert(train->path.size != 12 && "HERE");
-        // path->Print();
         train->current_segment_length = 0;
 
         PathNode curnode;
         path->Pop(&curnode);
 
-        // IO_NS::PrintTerminal("FIRST NODE POPPED: %s -- path empty? %s -- size: %d\r\n", curnode.node->name, path->IsEmpty() ? "true" : "false", path->size);
-        // path->Print();
+        // // IO_NS::PrintTerminal("FIRST NODE POPPED: %s -- path empty? %s -- size: %d\r\n", curnode.node->name, path->IsEmpty() ? "true" : "false", path->size);
         // uassert(false && "FORCED ERROR");
         uassert(curnode.node->type == NODE_SENSOR && "Conductor::PopSegment -- popped node is not a sensor");
 
@@ -1360,10 +1302,10 @@ namespace Conductor_NS
         while (!path->IsEmpty())
         {
             train->current_segment_length += curnode.node->edge[DIR].dist;
-            IO_NS::PrintTerminal(COLOR_YELLOW "Conductor::PopSegment -- popped node: %s -- length: %d\r\n", curnode.node->name, train->current_segment_length);
+            // IO_NS::PrintTerminal(COLOR_YELLOW "Conductor::PopSegment -- popped node: %s -- length: %d\r\n", curnode.node->name, train->current_segment_length);
 
             path->Pop(&curnode);
-            // IO_NS::PrintTerminal("Conductor::PopSegment -- popped node: %s\r\n", curnode.node->name);
+            // // IO_NS::PrintTerminal("Conductor::PopSegment -- popped node: %s\r\n", curnode.node->name);
             bool isSensor = false;
             switch (curnode.node->type)
             {
@@ -1385,7 +1327,7 @@ namespace Conductor_NS
             }
         }
         path->Push(curnode);
-        IO_NS::PrintTerminal(COLOR_YELLOW "Conductor::PopSegment -- current segment went to: %s with length %d\r\n", curnode.node->name, train->current_segment_length);
+        // IO_NS::PrintTerminal(COLOR_YELLOW "Conductor::PopSegment -- current segment went to: %s with length %d\r\n", curnode.node->name, train->current_segment_length);
     }
 
     void Conductor::ReleasePath(train_task_mapping *train)
@@ -1396,7 +1338,7 @@ namespace Conductor_NS
         {
             PathNode pnode;
             train->reserved_nodes.Pop(&pnode);
-            // IO_NS::PrintTerminal("Conductor::ReleasePath -- releasing %s for train %d\r\n", node.name, train->train_num);
+            // // IO_NS::PrintTerminal("Conductor::ReleasePath -- releasing %s for train %d\r\n", node.name, train->train_num);
             if (pnode.node->type == NODE_SENSOR)
             {
                 train->reserved_sensors_count--;
@@ -1438,13 +1380,13 @@ namespace Conductor_NS
 
     void Conductor::ReleaseSegment(train_task_mapping *train)
     {
-        IO_NS::PrintTerminal(COLOR_RED "Conductor::ReleaseSegment -- releasing segment for train %d -- last sensor: %s\r\n", train->train_num, train->last_sensor->name);
+        // IO_NS::PrintTerminal(COLOR_RED "Conductor::ReleaseSegment -- releasing segment for train %d -- last sensor: %s\r\n", train->train_num, train->last_sensor->name);
         // use last hit sensor to compare the name
 
         // print reserved nodes
-        IO_NS::PrintTerminal(COLOR_CYAN "Conductor::ReleaseSegment -- PATH:\r\n");
+        // IO_NS::PrintTerminal(COLOR_CYAN "Conductor::ReleaseSegment -- PATH:\r\n");
         train->path.Print();
-        IO_NS::PrintTerminal(COLOR_CYAN "Conductor::ReleaseSegment -- reserved nodes:\r\n");
+        // IO_NS::PrintTerminal(COLOR_CYAN "Conductor::ReleaseSegment -- reserved nodes:\r\n");
         train->reserved_nodes.Print();
 
         while (!train->reserved_nodes.IsEmpty())
@@ -1458,7 +1400,7 @@ namespace Conductor_NS
                 break;
             }
 
-            IO_NS::PrintTerminal("Conductor::ReleaseSegment -- releasing %s for train %d\r\n", pnode.node->name, train->train_num);
+            // IO_NS::PrintTerminal("Conductor::ReleaseSegment -- releasing %s for train %d\r\n", pnode.node->name, train->train_num);
             train->reserved_nodes.Pop(&pnode);
             // CHECK IF REVERSE OF THE PNODE IS IN THE RESERVED NODES
             bool is_reverse_saved = isReverseInPath(pnode.node, &train->reserved_nodes);
@@ -1471,13 +1413,6 @@ namespace Conductor_NS
             {
                 train->reserved_sensors_count--;
             }
-
-            IO_NS::PrintTerminal(COLOR_RED "Conductor::ReleaseSegment -- RELEASED REVERSE NODE: %s = {%d}\r\n", pnode.node->reverse->name, pnode.node->reverse->who_reserved_me);
-            // get key to continue
-            // IO_NS::PrintTerminal(COLOR_RED "Conductor::ReleaseSegment -- Press any key to continue\r\n");
-            // track_node *BR2 = track.get_node_by_name("BR2");
-            // IO_NS::PrintTerminal(COLOR_RED "Conductor::ReleaseSegment -- BR2: reserved by %d\r\n", BR2->who_reserved_me);
-            // char c = uart_getc(CONSOLE);
         }
         // uassert(false && "Conductor::ReleaseSegment -- Error getting last sensor address");
     }
@@ -1503,12 +1438,12 @@ namespace Conductor_NS
         // set this to true if safety or expected sensor is triggered
         bool segment_verified = (expected_idx == triggered_idx) ? true : false;
         int missed_segment_length = 0;
-        // IO_NS::PrintTerminal("Conductor::ProcessSensorTrigger -- expected sensor: %s, triggered sensor: %s\r\n", train->last_sent_sensor->name, triggered_idx);
+        // // IO_NS::PrintTerminal("Conductor::ProcessSensorTrigger -- expected sensor: %s, triggered sensor: %s\r\n", train->last_sent_sensor->name, triggered_idx);
         if (safety_idx > -1 && safety_idx == triggered_idx)
         {
-            IO_NS::PrintTerminal(COLOR_RED "Conductor::ProcessSensorTrigger -- SAFETY SENSOR %s was triggered at tick %d for train %d\r\n", train->last_sent_sensor_safety->name, triggered_tick, train_num);
+            // IO_NS::PrintTerminal(COLOR_RED "Conductor::ProcessSensorTrigger -- SAFETY SENSOR %s was triggered at tick %d for train %d\r\n", train->last_sent_sensor_safety->name, triggered_tick, train_num);
             // extract the length of the missed segment into temp var
-            IO_NS::PrintTerminal("CURRENT SEGMENT LENGTH: %d\r\n", train->current_segment_length);
+            // IO_NS::PrintTerminal("CURRENT SEGMENT LENGTH: %d\r\n", train->current_segment_length);
             PopSegment(train); // pop the segment, now current_segment_length is the length of the segment from the missed to triggered sensor
             SwitchNextSegment(&train->path);
             missed_segment_length = train->current_segment_length;
@@ -1517,19 +1452,19 @@ namespace Conductor_NS
 
         if (!segment_verified)
         {
-            IO_NS::PrintTerminal(COLOR_RED "Conductor::ProcessSensorTrigger -- FATAL ERROR -- TRAIN{%d} was lost (expected/safety not triggered)");
+            // IO_NS::PrintTerminal(COLOR_RED "Conductor::ProcessSensorTrigger -- FATAL ERROR -- TRAIN{%d} was lost (expected/safety not triggered)");
             return;
         }
 
-        IO_NS::PrintTerminal(COLOR_GREEN "Conductor::ProcessSensorTrigger -- Sensor %s was triggered at tick %d for train %d\r\n", (triggered_idx == expected_idx) ? train->last_sent_sensor->name : train->last_sent_sensor_safety->name, triggered_tick, train_num);
+        // IO_NS::PrintTerminal(COLOR_GREEN "Conductor::ProcessSensorTrigger -- Sensor %s was triggered at tick %d for train %d\r\n", (triggered_idx == expected_idx) ? train->last_sent_sensor->name : train->last_sent_sensor_safety->name, triggered_tick, train_num);
         train->reach_first_sensor = true;
         // UPDATE TRAIN POSITION
         if (train->last_sensor_trigger_tick > 0)
         {
             int delta_tick = triggered_tick - train->last_sensor_trigger_tick;
-            // IO_NS::PrintTerminal("Conductor::ProcessSensorTrigger -- delta tick: %d\r\n", delta_tick);
+            // // IO_NS::PrintTerminal("Conductor::ProcessSensorTrigger -- delta tick: %d\r\n", delta_tick);
             train->actual_speed_x100 = (train->current_segment_length * 100) / delta_tick;
-            // IO_NS::PrintTerminal("Conductor::ProcessSensorTrigger -- actual speed: %d\r\n", train->actual_speed_x100);
+            // // IO_NS::PrintTerminal("Conductor::ProcessSensorTrigger -- actual speed: %d\r\n", train->actual_speed_x100);
         }
         else
         {
@@ -1552,7 +1487,7 @@ namespace Conductor_NS
         SwitchNextSegment(&train->path);
         ReleaseSegment(train);
 
-        IO_NS::PrintTerminal(COLOR_GREEN "Conductor::ProcessSensorTrigger -- Train %d -- Popped segment from path:\r\n", train->train_num);
+        // IO_NS::PrintTerminal(COLOR_GREEN "Conductor::ProcessSensorTrigger -- Train %d -- Popped segment from path:\r\n", train->train_num);
         train->path.Print();
         train->reserved_nodes.Print();
 
@@ -1565,7 +1500,7 @@ namespace Conductor_NS
             if (temp_node.node == train->destination_node)
             {
                 // SLOW DOWN TRAIN
-                IO_NS::PrintTerminal(COLOR_GREEN "Conductor::DispatchCommand -- Train %d is approaching destination, sending SLOW command\r\n", train->train_num);
+                // IO_NS::PrintTerminal(COLOR_GREEN "Conductor::DispatchCommand -- Train %d is approaching destination, sending SLOW command\r\n", train->train_num);
                 TrainCommandNotification command = {TRAIN_COMMAND::ACCELERATE, train->slow_down_speed, 0};
                 train->train_commands.Push(command);
                 train->isMoving = true;
@@ -1575,7 +1510,7 @@ namespace Conductor_NS
 
         if (train->isMoving && train->last_sensor == train->destination_node)
         {
-            IO_NS::PrintTerminal(COLOR_GREEN "Conductor::DispatchCommand -- Train %d reached destination %s -- STOPPING TRAIN\r\n", train->train_num, train->last_sensor->name);
+            // IO_NS::PrintTerminal(COLOR_GREEN "Conductor::DispatchCommand -- Train %d reached destination %s -- STOPPING TRAIN\r\n", train->train_num, train->last_sensor->name);
             ReleasePath(train);
             train->path.Clear();
             train->train_commands.Clear();
@@ -1586,10 +1521,10 @@ namespace Conductor_NS
             train->total_path_distance = 0;
             train->isMoving = false;
             Conductor::UpdateTrainDisplay();
-            IO_NS::PrintTerminal(COLOR_RED "Conductor::ProcessSensorTrigger -- Train %d reached destination %s -- STOPPING TRAIN\r\n", train->train_num, train->last_sensor->name);
+            // IO_NS::PrintTerminal(COLOR_RED "Conductor::ProcessSensorTrigger -- Train %d reached destination %s -- STOPPING TRAIN\r\n", train->train_num, train->last_sensor->name);
             if (train->auto_mode || train->demo_mode )
             {
-                IO_NS::PrintTerminal(COLOR_RED "Conductor::ProcessSensorTrigger -- AUTO mode or DEMO mode, delay the train and send another go command\r\n", train->train_num, train->last_sensor->name);
+                // IO_NS::PrintTerminal(COLOR_RED "Conductor::ProcessSensorTrigger -- AUTO mode or DEMO mode, delay the train and send another go command\r\n", train->train_num, train->last_sensor->name);
                 train->train_commands.Push({TRAIN_COMMAND::STOP, 5}); 
             }
             else
@@ -1604,22 +1539,22 @@ namespace Conductor_NS
         int length = 0;
         Queue<PathNode, TRACK_MAX> *reserved_nodes = &train->reserved_nodes;
         Queue<PathNode, TRACK_MAX> temp_stack;
-        IO_NS::PrintTerminal(COLOR_YELLOW "Conductor::GetReservedPathLength -- reserved nodes:\r\n");
+        // IO_NS::PrintTerminal(COLOR_YELLOW "Conductor::GetReservedPathLength -- reserved nodes:\r\n");
         while (!reserved_nodes->IsEmpty())
         {
             PathNode pnode;
             reserved_nodes->Pop(&pnode);
-            IO_NS::PrintTerminal(COLOR_YELLOW "%s ", pnode.node->name);
+            // IO_NS::PrintTerminal(COLOR_YELLOW "%s ", pnode.node->name);
             temp_stack.Push(pnode);
             int DIR = 0;
             if (pnode.node->type == NODE_BRANCH)
             {
                 DIR = (pnode.switch_state == SwitchState::STRAIGHT) ? 0 : 1;
             }
-            // IO_NS::PrintTerminal(" -- %d -- ", pnode.node->edge[DIR].dist);
+            // // IO_NS::PrintTerminal(" -- %d -- ", pnode.node->edge[DIR].dist);
             length += pnode.node->edge[DIR].dist;
         }
-        IO_NS::PrintTerminal("\r\n");
+        // IO_NS::PrintTerminal("\r\n");
         while (!temp_stack.IsEmpty())
         {
             PathNode node;

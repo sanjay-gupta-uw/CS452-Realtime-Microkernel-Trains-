@@ -74,10 +74,10 @@ public:
     }
     void Print()
     {
-        IO_NS::PrintTerminal(COLOR_MAGENTA "Queue contents: {size: %d, head: %d, tail: %d} ", size, head, tail);
+        // IO_NS::PrintTerminal(COLOR_MAGENTA "Queue contents: {size: %d, head: %d, tail: %d} ", size, head, tail);
         if (IsEmpty())
         {
-            IO_NS::PrintTerminal("\r\n");
+            // IO_NS::PrintTerminal("\r\n");
             return;
         }
         Queue<T, Capacity> temp;
@@ -89,7 +89,7 @@ public:
 
             // cast item to PathNode
             PathNode *pnode = (PathNode *)&item; // Cast to PathNode pointer
-            IO_NS::PrintTerminal(COLOR_MAGENTA "%s ", pnode->node->name);
+            // IO_NS::PrintTerminal(COLOR_MAGENTA "%s ", pnode->node->name);
             temp.Push(item);
         }
         while (!temp.IsEmpty())
@@ -98,7 +98,7 @@ public:
             temp.Pop(&item);
             Push(item);
         }
-        IO_NS::PrintTerminal("\r\n");
+        // IO_NS::PrintTerminal("\r\n");
     }
 
     void Clear()

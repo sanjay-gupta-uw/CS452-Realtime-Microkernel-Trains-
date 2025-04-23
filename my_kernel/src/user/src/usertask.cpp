@@ -34,7 +34,7 @@ void IdleTask()
     */
     for (;;)
     {
-        // IO_NS::PrintTerminal("Idle Task\r\n");
+        // // IO_NS::PrintTerminal("Idle Task\r\n");
         asm volatile("wfi");
     }
     EXIT();
@@ -47,22 +47,22 @@ static void CreateCoreServers()
 
     int ioServerTid = CREATE(PRIORITY::CONSOLE_SERVER, IO_SERVER::startIOServer); // Start the IO Server
     uassert(ioServerTid > 0 && "Error starting IO Server");
-    IO_NS::PrintTerminal("IO Server started with TID %d\r\n", ioServerTid);
+    // IO_NS::PrintTerminal("IO Server started with TID %d\r\n", ioServerTid);
 
     // create the clock server
     int clockServerTid = CREATE(PRIORITY::CORE, ClockServer); // Start the Clock Server
     uassert(clockServerTid > 0 && "Error starting Clock Server");
-    IO_NS::PrintTerminal("Clock Server started with TID %d\r\n", clockServerTid);
+    // IO_NS::PrintTerminal("Clock Server started with TID %d\r\n", clockServerTid);
 
     // create conductor for communicating between trains/sensors/switches
     // int ConductorTid = CREATE(PRIORITY::ORCHESTRATOR, Conductor_NS::start_conductor);
     int ConductorTid = CREATE(PRIORITY::DEVICE_NOTIFIER, Conductor_NS::start_conductor);
     uassert(ConductorTid > 0 && "Error starting Conductor");
-    IO_NS::PrintTerminal("Conductor started with TID %d\r\n", ConductorTid);
+    // IO_NS::PrintTerminal("Conductor started with TID %d\r\n", ConductorTid);
 
     int marklinIoServerTid = CREATE(PRIORITY::MARKLIN_SERVER, MARKLIN_IO_SERVER::startMarklinIOServer); // Start the Marklin IO Server
     uassert(marklinIoServerTid > 0 && "Error starting Marklin IO Server");
-    IO_NS::PrintTerminal("Marklin IO Server started with TID %d\r\n", marklinIoServerTid);
+    // IO_NS::PrintTerminal("Marklin IO Server started with TID %d\r\n", marklinIoServerTid);
 }
 // tid 2
 void FirstUserTask()
@@ -75,16 +75,16 @@ void FirstUserTask()
     // create the console/marlin IO servers
     CreateCoreServers();
 
-    IO_NS::PrintTerminal("Name Server started with TID %d\r\n", nameServerTid);
+    // IO_NS::PrintTerminal("Name Server started with TID %d\r\n", nameServerTid);
 
     int uiTaskTid = CREATE(PRIORITY::CORE, UI_NS::start_ui); // Start the UI Task
     uassert(uiTaskTid > 0 && "Error starting UI Task");
-    IO_NS::PrintTerminal("UI Task started with TID %d\r\n", uiTaskTid);
+    // IO_NS::PrintTerminal("UI Task started with TID %d\r\n", uiTaskTid);
 
     // create command prompt
     int cmdTid = CREATE(PRIORITY::LOWEST, UI_CMD_NS::start_command_prompt); // Start the Command Task
     uassert(cmdTid > 0 && "Error starting Command Task");
-    IO_NS::PrintTerminal("Command Task started with TID %d\r\n", cmdTid);
+    // IO_NS::PrintTerminal("Command Task started with TID %d\r\n", cmdTid);
 
     EXIT();
 }

@@ -46,7 +46,7 @@ void Clock::Update()
 {
     // Get current time from system timer
     uint32_t current_time = SYSTIMER_REG(SYSTIMER_CLO);
-    // IO_NS::PrintTerminal("Clock::Update() - current_time: %u, last_time: %u, diff: %u\r\n", current_time, last_time, current_time - last_time);
+    // // IO_NS::PrintTerminal("Clock::Update() - current_time: %u, last_time: %u, diff: %u\r\n", current_time, last_time, current_time - last_time);
 
     // elapsed time since last update (in microseconds)
     uint32_t elapsed = current_time - last_time;
@@ -95,7 +95,7 @@ void Clock::Display()
 
     if (!UPDATE_DISPLAY)
     {
-        // IO_NS::PrintTerminal("Clock::Display() - No update needed\r\n");
+        // // IO_NS::PrintTerminal("Clock::Display() - No update needed\r\n");
         return;
     }
 
@@ -121,7 +121,7 @@ void Clock::Display()
         sec[1] = seconds % 10 + '0';
     }
 
-    // IO_NS::PrintTerminal("Clock::Display()\r\n");
+    // // IO_NS::PrintTerminal("Clock::Display()\r\n");
 
     IO_NS::Print(COLOR_YELLOW MOVE_CURSOR "%s:%s:%u", CLOCK_LOCATION_Y, CLOCK_LOCATION_X, min, sec, tenths);
     UPDATE_DISPLAY = false;
