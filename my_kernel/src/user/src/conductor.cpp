@@ -25,10 +25,16 @@ static constexpr char *SENSOR_IDS_0[] = {
     "B6", "D2", "A7", "E3", "D4", "D9"}; //D11
 
 static constexpr char *SENSOR_IDS_1[] = {
-    "A15", "A6", "A14", "E7"};
+    "A14", "A6", "A14", "E7"};
 
 static constexpr char *SENSOR_IDS_2[] = {
-    "A14", "B5", "C3", "E16"};    
+    "A15", "B5", "C3", "E16"};    
+
+static constexpr char *AUTO_0[] = {
+    "C3", "D12", "C15", "C5", "B16", "A2", "A14", "A15", "E8", "D8", "C15", "C16", "D11", "D12", "E11"};
+    
+static constexpr char *AUTO_1[] = {
+    "D5", "E3", "D1", "C1", "B4", "B15", "A3", "B5", "B6", "D3", "D4", "E5", "B1", "B2", "D13", "D14", "E14"};
 
 namespace Conductor_NS
 {
@@ -132,6 +138,9 @@ namespace Conductor_NS
         command_index_0 = 0;
         command_index_1 = 0;
         command_index_2 = 0;
+
+        auto_command_idx_0 = 0;
+        auto_command_idx_0 = 0;
 
         if (track_id == 'A' || track_id == 'a')
         {
@@ -377,7 +386,7 @@ namespace Conductor_NS
 
                     if(train->train_num == 77 ) 
                     {
-                        train->go_speed = 7;
+                        train->go_speed = 8;
                         train->slow_down_speed = 4;
                     }
                     else if(train->train_num == 54) 
@@ -572,6 +581,11 @@ namespace Conductor_NS
                     train_arr[i].auto_mode = true;
                     train_arr[i].demo_mode = false;
 
+                    if(train_arr[i].train_num == 77) 
+                    {
+                        train_arr[i].go_speed = 7;
+                    }
+
                     // Generate random parameters
                     GenerateAndSendNewCommand(&train_arr[i]);
                 }
@@ -665,7 +679,7 @@ namespace Conductor_NS
                          TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 7, train_arr[i].speed_level);
             IO_NS::Print(MOVE_CURSOR "%d.%d ",
                          TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 21, train_arr[i].actual_speed_x100 / 100, train_arr[i].actual_speed_x100 % 100);
-            IO_NS::Print(MOVE_CURSOR "%s  ",
+            IO_NS::Print(MOVE_CURSOR "%s        ",
                          TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 36, train_arr[i].last_sensor->name);
             IO_NS::Print(MOVE_CURSOR "%s  ",
                          TRAIN_TABLE_Y + 5 + display_row, TRAIN_TABLE_X + 50, next_sensor_name);
@@ -846,6 +860,53 @@ namespace Conductor_NS
 
     void Conductor::GenerateAndSendNewCommand(train_task_mapping *train)
     {
+        if (train->train_num == 77 && auto_command_idx_0 < 2)
+        {
+            int list_size = sizeof(AUTO_0)/sizeof(AUTO_0[0]);
+            int randon_idx = (custom_rand() % list_size); // 0 - (list_size-1)
+
+            int offset = 0;
+            int speed = train->go_speed;
+            char * dest_sensor = AUTO_0[randon_idx];   
+
+            // Create command
+            ConductorRequest req(COMMAND::GOTO,
+                                 train->train_num,
+                                 speed,
+                                 dest_sensor,
+                                 dest_sensor,
+                                 offset);
+            ProcessRequest(&req.data.cmdRequest);
+            IO_NS::PrintTerminal(COLOR_YELLOW "Automated GOTO: train %d go to %s %d with speed %d\r\n", train->train_num, dest_sensor, offset, speed);
+            
+            // Move to next index
+            auto_command_idx_0++;
+            return;
+        }
+        if (train->train_num == 55 && auto_command_idx_1 < 2)
+        {
+            int list_size = sizeof(AUTO_1)/sizeof(AUTO_1[0]);
+            int randon_idx = (custom_rand() % list_size); // 0 - (list_size-1)
+
+            int offset = 0;
+            int speed = train->go_speed;
+            char * dest_sensor = AUTO_1[randon_idx];    
+
+            // Create command
+            ConductorRequest req(COMMAND::GOTO,
+                                 train->train_num,
+                                 speed,
+                                 dest_sensor,
+                                 dest_sensor,
+                                 offset);
+            ProcessRequest(&req.data.cmdRequest);
+            IO_NS::PrintTerminal(COLOR_YELLOW "Automated GOTO: train %d go to %s %d with speed %d\r\n", train->train_num, dest_sensor, offset, speed);
+            
+            // Move to next index
+            auto_command_idx_1++;            
+            return;
+        }
+
         char dest_sensor[5] = {0};
         int offset;
         int speed;
@@ -853,59 +914,6 @@ namespace Conductor_NS
         bool is_forbidden;
         const int num_forbidden = sizeof(FORBIDDEN_SENSORS) / sizeof(FORBIDDEN_SENSORS[0]);
 
-        /*
-                // Get values from lists for testing
-                int list_size;
-                if (train->train_num == 54)
-                {
-                    dest_sensor = SENSOR_IDS_0[command_index];
-                    offset = OFFSETS_0[command_index];
-                    speed = SPEEDS_0[command_index];
-                    list_size = sizeof(SENSOR_IDS_0)/sizeof(SENSOR_IDS_0[0]);
-                }
-                else if(train->train_num == 77)
-                {
-                    dest_sensor = SENSOR_IDS_1[command_index];
-                    offset = OFFSETS_1[command_index];
-                    speed = SPEEDS_1[command_index];
-                    list_size = sizeof(SENSOR_IDS_1)/sizeof(SENSOR_IDS_1[0]);
-                }
-                else {
-                    dest_sensor = SENSOR_IDS_1[command_index];
-                    offset = OFFSETS_1[command_index];
-                    speed = SPEEDS_1[command_index];
-                    list_size = sizeof(SENSOR_IDS_1)/sizeof(SENSOR_IDS_1[0]);
-                }
-        */
-
-        /*
-        // random test
-        for (int i = 0; i <= 10; i++)
-        {
-            // Generate random sensor components
-            dest_sensor[5] = {0};
-            char bank = 'A' + (custom_rand() % 5);     // A-E
-            int sensor_num = (custom_rand() % 14) + 1; // 1-14
-            IO_NS::PrintTerminal(COLOR_YELLOW "Random generated bank: %c, Random generated sensor num: %d%\r\n", bank, sensor_num);
-
-            // Manually construct sensor name
-            dest_sensor[0] = bank;
-            if (sensor_num >= 10)
-            {
-                dest_sensor[1] = '0' + (sensor_num / 10); // Tens digit
-                dest_sensor[2] = '0' + (sensor_num % 10); // Units digit
-                dest_sensor[3] = '\0';
-            }
-            else
-            {
-                dest_sensor[1] = '0' + sensor_num; // Single digit
-                dest_sensor[2] = '\0';
-            }
-            IO_NS::PrintTerminal(COLOR_YELLOW "Random generated: %s\r\n", dest_sensor);
-        }
-        */
-
-        // Generate valid random sensor
         do
         {
             dest_sensor[5] = {0};
@@ -958,16 +966,6 @@ namespace Conductor_NS
         ProcessRequest(&req.data.cmdRequest);
 
         IO_NS::PrintTerminal(COLOR_YELLOW "Automated GOTO: train %d go to %s %d with speed %d\r\n", train->train_num, dest_sensor, offset, speed);
-
-        /*
-        // Move to next index
-        command_index++;
-
-        // Optional: Reset index if needed
-        if (command_index >= list_size) {
-            command_index = 0;
-        }
-        */
     }
 
     

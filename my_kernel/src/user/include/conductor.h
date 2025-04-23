@@ -130,6 +130,9 @@ namespace Conductor_NS
         int command_index_0;
         int command_index_1;
         int command_index_2;
+
+        int auto_command_idx_0;
+        int auto_command_idx_1;
     };
 
     void start_sensor_messenger();

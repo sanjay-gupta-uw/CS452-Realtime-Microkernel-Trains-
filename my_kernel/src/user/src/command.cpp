@@ -633,15 +633,15 @@ namespace UI_CMD_NS
         IO_NS::PrintTerminal("Command Prompt started\r\n");
 
         // track A
-        char *initial_commands_list[] = {
-            "SPAWN 77 B7 0",
-            "SPAWN 58 B11 0",
-            "SPAWN 55 B9 0",
+        //char *initial_commands_list[] = {
+            //"SPAWN 77 B7 0",
+            //"SPAWN 58 B11 0",
+            //"SPAWN 55 B9 0",
             //"GO 77 7 A2 0",
             //"GO 55 8 A15 0",
             //"GO 58 8 A14 0",
             // "AUTO",
-        };
+        //};
         // char *initial_commands_list[] = {
         //     "SPAWN 77 A16 0",
         //     "SPAWN 58 A13 0",
@@ -651,13 +651,13 @@ namespace UI_CMD_NS
         // };
 
         IO_NS::PrintTerminal("Parsing Initial commands:\r\n");
-        for (int i = 0; i < sizeof(initial_commands_list) / sizeof(initial_commands_list[0]); i++)
+        /*for (int i = 0; i < sizeof(initial_commands_list) / sizeof(initial_commands_list[0]); i++)
         {
             IO_NS::PrintTerminal("%s\r\n", initial_commands_list[i]);
             IO_NS::PrintTerminal("Parsing command: %s -- press any key to proceed\r\n", initial_commands_list[i]);
             unsigned char ch = uart_getc(CONSOLE);
             commandPrompt.Commandify(initial_commands_list[i]);
-        }
+        }*/
         // uassert(false && "FORCED ERROR -- this is for testing only");
 
         while (true)

@@ -6,8 +6,8 @@ void SpeedData::InitializeTrackA()
     active_track_ = 'A';
 
     // Train 77 (index 0)                  // Speed | Speed x10 | Stop Dist
-    track_a_.entries[0][0] = {223, 272};  // 7: 2.23 mm/tick, 271.55 mm
-    track_a_.entries[0][1] = {273, 394};  // 8: 2.73 mm/tick, 394.15 mm
+    track_a_.entries[0][0] = {184, 272};  // 7: 2.23 mm/tick, 271.55 mm
+    track_a_.entries[0][1] = {226, 394};  // 8: 2.73 mm/tick, 394.15 mm
     track_a_.entries[0][2] = {324, 528};  // 9: 3.24 mm/tick, 528.35 mm
     track_a_.entries[0][3] = {385, 685};  // 10: 3.85 mm/tick, 684.87 mm
     track_a_.entries[0][4] = {453, 901};  // 11: 4.53 mm/tick, 901.21 mm
@@ -27,7 +27,7 @@ void SpeedData::InitializeTrackA()
 
     // Train 55 (index 2)
     track_a_.entries[2][0] = {160, 131}; // 7: 1.6 mm/tick, 130.75 mm
-    track_a_.entries[2][1] = {200, 174}; // 8: 2.0 mm/tick, 174.09 mm
+    track_a_.entries[2][1] = {182, 174}; // 8: 2.0 mm/tick, 174.09 mm
     track_a_.entries[2][2] = {255, 246}; // 9: 2.55 mm/tick, 245.86 mm
     track_a_.entries[2][3] = {311, 363}; // 10: 3.11 mm/tick, 362.72 mm
     track_a_.entries[2][4] = {371, 494}; // 11: 3.71 mm/tick, 493.66 mm
@@ -37,7 +37,7 @@ void SpeedData::InitializeTrackA()
 
     // Train 58 (index 3)
     track_a_.entries[3][0] = {173, 108};  // 7: 1.73 mm/tick, 108.25 mm
-    track_a_.entries[3][1] = {220, 233};  // 8: 2.2 mm/tick, 233.32 mm
+    track_a_.entries[3][1] = {206, 233};  // 8: 2.2 mm/tick, 233.32 mm
     track_a_.entries[3][2] = {280, 252};  // 9: 2.8 mm/tick, 252.4 mm
     track_a_.entries[3][3] = {339, 450};  // 10: 3.39 mm/tick, 450.39 mm
     track_a_.entries[3][4] = {416, 716};  // 11: 4.16 mm/tick, 715.6 mm
